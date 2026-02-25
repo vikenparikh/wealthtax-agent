@@ -108,31 +108,6 @@ Validation history is automatically appended to:
 docs/run_history.md
 ```
 
-## End-to-End Validation & Results
-
-Below is a sample output from the full validation flow, demonstrating correct parsing and draft return generation for all supported formats:
-
-```text
-pdf: PASS slips=3 warnings=0
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-png: PASS slips=3 warnings=0
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-jpg: PASS slips=3 warnings=0
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-jpeg: PASS slips=3 warnings=0
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-pdf: PASS slips=3 warnings=2 dual_outputs=True
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-  warning=Explanation fallback used: Model provider authentication failed. Verify GROQ_API_KEY and endpoint settings.
-  warning=Output formatting fallback used: Model provider authentication failed. Verify GROQ_API_KEY and endpoint settings.
-png: PASS slips=3 warnings=0 dual_outputs=True
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-jpg: PASS slips=3 warnings=0 dual_outputs=True
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-jpeg: PASS slips=3 warnings=0 dual_outputs=True
-  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
-```
-
 ### Adding Screenshots
 
 To further document the workflow, you can add screenshots of:
