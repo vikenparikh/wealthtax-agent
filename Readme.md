@@ -108,6 +108,85 @@ Validation history is automatically appended to:
 docs/run_history.md
 ```
 
+## End-to-End Validation & Results
+
+Below is a sample output from the full validation flow, demonstrating correct parsing and draft return generation for all supported formats:
+
+```text
+pdf: PASS slips=3 warnings=0
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+png: PASS slips=3 warnings=0
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+jpg: PASS slips=3 warnings=0
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+jpeg: PASS slips=3 warnings=0
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+pdf: PASS slips=3 warnings=2 dual_outputs=True
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+  warning=Explanation fallback used: Model provider authentication failed. Verify GROQ_API_KEY and endpoint settings.
+  warning=Output formatting fallback used: Model provider authentication failed. Verify GROQ_API_KEY and endpoint settings.
+png: PASS slips=3 warnings=0 dual_outputs=True
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+jpg: PASS slips=3 warnings=0 dual_outputs=True
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+jpeg: PASS slips=3 warnings=0 dual_outputs=True
+  actual={'total_income': 86445.4, 'rrsp_deduction': 9000.0, 'taxable_income': 77445.4, 'estimated_tax': 19361.35}
+```
+
+### Adding Screenshots
+
+To further document the workflow, you can add screenshots of:
+- The Streamlit UI after uploading slips and generating a draft return.
+- The validation output in your terminal.
+
+**How to add screenshots:**
+1. Take a screenshot (Cmd+Shift+4 on Mac, or use your OS tool).
+2. Save the image in the `docs/` folder (e.g., `docs/ui_screenshot.png`).
+3. Embed it in the README:
+
+```markdown
+![Draft Return UI](docs/ui_screenshot.png)
+```
+
+Repeat for any other key screens you want to showcase.
+
+---
+
+## 📸 UI Screenshots: End-to-End Flow
+
+Below are placeholders for screenshots demonstrating the full user flow in the WealthTax Agent Streamlit UI. To complete this section, follow the instructions below and add your screenshots to the `docs/` folder.
+
+### 1. Launch & Upload Tax Slips
+![Launch and Upload](docs/step1_upload.png)
+*User launches the app and uploads sample tax slips (PDF, PNG, JPG, JPEG).*
+
+### 2. Review Extracted Slips
+![Review Extracted Slips](docs/step2_review_slips.png)
+*The UI displays parsed slips and extracted data for user review.*
+
+### 3. Generate Draft Return
+![Draft Return](docs/step3_draft_return.png)
+*The draft tax return is generated and shown, with key values highlighted.*
+
+### 4. Approve & Download
+![Approve and Download](docs/step4_approve.png)
+*User approves the draft and can download the completed return.*
+
+---
+
+## 📷 How to Add or Update Screenshots
+
+1. Launch the Streamlit UI: `streamlit run src/wealthtax_agent/main.py`
+2. Walk through the full flow (upload, review, generate, approve).
+3. Take screenshots at each step and save as:
+   - `docs/step1_upload.png`
+   - `docs/step2_review_slips.png`
+   - `docs/step3_draft_return.png`
+   - `docs/step4_approve.png`
+4. Screenshots will be automatically displayed above.
+
+---
+
 ## Engineering docs
 
 - Architecture: `docs/architecture.md`

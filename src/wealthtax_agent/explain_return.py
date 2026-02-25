@@ -157,38 +157,63 @@ def _build_dual_output_fallback(state: GraphState) -> tuple[str, str]:
 
 
 def generate_dual_outputs(state: GraphState) -> GraphState:
-	if state.draft_return is None:
+		if state.draft_return is None:
+			return state
+
+		runtime = load_runtime_config()
+		active_client = _get_client()
+		payload = {
+			"draft_return": state.draft_return.model_dump(),
+			"explanations": state.explanation.lines if state.explanation else {},
+		}
+		user_msg = "Here is the JSON with the draft return and explanations:\n\n" + json.dumps(payload)
+
+		try:
+			def _call():
+				return active_client.chat.completions.create(
+					model=runtime.explain_model,
+					messages=[
+						{"role": "system", "content": FORMAT_SYSTEM_PROMPT},
+						{"role": "user", "content": user_msg},
+					],
+				)
+
+			response = call_with_retry(_call)
+			content = response.choices[0].message.content or ""
+			try:
+				state.draft_summary_text = _extract_code_block(content, "text")
+			except Exception as exc_text:
+				# Log the full LLM response for debugging
+				with open("format_llm_response_debug.txt", "w", encoding="utf-8") as f:
+					f.write("--- LLM RAW RESPONSE ---\n")
+					f.write(content)
+					f.write("\n--- END ---\n")
+				# Try to extract the first code block as a fallback
+				import re
+				match = re.search(r"```text\\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
+				if match:
+					state.draft_summary_text = match.group(1).strip()
+				else:
+					# As a last resort, use the whole content
+					state.draft_summary_text = content.strip()
+				state.warnings.append(f"Output formatting fallback used: Missing text code block. Full response logged.")
+			try:
+				state.draft_pseudo_xml = _extract_code_block(content, "xml")
+			except Exception as exc_xml:
+				state.draft_pseudo_xml = ""
+				state.warnings.append(f"Output formatting fallback used: Missing xml code block.")
+		except Exception as exc:
+			# Log the full exception and response for debugging
+			with open("format_llm_response_debug.txt", "w", encoding="utf-8") as f:
+				f.write("--- LLM RAW RESPONSE ---\n")
+				f.write(str(getattr(exc, 'response', '')))
+				f.write("\n--- END ---\n")
+			state.warnings.append(f"Output formatting fallback used: {_sanitize_error_message(str(exc))}. Full response logged.")
+			summary_text, pseudo_xml = _build_dual_output_fallback(state)
+			state.draft_summary_text = summary_text
+			state.draft_pseudo_xml = pseudo_xml
+
 		return state
-
-	runtime = load_runtime_config()
-	active_client = _get_client()
-	payload = {
-		"draft_return": state.draft_return.model_dump(),
-		"explanations": state.explanation.lines if state.explanation else {},
-	}
-	user_msg = "Here is the JSON with the draft return and explanations:\n\n" + json.dumps(payload)
-
-	try:
-		def _call():
-			return active_client.chat.completions.create(
-				model=runtime.explain_model,
-				messages=[
-					{"role": "system", "content": FORMAT_SYSTEM_PROMPT},
-					{"role": "user", "content": user_msg},
-				],
-			)
-
-		response = call_with_retry(_call)
-		content = response.choices[0].message.content or ""
-		state.draft_summary_text = _extract_code_block(content, "text")
-		state.draft_pseudo_xml = _extract_code_block(content, "xml")
-	except Exception as exc:
-		state.warnings.append(f"Output formatting fallback used: {_sanitize_error_message(str(exc))}")
-		summary_text, pseudo_xml = _build_dual_output_fallback(state)
-		state.draft_summary_text = summary_text
-		state.draft_pseudo_xml = pseudo_xml
-
-	return state
 
 
 def explain_return_node(state: GraphState) -> GraphState:
