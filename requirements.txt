@@ -1,0 +1,9 @@
+streamlit
+langgraph
+pydantic>=2.0
+openai>=1.0
+pymupdf>=1.24.0
+pytesseract>=0.3.10
+pytest>=8.0
+pytest-mock>=3.0
+pytest-cov>=5.0

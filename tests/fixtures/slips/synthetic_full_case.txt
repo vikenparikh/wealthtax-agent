@@ -1,0 +1,12 @@
+Synthetic Canadian Tax Package - 2025
+
+T4 Statement of Remuneration Paid
+Employment income (Box 14): 80000.00
+Income tax deducted (Box 22): 18000.00
+
+T5 Statement of Investment Income
+Interest from Canadian sources (Box 13): 1200.50
+Taxable amount of eligible dividends (Box 24): 500.00
+
+Official RRSP Contribution Receipt
+Total RRSP contributions: 7000.00
