@@ -1,0 +1,14 @@
+*Short written explanation*
+
+WealthTax Agent expands what a human tax preparer can do by shifting work from manual data transcription to higher-quality review and decision-making. Before this system, users had to read each slip, enter values manually, reconcile totals, and mentally map numbers into a coherent draft return. Now, one human can upload heterogeneous documents, generate a draft return in a single flow, review transparent explanations, and approve only when comfortable. The result is higher throughput, fewer transcription errors, and better user understanding.
+
+AI is responsible for the heavy cognitive and operational work: document parsing from PDFs/images, extracting and normalizing slip data, reasoning over simplified tax rules, producing draft return values, and generating plain-language explanations tied to those values. It also creates structured output artifacts to support downstream review and traceability.
+
+AI must stop at final legal acceptance/filing intent. The critical decision that must remain human is explicit draft approval (“I take responsibility”). This boundary is necessary because tax filing has legal consequences, requires context AI may not have (life events, omitted documents, nuanced eligibility), and demands accountable consent from the filer. AI can recommend; it cannot assume legal responsibility.
+
+What would break first at scale is not raw compute, but policy and edge-case complexity. Supporting many more slip types, provincial/Quebec differences, frequent rule updates, and exception-heavy scenarios would stress reliability first. Without stronger guardrails, the risk is silent correctness drift. Scaling safely would require policy-aware retrieval, robust validation layers, confidence scoring, human-review routing, and production observability for parsing and reasoning failures.
+
+* Salary expectation + AI experience *
+
+Salary expectation: CAD 150,000 – 180,000 base (flexible based on total compensation and scope).
+Hands-on Software and AI experience: 5 years building with solutions for PayPal and Microsoft.
