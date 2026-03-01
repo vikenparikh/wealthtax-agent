@@ -6,13 +6,15 @@ WealthTax Agent redesigns a legacy tax-prep workflow that was built for manual d
 
 What the human can now do that they could not do before is move from “data entry operator” to “final decision-maker.” In a few steps, a user can upload multiple slips (T4/T5/RRSP), receive a consolidated draft return summary, and understand each key number through plain-English explanations. This compresses the work from many manual micro-decisions into one high-quality review decision.
 
-AI responsibility in this system is explicit and operational, not decorative. The model is responsible for:
-1) OCR/transcription of uploaded slips,
-2) structured parsing into normalized slip fields,
-3) assembling a draft return summary from parsed data, and
-4) generating concise explanations for major totals.
+AI responsibility in this system is explicit and operational, not decorative. The model is used where it adds the most value:
+1) OCR/transcription fallback when local extraction quality is too low,
+2) structured parsing fallback when rule-based parsing cannot extract slips,
+3) generating concise explanations for major totals, and
+4) formatting dual draft outputs for readability and portability.
 
-The system also handles failure conditions in real time. If parsing or explanation generation fails, warnings are surfaced directly in the UI and deterministic fallbacks preserve continuity. That means the flow degrades gracefully instead of collapsing, which is necessary for real-world use.
+Core numeric reasoning remains deterministic in code: the system aggregates slip fields by type, computes taxable income, and derives an estimated tax value using the prototype formula.
+
+The system also handles failure conditions in real time. It follows a local-first strategy for OCR/text extraction and rule-based parsing, then falls back to model-based steps only when needed. If parsing, explanation generation, or output formatting fails, warnings are surfaced directly in the UI and deterministic fallback paths preserve continuity. That means the flow degrades gracefully instead of collapsing, which is necessary for real-world use.
 
 Where AI must stop is also explicit: final approval. The critical decision that remains human is whether the draft should be used for filing. This must remain human because tax filing carries legal and financial responsibility, and model outputs can be wrong due to source quality, ambiguity, or edge-case forms. The product enforces this boundary through a dedicated human approval step and clear language that no CRA filing occurs automatically.
 

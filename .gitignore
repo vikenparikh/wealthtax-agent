@@ -21,3 +21,7 @@ secrets.*
 *.csr
 
 .DS_Store
+
+# Demo recordings (keep only watermark versions)
+WealthTaxDemoVideos/*
+!WealthTaxDemoVideos/*watermark*

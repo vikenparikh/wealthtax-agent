@@ -18,9 +18,9 @@ Use this script while showing the running app UI.
 
 “Here’s the draft summary: total income, RRSP deduction, taxable income, and estimated tax. This is the high-leverage shift — the user moves from data-entry operator to quality reviewer.”
 
-## 1:25–1:50 — Explainability + reliability
+## 1:25–1:50 — Explainability + implementation accuracy
 
-“Below that, each key number is explained in plain language so the user can validate reasoning quickly. If parsing or explanation fails, the app surfaces warnings and uses deterministic fallback behavior, so the workflow degrades gracefully instead of crashing.”
+“Implementation detail: parsing is local-first. It extracts text locally, then applies rule-based slip parsing first. Only if no slips are extracted does it call Groq parsing. OCR also has a guarded fallback to Groq vision only when local OCR quality is low and local-only mode is disabled. Below that, each key number is explained in plain language; if explanation generation fails, fallback explanations are used and warnings are surfaced.”
 
 ## 1:50–2:15 — Human boundary (critical)
 
