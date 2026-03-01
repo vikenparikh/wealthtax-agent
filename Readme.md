@@ -11,7 +11,7 @@ It redesigns the Canadian personal tax workflow using a modern, human-centered s
 - Generates plain-English explanations for each key number.
 - Produces downloadable draft artifacts from the same run:
   - Human-readable draft summary (`.txt`)
-  - Pseudo-XML draft representation (`.xml`) # Still work is in progress and being built
+  - Pseudo-XML draft representation (`.xml`)
 - Presents a UI where the **human must decide** whether to approve the draft.
 - Explicitly does **not** file with CRA; filing remains entirely human.
 
@@ -54,23 +54,7 @@ Optional endpoint/model overrides:
 pip install -r requirements.txt
 ```
 
-### 3. Easy start/stop (Groq-only)
-
-Use the helper script to auto-create/repair `.venv`, load `.env`, force `LLM_PROVIDER=groq`, and run Streamlit.
-
-```bash
-./scripts/app.sh start
-```
-
-To stop the app:
-
-```bash
-./scripts/app.sh stop
-```
-
-Then open http://localhost:8501.
-
-### 4. Manual run (alternative)
+### 3. Run the UI
 
 ```bash
 PYTHONPATH=src python -m streamlit run src/wealthtax_agent/main.py
@@ -78,7 +62,7 @@ PYTHONPATH=src python -m streamlit run src/wealthtax_agent/main.py
 
 Then open the URL shown in your terminal (by default http://localhost:8501).
 
-### 5. One-command validation (tests + app boot)
+### 4. One-command validation (tests + app boot)
 
 ```bash
 ./scripts/validate.sh
@@ -90,7 +74,7 @@ Optional: override Python binary or key for local runs.
 PYTHON_BIN=$PWD/.venv/bin/python GROQ_API_KEY=gsk-... ./scripts/validate.sh
 ```
 
-### 6. Using the app
+### 5. Using the app
 
 1. Prepare 2–20 slips (T4/T5/RRSP) as PDFs or images.
 2. Upload them via the file uploader.
@@ -100,7 +84,7 @@ PYTHON_BIN=$PWD/.venv/bin/python GROQ_API_KEY=gsk-... ./scripts/validate.sh
 
 The system will not contact CRA; it only produces a draft for demonstration.
 
-### 7. Sample files + end-to-end tests
+### 6. Sample files + end-to-end tests
 
 - Sample upload files (realistic formats): `sample_tax_slips/*.pdf`, `sample_tax_slips/*.png`, `sample_tax_slips/*.jpg`, `sample_tax_slips/*.jpeg`
 - Fixture-based end-to-end test: `tests/integration/test_pipeline_with_synthetic_fixture.py`
