@@ -3,7 +3,6 @@
 This is a prototype built for the Wealthsimple builder challenge.
 It redesigns the Canadian personal tax workflow using a modern, human-centered system.
 
-
 1) 3 min video  of WealthTax Agent- https://drive.google.com/file/d/1KwyjVE9gFBfe6rH5mMn9HvSpVAd14nGe/view?usp=sharing
 
 2) Submission file - https://github.com/vikenparikh/wealthtax-agent/blob/main/WealthsimpleSubmissionFile
