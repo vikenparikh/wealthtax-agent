@@ -1,0 +1,7 @@
+T4 Statement of Remuneration Paid
+Tax year: 2024
+Employer: ACME Corp
+Box 14 Employment income: 80000.00
+Box 16 CPP contributions: 3754.45
+Box 18 EI premiums: 1002.45
+Box 22 Income tax deducted: 14500.00

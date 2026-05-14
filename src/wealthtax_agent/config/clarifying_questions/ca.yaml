@@ -1,0 +1,43 @@
+questions:
+  - id: marital_status
+    prompt: "What is your marital status as of Dec 31 of the tax year?"
+    why_it_matters: "Affects spousal credits, pension splitting, and many income-tested benefits."
+    answer_type: choice
+    options: [single, married, common_law, divorced, separated, widowed]
+    priority: high
+  - id: province_of_residence
+    prompt: "Which province or territory did you live in on Dec 31 of the tax year?"
+    why_it_matters: "Provincial tax + non-refundable credits depend on province of residence."
+    answer_type: choice
+    options: ["ON", "BC", "AB", "QC", "NS", "NB", "MB", "SK", "PE", "NL", "YT", "NT", "NU"]
+    priority: high
+  - id: foreign_property_over_100k
+    prompt: "Did you own foreign property with total cost over $100,000 CAD at any time?"
+    why_it_matters: "Triggers a T1135 Foreign Income Verification Statement (separate filing)."
+    answer_type: yes_no
+    priority: high
+  - id: is_us_person
+    prompt: "Are you a US citizen or green card holder?"
+    why_it_matters: "Triggers US tax filing obligations regardless of residence; affects TFSA usefulness."
+    answer_type: yes_no
+    priority: medium
+  - id: rrsp_room_remaining
+    prompt: "What is your remaining RRSP contribution room (from your latest CRA Notice of Assessment)?"
+    why_it_matters: "Bounds RRSP contributions / suggested top-ups; over-contribution penalty applies."
+    answer_type: number
+    priority: medium
+  - id: dependents
+    prompt: "Do you have eligible dependants (children under 18, or supported relatives)?"
+    why_it_matters: "Drives Canada Child Benefit and several non-refundable credits."
+    answer_type: yes_no
+    priority: medium
+  - id: spouse_income
+    prompt: "If married/common-law, what was your spouse's net income for the year?"
+    why_it_matters: "Determines spousal amount, pension splitting eligibility, and benefit clawbacks."
+    answer_type: number
+    priority: low
+  - id: home_buyer_first
+    prompt: "Did you buy your first home in this tax year?"
+    why_it_matters: "Unlocks the First-Time Home Buyers' Tax Credit and HBP withdrawals."
+    answer_type: yes_no
+    priority: low

@@ -1,0 +1,9 @@
+Form W-2 Wage and Tax Statement
+Tax year: 2024
+Employer: Initech
+Box 1 Wages, tips, other compensation: 80000.00
+Box 2 Federal income tax withheld: 12000.00
+Box 3 Social security wages: 80000.00
+Box 4 Social security tax withheld: 4960.00
+Box 5 Medicare wages: 80000.00
+Box 6 Medicare tax withheld: 1160.00

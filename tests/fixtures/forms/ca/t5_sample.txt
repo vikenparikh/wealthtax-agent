@@ -1,0 +1,5 @@
+T5 Statement of Investment Income
+Tax year: 2024
+Box 13 Interest from Canadian sources: 1200.50
+Box 24 Actual amount of eligible dividends: 1000.00
+Box 25 Taxable amount of eligible dividends: 1380.00

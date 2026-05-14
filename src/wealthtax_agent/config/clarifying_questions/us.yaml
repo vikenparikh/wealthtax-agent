@@ -1,0 +1,42 @@
+questions:
+  - id: filing_status
+    prompt: "What is your filing status?"
+    why_it_matters: "Bracket thresholds, standard deduction, and many credit limits depend on filing status."
+    answer_type: choice
+    options: [single, married_filing_jointly, married_filing_separately, head_of_household, qualifying_surviving_spouse]
+    priority: high
+  - id: state_of_residence
+    prompt: "Which US state were you a resident of for the year?"
+    why_it_matters: "State income tax (or lack thereof) and state-specific credits."
+    answer_type: text
+    priority: high
+  - id: num_dependents
+    prompt: "How many dependents will you claim?"
+    why_it_matters: "Child Tax Credit, EITC, dependent care credit."
+    answer_type: number
+    priority: high
+  - id: hsa_eligible
+    prompt: "Were you covered by a High Deductible Health Plan and eligible for an HSA?"
+    why_it_matters: "HSA contributions are above-the-line deductible and triple-tax-advantaged."
+    answer_type: yes_no
+    priority: medium
+  - id: ira_401k_contributions
+    prompt: "How much did you contribute to a 401(k) or IRA outside of W-2 box 12 codes?"
+    why_it_matters: "Deductible traditional IRA contributions reduce AGI; Roth contributions affect phase-outs."
+    answer_type: number
+    priority: medium
+  - id: foreign_accounts_over_10k
+    prompt: "Did your foreign financial accounts exceed $10,000 USD aggregate at any time?"
+    why_it_matters: "Triggers FBAR (FinCEN 114) and possibly FATCA Form 8938."
+    answer_type: yes_no
+    priority: high
+  - id: itemize_or_standard
+    prompt: "Do you expect itemized deductions to exceed the standard deduction?"
+    why_it_matters: "Determines whether Schedule A is worth filing."
+    answer_type: yes_no
+    priority: low
+  - id: state_taxes_paid
+    prompt: "Approximately how much did you pay in state + local taxes during the year?"
+    why_it_matters: "SALT deduction is capped at $10,000 on Schedule A."
+    answer_type: number
+    priority: low

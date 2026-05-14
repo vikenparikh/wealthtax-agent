@@ -1,0 +1,30 @@
+year: 2025
+currency: CAD
+brackets:
+  - {up_to: 57375,  rate: 0.15}
+  - {up_to: 114750, rate: 0.205}
+  - {up_to: 177882, rate: 0.26}
+  - {up_to: 253414, rate: 0.29}
+  - {up_to: null,   rate: 0.33}
+basic_personal_amount: 16129
+cpp:
+  ympe: 71300
+  basic_exemption: 3500
+  rate: 0.0595
+  max_contribution: 4034.10
+ei:
+  max_insurable_earnings: 65700
+  rate: 0.0164
+  max_contribution: 1077.48
+dividend:
+  eligible:
+    gross_up: 0.38
+    federal_credit_rate: 0.150198
+  non_eligible:
+    gross_up: 0.15
+    federal_credit_rate: 0.090301
+capital_gains_inclusion_rate: 0.5
+rrsp:
+  contribution_limit_percent: 0.18
+  annual_dollar_limit: 32490
+canada_employment_amount: 1471

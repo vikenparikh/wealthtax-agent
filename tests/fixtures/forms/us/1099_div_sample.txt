@@ -1,0 +1,5 @@
+Form 1099-DIV Dividends and Distributions
+Tax year: 2024
+Box 1a Total ordinary dividends: 2000.00
+Box 1b Qualified dividends: 1500.00
+Box 2a Total capital gain distribution: 0.00

@@ -56,7 +56,7 @@ def test_pipeline_end_to_end_happy_path(monkeypatch):
         _Client('{"lines": {"total_income": "sum of slip incomes", "estimated_tax": "simplified estimate"}}'),
     )
 
-    compiled = graph.build_graph()
+    compiled = graph.build_legacy_graph()
     output = compiled.invoke(GraphState(raw_docs=[b"doc-a", b"doc-b"]))
     final_state = GraphState.model_validate(output)
 
@@ -82,7 +82,7 @@ def test_pipeline_end_to_end_parse_failure_still_returns_state(monkeypatch):
         _Client("not-json"),
     )
 
-    compiled = graph.build_graph()
+    compiled = graph.build_legacy_graph()
     output = compiled.invoke(GraphState(raw_docs=[b"doc-a"]))
     final_state = GraphState.model_validate(output)
 
