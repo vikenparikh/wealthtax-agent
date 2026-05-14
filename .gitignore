@@ -6,6 +6,7 @@ __pycache__/
 htmlcov/
 .streamlit.pid
 .streamlit.log
+format_llm_response_debug.txt
 
 # Ignore environment and secrets files
 .env
