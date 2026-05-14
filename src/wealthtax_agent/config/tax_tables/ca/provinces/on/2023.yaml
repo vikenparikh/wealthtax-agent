@@ -1,0 +1,12 @@
+year: 2023
+province: "ON"
+brackets:
+  - {up_to: 49231,  rate: 0.0505}
+  - {up_to: 98463,  rate: 0.0915}
+  - {up_to: 150000, rate: 0.1116}
+  - {up_to: 220000, rate: 0.1216}
+  - {up_to: null,   rate: 0.1316}
+basic_personal_amount: 11865
+dividend:
+  eligible: 0.10
+  non_eligible: 0.029863

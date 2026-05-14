@@ -73,7 +73,7 @@ def test_pipeline_supports_all_upload_file_formats(monkeypatch, extension):
         _Client('{"lines": {"total_income": "from parsed slips", "estimated_tax": "simplified estimate"}}'),
     )
 
-    compiled = graph.build_graph()
+    compiled = graph.build_legacy_graph()
     output = compiled.invoke(GraphState(raw_docs=[t4_bytes, t5_bytes, rrsp_bytes]))
     final_state = GraphState.model_validate(output)
 

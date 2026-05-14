@@ -1,0 +1,41 @@
+# Canada federal tax table for the 2024 tax year (filed in 2025).
+# Source-shaped after CRA publications. Approximate; prototype only.
+year: 2024
+currency: CAD
+brackets:
+  - {up_to: 55867,  rate: 0.15}
+  - {up_to: 111733, rate: 0.205}
+  - {up_to: 173205, rate: 0.26}
+  - {up_to: 246752, rate: 0.29}
+  - {up_to: null,   rate: 0.33}
+
+basic_personal_amount: 15705
+
+# CPP/EI 2024 employee maximums (simplified)
+cpp:
+  ympe: 68500
+  basic_exemption: 3500
+  rate: 0.0595
+  max_contribution: 3867.50
+ei:
+  max_insurable_earnings: 63200
+  rate: 0.0166
+  max_contribution: 1049.12
+
+# Dividend tax credit (federal). Gross-up applied separately by engine.
+dividend:
+  eligible:
+    gross_up: 0.38
+    federal_credit_rate: 0.150198
+  non_eligible:
+    gross_up: 0.15
+    federal_credit_rate: 0.090301
+
+capital_gains_inclusion_rate: 0.5
+
+rrsp:
+  contribution_limit_percent: 0.18
+  annual_dollar_limit: 31560
+
+# Simplified employment credit (Canada Employment Amount)
+canada_employment_amount: 1433

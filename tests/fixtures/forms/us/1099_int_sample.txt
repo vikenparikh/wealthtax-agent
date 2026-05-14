@@ -1,0 +1,6 @@
+Form 1099-INT Interest Income
+Tax year: 2024
+Payer: Big Bank
+Box 1 Interest income: 500.00
+Box 3 US Treasury interest: 100.00
+Box 4 Federal income tax withheld: 0.00

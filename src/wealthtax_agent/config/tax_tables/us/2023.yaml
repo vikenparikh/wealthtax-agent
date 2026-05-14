@@ -1,0 +1,62 @@
+year: 2023
+currency: USD
+brackets_by_status:
+  single:
+    - {up_to: 11000,  rate: 0.10}
+    - {up_to: 44725,  rate: 0.12}
+    - {up_to: 95375,  rate: 0.22}
+    - {up_to: 182100, rate: 0.24}
+    - {up_to: 231250, rate: 0.32}
+    - {up_to: 578125, rate: 0.35}
+    - {up_to: null,   rate: 0.37}
+  married_filing_jointly:
+    - {up_to: 22000,  rate: 0.10}
+    - {up_to: 89450,  rate: 0.12}
+    - {up_to: 190750, rate: 0.22}
+    - {up_to: 364200, rate: 0.24}
+    - {up_to: 462500, rate: 0.32}
+    - {up_to: 693750, rate: 0.35}
+    - {up_to: null,   rate: 0.37}
+  head_of_household:
+    - {up_to: 15700,  rate: 0.10}
+    - {up_to: 59850,  rate: 0.12}
+    - {up_to: 95350,  rate: 0.22}
+    - {up_to: 182100, rate: 0.24}
+    - {up_to: 231250, rate: 0.32}
+    - {up_to: 578100, rate: 0.35}
+    - {up_to: null,   rate: 0.37}
+standard_deduction:
+  single: 13850
+  married_filing_jointly: 27700
+  head_of_household: 20800
+long_term_capital_gains:
+  single:
+    - {up_to: 44625,  rate: 0.00}
+    - {up_to: 492300, rate: 0.15}
+    - {up_to: null,   rate: 0.20}
+  married_filing_jointly:
+    - {up_to: 89250,  rate: 0.00}
+    - {up_to: 553850, rate: 0.15}
+    - {up_to: null,   rate: 0.20}
+  head_of_household:
+    - {up_to: 59750,  rate: 0.00}
+    - {up_to: 523050, rate: 0.15}
+    - {up_to: null,   rate: 0.20}
+fica:
+  social_security_rate: 0.062
+  social_security_wage_base: 160200
+  medicare_rate: 0.0145
+  additional_medicare_rate: 0.009
+  additional_medicare_threshold_single: 200000
+  additional_medicare_threshold_mfj: 250000
+ctc:
+  per_child: 2000
+  phaseout_start_single: 200000
+  phaseout_start_mfj: 400000
+  phaseout_rate_per_1000: 50
+ira:
+  contribution_limit: 6500
+  catchup_50_plus: 1000
+plan_401k:
+  contribution_limit: 22500
+  catchup_50_plus: 7500

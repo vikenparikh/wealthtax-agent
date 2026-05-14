@@ -1,0 +1,13 @@
+year: 2024
+province: "ON"
+brackets:
+  - {up_to: 51446,  rate: 0.0505}
+  - {up_to: 102894, rate: 0.0915}
+  - {up_to: 150000, rate: 0.1116}
+  - {up_to: 220000, rate: 0.1216}
+  - {up_to: null,   rate: 0.1316}
+basic_personal_amount: 12399
+# Ontario dividend tax credit (decimal of grossed-up amount)
+dividend:
+  eligible: 0.10
+  non_eligible: 0.029863

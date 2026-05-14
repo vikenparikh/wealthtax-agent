@@ -95,7 +95,7 @@ def test_pipeline_end_to_end_uses_synthetic_fixture(monkeypatch):
         _Client('{"lines": {"total_income": "from parsed slips", "taxable_income": "after RRSP deduction"}}'),
     )
 
-    compiled = graph.build_graph()
+    compiled = graph.build_legacy_graph()
     output = compiled.invoke(GraphState(raw_docs=[raw_doc]))
     final_state = GraphState.model_validate(output)
 
@@ -121,7 +121,7 @@ def test_pipeline_handles_many_uploaded_docs(monkeypatch):
         _Client('{"lines": {"total_income": "from parsed slips", "taxable_income": "after RRSP deduction"}}'),
     )
 
-    compiled = graph.build_graph()
+    compiled = graph.build_legacy_graph()
     output = compiled.invoke(GraphState(raw_docs=docs))
     final_state = GraphState.model_validate(output)
 

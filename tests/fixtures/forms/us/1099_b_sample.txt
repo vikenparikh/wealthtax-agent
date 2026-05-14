@@ -1,0 +1,5 @@
+Form 1099-B Proceeds from Broker
+Tax year: 2024
+Long-term transaction
+Box 1d Proceeds: 12000.00
+Box 1e Cost basis: 8000.00
