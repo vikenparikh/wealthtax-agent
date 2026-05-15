@@ -41,3 +41,23 @@ questions:
     why_it_matters: "Unlocks the First-Time Home Buyers' Tax Credit and HBP withdrawals."
     answer_type: yes_no
     priority: low
+  - id: prior_capital_losses
+    prompt: "How much in prior-year net capital losses are you carrying forward?"
+    why_it_matters: "Offsets this year's taxable capital gains before the 50% inclusion rate."
+    answer_type: number
+    priority: medium
+  - id: tuition_carryforward
+    prompt: "Any unused tuition / education credits carried forward from prior years?"
+    why_it_matters: "Reduces federal + provincial tax; can be transferred up to $5,000 to a supporting relative."
+    answer_type: number
+    priority: low
+  - id: fhsa_room_remaining
+    prompt: "What is your remaining FHSA contribution room?"
+    why_it_matters: "First Home Savings Account: deductible like RRSP, withdrawals for first home are tax-free."
+    answer_type: number
+    priority: low
+  - id: t1135_foreign_property_value
+    prompt: "If foreign property is over $100k CAD, what is its peak cost during the year?"
+    why_it_matters: "Determines whether the full or simplified T1135 reporting method applies."
+    answer_type: number
+    priority: low

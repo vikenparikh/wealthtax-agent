@@ -1,0 +1,13 @@
+year: 2024
+province: "QC"
+# Quebec computes its own return on TP-1; this is a simplified estimator only.
+brackets:
+  - {up_to: 51780,  rate: 0.14}
+  - {up_to: 103545, rate: 0.19}
+  - {up_to: 126000, rate: 0.24}
+  - {up_to: null,   rate: 0.2575}
+basic_personal_amount: 18056
+dividend:
+  eligible: 0.1170
+  non_eligible: 0.0342
+note: "Quebec residents file a separate Quebec TP-1 return; v1 estimate only."

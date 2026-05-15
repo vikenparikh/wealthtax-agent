@@ -1,0 +1,6 @@
+Schedule C (Form 1040) Profit or Loss From Business
+Tax year: 2024
+Business name: Example Sole Proprietorship
+Gross receipts: 75000.00
+Total expenses: 18000.00
+Net profit: 57000.00

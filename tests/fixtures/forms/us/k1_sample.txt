@@ -1,0 +1,8 @@
+Schedule K-1 (Form 1065) Partner's Share of Income, Deductions, Credits
+Tax year: 2024
+Partnership: Example Partners LP
+Box 1 Ordinary business income: 12000.00
+Box 5 Interest income: 250.00
+Box 6a Ordinary dividends: 400.00
+Box 6b Qualified dividends: 350.00
+Box 9a Net long-term capital gain: 2500.00

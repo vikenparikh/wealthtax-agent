@@ -12,9 +12,11 @@ from wealthtax_agent.state import FormExtract
 class Form1099IntExtractor(FormExtractor):
     jurisdiction = "US"
     form_code = "1099-INT"
+    # "Interest Income" alone is too generic (K-1 and Schedule B both list it);
+    # require an explicit 1099-INT marker.
     classification_patterns = (
         "1099-INT",
-        "Interest Income",
+        "Form 1099-INT",
     )
 
     def extract(self, text: str, source_filename: Optional[str] = None) -> FormExtract:

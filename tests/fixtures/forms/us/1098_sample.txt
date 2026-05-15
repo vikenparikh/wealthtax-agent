@@ -1,0 +1,6 @@
+Form 1098 Mortgage Interest Statement
+Tax year: 2024
+Lender: Example Mortgage Bank
+Box 1 Mortgage interest received: 9500.00
+Box 2 Outstanding mortgage principal: 320000.00
+Box 6 Points paid: 0.00

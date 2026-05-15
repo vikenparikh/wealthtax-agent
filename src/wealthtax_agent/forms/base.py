@@ -19,12 +19,21 @@ class FormExtractor(ABC):
     classification_patterns: tuple = ()
 
     def classify(self, text: str) -> Optional[float]:
-        """Return a confidence in [0, 1] if this looks like the form, else None."""
+        """Return a match score if this looks like the form, else None.
+
+        The score is the length of the longest matching pattern. Longer matches
+        are more specific, so when several extractors fire on the same text
+        the registry picks the one whose matched pattern is longest (e.g.
+        ``1098-E`` wins over ``1098`` for a 1098-E document).
+        """
         lowered = text.lower()
+        best = None
         for pattern in self.classification_patterns:
             if pattern.lower() in lowered:
-                return 0.9
-        return None
+                score = len(pattern)
+                if best is None or score > best:
+                    best = score
+        return float(best) if best is not None else None
 
     @abstractmethod
     def extract(self, text: str, source_filename: Optional[str] = None) -> FormExtract:

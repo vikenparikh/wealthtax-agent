@@ -1,0 +1,7 @@
+Form 1099-R Distributions From Pensions, Annuities, Retirement
+Tax year: 2024
+Payer: Example IRA Custodian
+Box 1 Gross distribution: 15000.00
+Box 2a Taxable amount: 15000.00
+Box 4 Federal income tax withheld: 1500.00
+Box 7 Distribution code: 7

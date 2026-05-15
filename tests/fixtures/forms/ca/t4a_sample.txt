@@ -1,0 +1,8 @@
+T4A Statement of Pension, Retirement, Annuity, and Other Income
+Tax year: 2024
+Payer: Example Pension Plan
+Box 016 Pension or superannuation: 24000.00
+Box 020 Self-employed commissions: 0.00
+Box 022 Income tax deducted: 3000.00
+Box 048 Fees for services: 5500.00
+Box 105 Scholarships: 0.00

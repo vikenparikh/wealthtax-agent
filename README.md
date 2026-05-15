@@ -15,17 +15,21 @@ It redesigns the Canadian personal tax workflow using a modern, human-centered s
 - Accepts any uploaded tax form (PDF / image) for **Canada or the United States** and identifies it.
 - If the form is outside the v1 supported list, it returns an explicit
   "unsupported form" message with the reason and a suggested next step.
-- Supported forms (v1):
-  - **Canada:** T1 + T4, T5, T3, T5008, T2202, T4A, RRSP receipts, T776, T2125.
-  - **United States:** 1040 + W-2, 1099-INT/DIV/B/NEC/MISC/R,
-    1098 / 1098-E / 1098-T, SSA-1099, Schedule K-1 (basic), Schedules A/B/C/D.
+- Supported forms (33 in total):
+  - **Canada (13):** T1 + T4, T5, T3, T5008, T2202, T4A, RRSP receipts, T776,
+    T2125, T2200 (employment expenses), T4RSP, T4RIF, T5013 (partnership).
+  - **United States (20):** 1040 + W-2, 1099-INT/DIV/B/NEC/MISC/R/K/G,
+    1098 / 1098-E / 1098-T, SSA-1099, Schedule K-1, Schedules A/B/C/D/E/SE.
 - Computes draft returns using real progressive brackets, BPA / CPP / EI /
-  dividend tax credit (CA, Ontario in v1), standard deduction / CTC / FICA /
-  preferential capital-gain rates (US, California state in v1).
+  dividend tax credit (CA, with provincial tables for **ON / BC / AB / QC**),
+  standard deduction / CTC / FICA / preferential capital-gain rates (US, with
+  state tables for **CA / NY / TX / FL / WA**).
+- Carry-forward aware: prior-year capital losses, RRSP room rollover,
+  tuition carry-forward, HSA + traditional IRA above-the-line adjustments.
 - Lets the user pick the **tax year** (multi-year YAML config; 2023 / 2024 / 2025 shipped).
 - Asks high-value clarifying questions (marital status, dependants, foreign
-  property, RRSP room, filing status, US-person status, etc.) and re-runs the
-  pipeline once answered.
+  property, RRSP room, filing status, US-person status, prior capital losses,
+  HSA, Roth-conversion year) and re-runs the pipeline once answered.
 - Suggests **legal** tax-optimization moves for *now* and *future*: RRSP /
   401(k) / IRA top-ups, FHSA, capital-loss harvesting, tuition transfers,
   HSA, student-loan interest, and more.
@@ -33,6 +37,10 @@ It redesigns the Canadian personal tax workflow using a modern, human-centered s
   - Filled draft PDF (T1 summary / 1040 summary).
   - CRA NETFILE-shaped XML (CA).
   - IRS MeF-shaped JSON (US).
+  - Quarterly estimated-tax vouchers — IRS 1040-ES Q1-Q4 and CRA INNS3 Q1-Q4
+    — generated automatically when self-employment income or balance owing
+    crosses the threshold.
+  - Year-over-year planning summary (next-year action plan).
   - Plain-text review report.
 - Presents a UI where the **human must decide** whether to approve and file.
 - Explicitly does **not** transmit to CRA NETFILE or IRS MeF — every artifact

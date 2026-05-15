@@ -1,0 +1,8 @@
+T5013 Statement of Partnership Income
+Tax year: 2024
+Partnership: Example LP
+Box 104 Business income loss: 4000.00
+Box 128 Interest income: 200.00
+Box 132 Actual eligible dividends: 600.00
+Box 133 Taxable eligible dividends: 828.00
+Box 151 Capital gains: 1000.00

@@ -11,6 +11,7 @@ from typing import Dict, List
 
 from wealthtax_agent.filing.ca_netfile import serialize_t1
 from wealthtax_agent.filing.pdf_fill import fill_form
+from wealthtax_agent.filing.quarterly import quarterly_ca_instalments, quarterly_us_1040es
 from wealthtax_agent.filing.us_mef import serialize_1040
 from wealthtax_agent.state import DraftReturn, FilingArtifact, FormExtract, GraphState
 
@@ -52,6 +53,17 @@ def _ca_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int) ->
         content_b64=_b64(xml_str),
     )
 
+    # Quarterly CRA instalment vouchers when net tax owing is material
+    vouchers = quarterly_ca_instalments(draft, year + 1)
+    for q, text in vouchers.items():
+        artifacts[f"ca_instalment_{q.lower()}"] = FilingArtifact(
+            jurisdiction="CA",
+            form_code=f"INNS3-{q}",
+            filename=f"ca_instalment_{year + 1}_{q.lower()}.txt",
+            mime_type="text/plain",
+            content_b64=_b64(text),
+        )
+
     return artifacts
 
 
@@ -86,7 +98,52 @@ def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, us
         content_b64=_b64(mef_json),
     )
 
+    # 1040-ES quarterly estimated-tax vouchers (only when meaningful)
+    vouchers = quarterly_us_1040es(draft, year + 1)
+    for q, text in vouchers.items():
+        artifacts[f"us_1040es_{q.lower()}"] = FilingArtifact(
+            jurisdiction="US",
+            form_code=f"1040-ES-{q}",
+            filename=f"us_1040es_{year + 1}_{q.lower()}.txt",
+            mime_type="text/plain",
+            content_b64=_b64(text),
+        )
+
     return artifacts
+
+
+def _planning_artifact(state: GraphState) -> FilingArtifact:
+    """Year-over-year planning summary; not a filing form."""
+    year = state.filing_year or 2024
+    lines: List[str] = []
+    lines.append(f"WealthTax Agent — Year-over-Year Planning Summary ({year} -> {year + 1})")
+    lines.append("=" * 70)
+    for jurisdiction, draft in state.draft_returns.items():
+        lines.append("")
+        lines.append(f"[{jurisdiction}] Filed-year totals")
+        lines.append(f"  Total income:     ${draft.totals.get('total_income', 0):,.2f}")
+        lines.append(f"  Taxable income:   ${draft.totals.get('taxable_income', 0):,.2f}")
+        lines.append(f"  Estimated tax:    ${draft.totals.get('total_tax', 0):,.2f}")
+        lines.append(f"  Refund / Owing:   ${draft.totals.get('refund', 0):,.2f} / ${draft.totals.get('balance_owing', 0):,.2f}")
+    lines.append("")
+    if state.optimization_suggestions:
+        lines.append("Plan-ahead actions for next year:")
+        for s in state.optimization_suggestions:
+            badge = "NOW" if s.horizon == "now" else "FUTURE"
+            lines.append(f"  [{badge:6s}] [{s.jurisdiction}] {s.title}  (~${s.est_savings:,.0f} estimated savings)")
+            for step in s.action_steps:
+                lines.append(f"      • {step}")
+    else:
+        lines.append("No specific suggestions surfaced for this filing.")
+    lines.append("")
+    lines.append("DRAFT — not transmitted. Use as a planning checklist.")
+    return FilingArtifact(
+        jurisdiction="CA" if "CA" in state.draft_returns else "US",
+        form_code="PLAN",
+        filename=f"wealthtax_yoy_planning_{year}.txt",
+        mime_type="text/plain",
+        content_b64=_b64("\n".join(lines)),
+    )
 
 
 def build_return_node(state: GraphState) -> GraphState:
@@ -104,6 +161,12 @@ def build_return_node(state: GraphState) -> GraphState:
                 artifacts.update(_us_artifacts(draft, extracts, year, user_answers))
         except Exception as exc:
             state.warnings.append(f"Filing artifact generation failed for {jurisdiction}: {exc}")
+
+    if state.draft_returns:
+        try:
+            artifacts["yoy_planning"] = _planning_artifact(state)
+        except Exception as exc:
+            state.warnings.append(f"YoY planning artifact failed: {exc}")
 
     state.filing_artifacts = artifacts
     return state
