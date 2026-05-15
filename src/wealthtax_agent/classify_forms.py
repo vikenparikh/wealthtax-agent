@@ -40,20 +40,30 @@ _CLASSIFIER_SYSTEM_PROMPT = (
 
 
 def _heuristic_classify(text: str) -> Optional[FormClassification]:
+    """Pick the extractor whose longest matching pattern is most specific.
+
+    ``FormExtractor.classify`` returns the length of its longest matching
+    pattern (or None). We pick the extractor with the highest score so that,
+    when several fire on the same text, the most specific match wins (for
+    example a "1098-E Student Loan Interest Statement" hit beats a generic
+    "Form 1098" hit because its pattern is longer).
+    """
     best: Optional[tuple] = None
     for extractor in all_extractors():
-        confidence = extractor.classify(text)
-        if confidence is None:
+        score = extractor.classify(text)
+        if score is None:
             continue
-        if best is None or confidence > best[0]:
-            best = (confidence, extractor)
+        if best is None or score > best[0]:
+            best = (score, extractor)
     if best is None:
         return None
-    confidence, extractor = best
+    score, extractor = best
+    # Anything matching a >=12-char pattern is treated as high confidence;
+    # shorter matches (e.g. just a 4-char form code) are medium.
     return FormClassification(
         jurisdiction=extractor.jurisdiction,
         form_code=extractor.form_code,
-        confidence="high" if confidence >= 0.85 else "medium",
+        confidence="high" if score >= 12 else "medium",
         reason="Matched extractor heuristic patterns",
     )
 

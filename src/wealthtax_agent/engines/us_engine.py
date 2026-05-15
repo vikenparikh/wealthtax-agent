@@ -32,6 +32,16 @@ from wealthtax_agent.state import DraftReturn, FormExtract
 VALID_FILING_STATUSES = {"single", "married_filing_jointly", "head_of_household"}
 
 
+def _to_float(value, default: float = 0.0) -> float:
+    """Parse a user-typed answer (string / int / float) into a float."""
+    if value is None:
+        return default
+    try:
+        return float(str(value).replace(",", "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+
+
 def _sum_field(extracts: Iterable[FormExtract], form_code: str, field: str) -> float:
     return float(sum(
         e.fields.get(field, 0.0)
@@ -153,7 +163,17 @@ def compute_us_return(
 
     # ---- Income ----
     wages = _sum_field(extracts, "W-2", "wages")
-    fed_withheld = _sum_field(extracts, "W-2", "federal_income_tax_withheld")
+    fed_withheld = (
+        _sum_field(extracts, "W-2", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-INT", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-DIV", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-MISC", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-R", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-NEC", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-K", "federal_income_tax_withheld")
+        + _sum_field(extracts, "1099-G", "federal_income_tax_withheld")
+        + _sum_field(extracts, "SSA-1099", "federal_income_tax_withheld")
+    )
     interest_income = (
         _sum_field(extracts, "1099-INT", "interest_income")
         + _sum_field(extracts, "1099-INT", "us_treasury_interest")
@@ -167,6 +187,13 @@ def compute_us_return(
     misc_other = _sum_field(extracts, "1099-MISC", "other_income")
     pension_taxable = _sum_field(extracts, "1099-R", "taxable_amount")
     ssa_net = _sum_field(extracts, "SSA-1099", "net_benefits")
+
+    # New form income sources
+    k_payments = _sum_field(extracts, "1099-K", "gross_payments")
+    unemployment = _sum_field(extracts, "1099-G", "unemployment_compensation")
+    state_tax_refund = _sum_field(extracts, "1099-G", "state_local_tax_refund")
+    taxable_grants = _sum_field(extracts, "1099-G", "taxable_grants")
+    sch_e_supplemental = _sum_field(extracts, "SCH-E", "net_supplemental_income")
 
     short_gain, long_gain = _sch_d_short_long(extracts)
 
@@ -182,10 +209,33 @@ def compute_us_return(
     short_gain += k1_st_gain
     long_gain += k1_lt_gain
 
-    self_employment_income = nec + sch_c_profit + k1_business
+    # 1099-K gross payments are reported by payment networks; treat as
+    # self-employment income unless explicitly assigned elsewhere by the user.
+    self_employment_income = nec + sch_c_profit + k1_business + k_payments
 
     # 1098-E student loan interest deduction (capped at $2500)
     student_loan_interest = min(2500.0, _sum_field(extracts, "1098-E", "student_loan_interest"))
+
+    # HSA deduction from clarifying answers (placed above AGI line)
+    hsa_deduction = _to_float(user_answers.get("hsa_contributions", 0))
+    # Traditional IRA / 401(k) outside W-2 reported as adjustment to income.
+    ira_deduction = _to_float(user_answers.get("ira_401k_contributions", 0))
+
+    # Prior-year capital-loss carryover (max $3k applied to ordinary income)
+    prior_capital_losses = _to_float(user_answers.get("prior_capital_losses", 0))
+    if prior_capital_losses > 0:
+        if long_gain > 0:
+            applied = min(prior_capital_losses, long_gain)
+            long_gain -= applied
+            prior_capital_losses -= applied
+        if prior_capital_losses > 0 and short_gain > 0:
+            applied = min(prior_capital_losses, short_gain)
+            short_gain -= applied
+            prior_capital_losses -= applied
+        # Remaining loss reduces ordinary income up to $3,000.
+        ordinary_offset = min(prior_capital_losses, 3000.0)
+    else:
+        ordinary_offset = 0.0
 
     # Social security partial inclusion (simplified: 85%)
     taxable_ssa = ssa_net * 0.85 if ssa_net > 0 else 0.0
@@ -199,15 +249,22 @@ def compute_us_return(
         + misc_rents
         + misc_royalties
         + misc_other
+        + sch_e_supplemental
         + pension_taxable
         + taxable_ssa
         + max(0.0, short_gain)
         + max(0.0, long_gain)
-        + k1_business,
+        + k1_business
+        + k_payments
+        + unemployment
+        + state_tax_refund
+        + taxable_grants
+        - ordinary_offset,
         2,
     )
 
-    agi = max(0.0, total_income - student_loan_interest)
+    above_line = student_loan_interest + hsa_deduction + ira_deduction
+    agi = max(0.0, total_income - above_line)
     std_deduction = float(fed_tables.get("standard_deduction", {}).get(status, 0))
     taxable_income = max(0.0, agi - std_deduction)
 
@@ -259,13 +316,21 @@ def compute_us_return(
         "qualified_dividends": qualified_dividends,
         "short_term_capital_gain": short_gain,
         "long_term_capital_gain": long_gain,
+        "capital_loss_ordinary_offset": ordinary_offset,
         "self_employment_income": self_employment_income,
+        "1099_k_payments": k_payments,
         "rental_income": misc_rents,
         "royalty_income": misc_royalties,
         "other_misc_income": misc_other,
+        "supplemental_income_sch_e": sch_e_supplemental,
         "taxable_pension": pension_taxable,
         "taxable_social_security": taxable_ssa,
+        "unemployment_compensation": unemployment,
+        "state_tax_refund_taxable": state_tax_refund,
+        "taxable_grants": taxable_grants,
         "student_loan_interest_deduction": student_loan_interest,
+        "hsa_deduction": hsa_deduction,
+        "ira_401k_adjustment": ira_deduction,
         "standard_deduction": std_deduction,
         "agi": agi,
         "ordinary_tax": ordinary_tax,

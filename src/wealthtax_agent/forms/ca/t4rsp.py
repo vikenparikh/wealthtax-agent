@@ -9,27 +9,28 @@ from wealthtax_agent.state import FormExtract
 
 
 @register
-class Form1098Extractor(FormExtractor):
-    jurisdiction = "US"
-    form_code = "1098"
-    # "Form 1098" alone matches 1098-E / 1098-T as a prefix; require the
-    # canonical title to disambiguate.
+class T4RSPExtractor(FormExtractor):
+    """Statement of RRSP Income (withdrawals from an RRSP)."""
+
+    jurisdiction = "CA"
+    form_code = "T4RSP"
     classification_patterns = (
-        "Mortgage Interest Statement",
-        "Form 1098 Mortgage",
+        "T4RSP",
+        "Statement of RRSP Income",
     )
 
     def extract(self, text: str, source_filename: Optional[str] = None) -> FormExtract:
         fields = {}
         box_map = {
-            "mortgage_interest_received": "1",
-            "outstanding_mortgage_principal": "2",
-            "mortgage_origination_date": None,
-            "points_paid": "6",
+            "annuity_payments": "16",
+            "refund_of_premiums": "18",
+            "withdrawal_and_commutation": "22",
+            "other_income": "28",
+            "tax_deducted": "30",
+            "hbp_withdrawal": "27",
+            "llp_withdrawal": "25",
         }
         for field_name, box in box_map.items():
-            if box is None:
-                continue
             value = find_box_amount(text, box)
             if value is not None:
                 fields[field_name] = value

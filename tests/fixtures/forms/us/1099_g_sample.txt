@@ -1,0 +1,6 @@
+Form 1099-G Certain Government Payments
+Tax year: 2024
+Payer: Example State Tax Authority
+Box 1 Unemployment compensation: 4500.00
+Box 2 State and local income tax refunds: 0.00
+Box 4 Federal income tax withheld: 0.00

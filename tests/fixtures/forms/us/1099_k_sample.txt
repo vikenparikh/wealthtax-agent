@@ -1,0 +1,5 @@
+Form 1099-K Payment Card and Third Party Network Transactions
+Tax year: 2024
+Payer: Example Payment Processor
+Box 1a Gross amount of payment card transactions: 22500.00
+Box 4 Federal income tax withheld: 0.00

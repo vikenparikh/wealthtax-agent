@@ -1,0 +1,8 @@
+T3 Statement of Trust Income Allocations and Designations
+Tax year: 2024
+Trust name: Example Family Trust
+Box 21 Capital gains: 1500.00
+Box 25 Foreign non-business income: 300.00
+Box 26 Other income: 200.00
+Box 49 Actual amount of eligible dividends: 800.00
+Box 50 Taxable amount of eligible dividends: 1104.00

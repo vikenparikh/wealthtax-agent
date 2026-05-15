@@ -1,0 +1,7 @@
+T4RSP Statement of RRSP Income
+Tax year: 2024
+Issuer: Example Bank RRSP
+Box 16 Annuity payments: 0.00
+Box 22 Withdrawal and commutation: 8000.00
+Box 27 HBP withdrawal: 5000.00
+Box 30 Tax deducted: 800.00

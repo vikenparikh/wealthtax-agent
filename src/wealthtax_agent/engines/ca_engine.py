@@ -31,6 +31,16 @@ from wealthtax_agent.config.tax_tables import (
 from wealthtax_agent.state import DraftReturn, FormExtract
 
 
+def _to_float(value, default: float = 0.0) -> float:
+    """Parse a user-typed answer (string / int / float) into a float."""
+    if value is None:
+        return default
+    try:
+        return float(str(value).replace(",", "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+
+
 def _sum_field(extracts: Iterable[FormExtract], form_code: str, field: str) -> float:
     return float(sum(
         e.fields.get(field, 0.0)
@@ -119,21 +129,69 @@ def compute_ca_return(
     pension_income = _sum_field(extracts, "T4A", "pension_or_superannuation")
     self_emp_t4a = _sum_field(extracts, "T4A", "fees_for_services") + _sum_field(extracts, "T4A", "self_employed_commissions")
 
-    # RRSP deduction
+    # T4RSP / T4RIF (RRSP & RRIF withdrawals; HBP / LLP excluded from income)
+    rrsp_withdrawals = (
+        _sum_field(extracts, "T4RSP", "annuity_payments")
+        + _sum_field(extracts, "T4RSP", "refund_of_premiums")
+        + _sum_field(extracts, "T4RSP", "withdrawal_and_commutation")
+        + _sum_field(extracts, "T4RSP", "other_income")
+        - _sum_field(extracts, "T4RSP", "hbp_withdrawal")
+        - _sum_field(extracts, "T4RSP", "llp_withdrawal")
+    )
+    rrsp_withdrawals = max(0.0, rrsp_withdrawals)
+    rrif_income = _sum_field(extracts, "T4RIF", "taxable_amount")
+    fed_tax_withheld += _sum_field(extracts, "T4RSP", "tax_deducted")
+    fed_tax_withheld += _sum_field(extracts, "T4RIF", "tax_deducted")
+    fed_tax_withheld += _sum_field(extracts, "T4A", "tax_deducted")
+
+    # T5013 partnership income
+    t5013_business = (
+        _sum_field(extracts, "T5013", "business_income_loss")
+        + _sum_field(extracts, "T5013", "professional_income_loss")
+    )
+    t5013_rental = _sum_field(extracts, "T5013", "rental_income")
+    t5013_interest = _sum_field(extracts, "T5013", "interest_income")
+    t5013_dividends_eligible = _sum_field(extracts, "T5013", "taxable_eligible_dividends")
+    t5013_capital_gains = _sum_field(extracts, "T5013", "capital_gains")
+
+    interest_income += t5013_interest
+
+    # T2200 employment expenses (reduce employment income for tax purposes)
+    employment_expenses = _sum_field(extracts, "T2200", "employment_expenses")
+
+    # RRSP deduction (contributions slip + optional answer override)
     rrsp_deduction = _sum_field(extracts, "RRSP", "rrsp_contributions")
 
     # Dividend gross-ups
-    div_taxable = _gross_up_dividends(eligible_div_taxable + t3_dividends_eligible, non_eligible_div_actual, fed_tables)
+    div_taxable = _gross_up_dividends(
+        eligible_div_taxable + t3_dividends_eligible + t5013_dividends_eligible,
+        non_eligible_div_actual,
+        fed_tables,
+    )
     taxable_eligible = div_taxable["taxable_eligible_dividends"]
     taxable_non_eligible = div_taxable["taxable_non_eligible_dividends"]
 
-    # Capital gains inclusion
+    # Capital gains inclusion (apply user-supplied prior-year capital-loss
+    # carryforward before the inclusion rate).
+    prior_capital_losses = _to_float(user_answers.get("prior_capital_losses", 0))
     inclusion_rate = float(fed_tables.get("capital_gains_inclusion_rate", 0.5))
-    total_capital_gains = t3_capital_gains + t5008_gains
-    taxable_capital_gains = max(0.0, total_capital_gains) * inclusion_rate
+    raw_capital_gains = t3_capital_gains + t5008_gains + t5013_capital_gains
+    net_capital_gains = max(0.0, raw_capital_gains - prior_capital_losses)
+    taxable_capital_gains = net_capital_gains * inclusion_rate
+    if prior_capital_losses > 0:
+        notes.append(
+            f"Applied ${prior_capital_losses:,.0f} of prior-year capital losses; "
+            f"net taxable capital gains ${net_capital_gains:,.0f} × {inclusion_rate:.0%} inclusion."
+        )
+
+    employment_income_after_t2200 = max(0.0, employment_income - employment_expenses)
+    if employment_expenses > 0:
+        notes.append(
+            f"Deducted ${employment_expenses:,.0f} of T2200-certified employment expenses (line 22900)."
+        )
 
     total_income = round(
-        employment_income
+        employment_income_after_t2200
         + interest_income
         + taxable_eligible
         + taxable_non_eligible
@@ -142,7 +200,11 @@ def compute_ca_return(
         + net_business
         + pension_income
         + self_emp_t4a
-        + t3_other_income,
+        + t3_other_income
+        + rrsp_withdrawals
+        + rrif_income
+        + t5013_business
+        + t5013_rental,
         2,
     )
 
@@ -174,15 +236,27 @@ def compute_ca_return(
         "Simplified prototype: AMT, OAS clawback, foreign tax credit, and donations credit not modelled.",
         "CPP / EI shown for context but not added back; T4 already nets them.",
     ])
+    if province.upper() == "QC":
+        notes.append(
+            "Quebec residents file a separate Quebec TP-1 return with Revenu Québec; "
+            "the provincial estimate above is informational only."
+        )
 
     line_items = {
         "employment_income": employment_income,
+        "employment_expenses_t2200": employment_expenses,
+        "employment_income_net": employment_income_after_t2200,
         "interest_income": interest_income,
         "taxable_eligible_dividends": taxable_eligible,
         "taxable_non_eligible_dividends": taxable_non_eligible,
+        "raw_capital_gains": raw_capital_gains,
+        "prior_capital_losses_applied": prior_capital_losses,
+        "net_capital_gains": net_capital_gains,
         "taxable_capital_gains": taxable_capital_gains,
-        "net_rental_income": net_rental,
-        "net_business_income": net_business,
+        "net_rental_income": net_rental + t5013_rental,
+        "net_business_income": net_business + t5013_business,
+        "rrsp_withdrawals": rrsp_withdrawals,
+        "rrif_income": rrif_income,
         "pension_income": pension_income,
         "other_self_employment": self_emp_t4a,
         "trust_other_income": t3_other_income,

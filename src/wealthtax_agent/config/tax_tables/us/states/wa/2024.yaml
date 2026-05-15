@@ -1,0 +1,10 @@
+year: 2024
+state: "WA"
+# Washington does not levy a personal state income tax on wages.
+brackets_by_status:
+  single: []
+  married_filing_jointly: []
+standard_deduction:
+  single: 0
+  married_filing_jointly: 0
+note: "Washington does not impose a wage income tax; capital gains over a threshold may be taxed separately (not modelled)."

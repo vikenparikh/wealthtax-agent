@@ -1,0 +1,6 @@
+T2125 Statement of Business or Professional Activities
+Tax year: 2024
+Business name: Example Consulting Co.
+Gross business income: 60000.00
+Total expenses: 14500.00
+Net business income: 45500.00

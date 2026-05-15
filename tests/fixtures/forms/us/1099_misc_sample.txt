@@ -1,0 +1,7 @@
+Form 1099-MISC Miscellaneous Information
+Tax year: 2024
+Payer: Example Property Mgmt LLC
+Box 1 Rents: 12000.00
+Box 2 Royalties: 600.00
+Box 3 Other income: 0.00
+Box 4 Federal income tax withheld: 0.00
