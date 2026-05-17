@@ -1,0 +1,12 @@
+year: 2023
+province: "QC"
+brackets:
+  - {up_to: 49275,  rate: 0.14}
+  - {up_to: 98540,  rate: 0.19}
+  - {up_to: 119910, rate: 0.24}
+  - {up_to: null,   rate: 0.2575}
+basic_personal_amount: 17183
+dividend:
+  eligible: 0.1170
+  non_eligible: 0.0342
+note: "Quebec residents file a separate Quebec TP-1 return; v1 estimate only."

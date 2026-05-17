@@ -1,0 +1,26 @@
+year: 2023
+state: "CA"
+brackets_by_status:
+  single:
+    - {up_to: 10412,  rate: 0.01}
+    - {up_to: 24684,  rate: 0.02}
+    - {up_to: 38959,  rate: 0.04}
+    - {up_to: 54081,  rate: 0.06}
+    - {up_to: 68350,  rate: 0.08}
+    - {up_to: 349137, rate: 0.093}
+    - {up_to: 418961, rate: 0.103}
+    - {up_to: 698271, rate: 0.113}
+    - {up_to: null,   rate: 0.123}
+  married_filing_jointly:
+    - {up_to: 20824,  rate: 0.01}
+    - {up_to: 49368,  rate: 0.02}
+    - {up_to: 77918,  rate: 0.04}
+    - {up_to: 108162, rate: 0.06}
+    - {up_to: 136700, rate: 0.08}
+    - {up_to: 698274, rate: 0.093}
+    - {up_to: 837922, rate: 0.103}
+    - {up_to: 1396542,rate: 0.113}
+    - {up_to: null,   rate: 0.123}
+standard_deduction:
+  single: 5363
+  married_filing_jointly: 10726

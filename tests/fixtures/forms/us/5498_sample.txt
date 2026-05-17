@@ -1,0 +1,7 @@
+Form 5498 IRA Contribution Information
+Tax year: 2024
+Box 1 IRA contributions: 7000.00
+Box 2 Rollover contributions: 0.00
+Box 3 Roth conversion amount: 0.00
+Box 5 Fair market value: 95000.00
+Box 10 Roth IRA contributions: 0.00

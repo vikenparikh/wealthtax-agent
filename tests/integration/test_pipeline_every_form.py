@@ -98,6 +98,18 @@ EVERY_FORM = [
     ("SCH-D",     "us/sch_d_sample.txt",     "US"),
     ("SCH-E",     "us/sch_e_sample.txt",     "US"),
     ("SCH-SE",    "us/sch_se_sample.txt",    "US"),
+    ("8949",      "us/8949_sample.txt",      "US"),
+    ("8889",      "us/8889_sample.txt",      "US"),
+    ("1099-SA",   "us/1099_sa_sample.txt",   "US"),
+    ("1099-Q",    "us/1099_q_sample.txt",    "US"),
+    ("5498",      "us/5498_sample.txt",      "US"),
+    ("1095-A",    "us/1095_a_sample.txt",    "US"),
+    ("W-2G",      "us/w2g_sample.txt",       "US"),
+    ("2555",      "us/2555_sample.txt",      "US"),
+
+    # CA additions
+    ("T1135",     "ca/t1135_sample.txt",     "CA"),
+    ("T2222",     "ca/t2222_sample.txt",     "CA"),
 ]
 
 

@@ -1,0 +1,12 @@
+year: 2025
+province: "QC"
+brackets:
+  - {up_to: 53255,  rate: 0.14}
+  - {up_to: 106495, rate: 0.19}
+  - {up_to: 129590, rate: 0.24}
+  - {up_to: null,   rate: 0.2575}
+basic_personal_amount: 18571
+dividend:
+  eligible: 0.1170
+  non_eligible: 0.0342
+note: "Quebec residents file a separate Quebec TP-1 return; v1 estimate only."

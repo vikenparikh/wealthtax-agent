@@ -1,0 +1,12 @@
+year: 2023
+province: "AB"
+brackets:
+  - {up_to: 142292, rate: 0.10}
+  - {up_to: 170751, rate: 0.12}
+  - {up_to: 227668, rate: 0.13}
+  - {up_to: 341502, rate: 0.14}
+  - {up_to: null,   rate: 0.15}
+basic_personal_amount: 21003
+dividend:
+  eligible: 0.0812
+  non_eligible: 0.0218

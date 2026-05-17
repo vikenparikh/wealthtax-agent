@@ -190,6 +190,23 @@ def compute_ca_return(
             f"Deducted ${employment_expenses:,.0f} of T2200-certified employment expenses (line 22900)."
         )
 
+    # T1135 awareness — emit an explicit reminder if the user has foreign property over $100k.
+    t1135_cost = _sum_field(extracts, "T1135", "total_foreign_property_cost")
+    if t1135_cost == 0.0:
+        t1135_cost = _to_float(user_answers.get("t1135_foreign_property_value", 0))
+    foreign_property_income = _sum_field(extracts, "T1135", "foreign_property_income")
+    if t1135_cost >= 100000:
+        notes.append(
+            f"T1135 required: foreign property cost ${t1135_cost:,.0f} ≥ $100,000 CAD. "
+            "File separately from your T1."
+        )
+
+    # T2222 Northern Residents Deduction (line 25500)
+    nrd = (
+        _sum_field(extracts, "T2222", "residency_deduction")
+        + _sum_field(extracts, "T2222", "travel_deduction")
+    )
+
     total_income = round(
         employment_income_after_t2200
         + interest_income
@@ -204,11 +221,15 @@ def compute_ca_return(
         + rrsp_withdrawals
         + rrif_income
         + t5013_business
-        + t5013_rental,
+        + t5013_rental
+        + foreign_property_income,
         2,
     )
 
-    net_income = max(0.0, total_income - rrsp_deduction)
+    # Northern Residents Deduction reduces net income (line 25500).
+    net_income = max(0.0, total_income - rrsp_deduction - nrd)
+    if nrd > 0:
+        notes.append(f"Applied ${nrd:,.0f} Northern Residents Deduction (T2222 / line 25500).")
     taxable_income = net_income
 
     # ---- Tax + credits ----
@@ -216,16 +237,53 @@ def compute_ca_return(
     bpa = float(fed_tables.get("basic_personal_amount", 0))
     employment_amount = float(fed_tables.get("canada_employment_amount", 0)) if employment_income > 0 else 0.0
     lowest_rate = (fed_tables.get("brackets") or [{"rate": 0.15}])[0].get("rate", 0.15)
-    fed_non_refundable = (bpa + employment_amount) * float(lowest_rate)
+
+    # Donations + medical expense credits (federal)
+    donations = _to_float(user_answers.get("charitable_donations", 0))
+    medical_expenses = _to_float(user_answers.get("medical_expenses", 0))
+    # First $200 of donations gets 15%; excess gets 29% (federal). Simplified.
+    if donations > 0:
+        donations_credit = donations * float(lowest_rate) if donations <= 200 else (
+            200 * float(lowest_rate) + (donations - 200) * 0.29
+        )
+    else:
+        donations_credit = 0.0
+    # Medical: credit on amount exceeding lesser of 3% of net income or fixed threshold ($2,759 for 2024)
+    medical_threshold = min(net_income * 0.03, 2759.0)
+    medical_creditable = max(0.0, medical_expenses - medical_threshold)
+    medical_credit = medical_creditable * float(lowest_rate)
+
+    fed_non_refundable = (bpa + employment_amount) * float(lowest_rate) + donations_credit + medical_credit
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
     federal_tax = max(0.0, federal_tax_before_credits - fed_non_refundable - federal_dtc)
+
+    # OAS clawback (recovery tax) — 15% of net income above the threshold
+    # ($90,997 for 2024). Adds to federal tax. Skip if no pension/RRIF income.
+    oas_threshold = 90997.0
+    pensionable = pension_income + rrif_income
+    if pensionable > 0 and net_income > oas_threshold:
+        clawback = min(pensionable, (net_income - oas_threshold) * 0.15)
+        federal_tax += clawback
+        notes.append(f"OAS recovery tax (clawback): net income > ${oas_threshold:,.0f}; added ${clawback:,.0f}.")
+    else:
+        clawback = 0.0
 
     provincial_tax_before_credits = compute_progressive_tax(taxable_income, prov_tables.get("brackets", []))
     prov_bpa = float(prov_tables.get("basic_personal_amount", 0))
     prov_lowest_rate = (prov_tables.get("brackets") or [{"rate": 0.0505}])[0].get("rate", 0.0505)
-    prov_non_refundable = prov_bpa * float(prov_lowest_rate)
+    prov_non_refundable = prov_bpa * float(prov_lowest_rate) + donations_credit + medical_credit
     prov_dtc = _province_dtc(taxable_eligible, taxable_non_eligible, prov_tables)
     provincial_tax = max(0.0, provincial_tax_before_credits - prov_non_refundable - prov_dtc)
+
+    # Pension income splitting with spouse (line 21000 / 11600 reciprocal)
+    pension_split_pct = _to_float(user_answers.get("pension_split_pct", 0))
+    if pension_split_pct > 0 and pensionable > 0:
+        # Up to 50% of eligible pension income can be split.
+        pension_split_pct = min(pension_split_pct, 50.0)
+        notes.append(
+            f"Pension income splitting at {pension_split_pct:.0f}% of ${pensionable:,.0f} "
+            "may further reduce tax (not modelled in this estimate)."
+        )
 
     total_tax = round(federal_tax + provincial_tax, 2)
     balance = round(total_tax - fed_tax_withheld, 2)
@@ -233,7 +291,7 @@ def compute_ca_return(
     owing = round(max(0.0, balance), 2)
 
     notes.extend([
-        "Simplified prototype: AMT, OAS clawback, foreign tax credit, and donations credit not modelled.",
+        "Simplified prototype: foreign tax credit and a few minor credits not modelled.",
         "CPP / EI shown for context but not added back; T4 already nets them.",
     ])
     if province.upper() == "QC":
@@ -261,6 +319,12 @@ def compute_ca_return(
         "other_self_employment": self_emp_t4a,
         "trust_other_income": t3_other_income,
         "rrsp_deduction": rrsp_deduction,
+        "northern_residents_deduction": nrd,
+        "foreign_property_income": foreign_property_income,
+        "t1135_foreign_property_cost": t1135_cost,
+        "donations_credit": donations_credit,
+        "medical_credit": medical_credit,
+        "oas_clawback": clawback,
         "federal_tax_before_credits": federal_tax_before_credits,
         "federal_non_refundable_credits": fed_non_refundable,
         "federal_dividend_tax_credit": federal_dtc,

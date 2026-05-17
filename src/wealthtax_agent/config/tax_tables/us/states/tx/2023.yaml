@@ -1,0 +1,10 @@
+year: 2023
+state: "TX"
+# Texas does not levy a personal state income tax.
+brackets_by_status:
+  single: []
+  married_filing_jointly: []
+standard_deduction:
+  single: 0
+  married_filing_jointly: 0
+note: "Texas does not impose a personal state income tax."

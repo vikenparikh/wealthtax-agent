@@ -115,6 +115,58 @@ def _compute_ctc(num_dependents: int, agi: float, status: str, fed_tables: Dict[
     return max(0.0, base - float(excess))
 
 
+def _compute_amt(taxable_income: float, deduction_used: float, status: str, fed_tables: Dict[str, Any]) -> float:
+    """Highly simplified AMT estimator (real Form 6251 has dozens of adjustments).
+
+    Approach: AMTI = taxable_income + deduction_used (add back standard /
+    itemized) - AMT exemption. Apply 26% / 28% bracket. The result is the
+    tentative minimum tax; engine compares against regular tax.
+    """
+    # 2024 AMT exemption + phaseout thresholds
+    exemption = 85700.0 if status != "married_filing_jointly" else 133300.0
+    phaseout_start = 609350.0 if status != "married_filing_jointly" else 1218700.0
+    amti = max(0.0, taxable_income + deduction_used)
+    if amti > phaseout_start:
+        exemption = max(0.0, exemption - 0.25 * (amti - phaseout_start))
+    amt_base = max(0.0, amti - exemption)
+    # 26% on first $232,600 (2024), 28% above
+    threshold = 232600.0
+    if amt_base <= threshold:
+        return round(amt_base * 0.26, 2)
+    return round(threshold * 0.26 + (amt_base - threshold) * 0.28, 2)
+
+
+def _compute_ptc(annual_premiums: float, slcsp: float, aptc: float, agi: float, dependents: int, status: str) -> tuple[float, float]:
+    """Simplified Premium Tax Credit calculation (Form 8962).
+
+    Returns (refundable_credit, repayment_owed). Real PTC depends on FPL %,
+    which we approximate using a single-number threshold.
+    """
+    if annual_premiums <= 0 or slcsp <= 0:
+        return 0.0, 0.0
+    # Affordable Care Act expected contribution: very simplified
+    household_size = max(1, dependents + (2 if status == "married_filing_jointly" else 1))
+    fpl_base = 14580 + 5140 * (household_size - 1)  # 2024 FPL
+    fpl_pct = agi / fpl_base if fpl_base > 0 else 0
+    if fpl_pct < 1.5:
+        applicable_pct = 0.0
+    elif fpl_pct < 2.0:
+        applicable_pct = 0.02
+    elif fpl_pct < 2.5:
+        applicable_pct = 0.04
+    elif fpl_pct < 3.0:
+        applicable_pct = 0.06
+    elif fpl_pct < 4.0:
+        applicable_pct = 0.085
+    else:
+        applicable_pct = 0.085
+    expected_contribution = agi * applicable_pct
+    ptc = max(0.0, min(annual_premiums, slcsp) - expected_contribution)
+    if aptc > ptc:
+        return 0.0, round(aptc - ptc, 2)
+    return round(ptc - aptc, 2), 0.0
+
+
 def _compute_fica(w2_wages: float, se_net: float, status: str, fed_tables: Dict[str, Any]) -> float:
     fica = fed_tables.get("fica", {})
     ss_rate = float(fica.get("social_security_rate", 0.062))
@@ -194,8 +246,16 @@ def compute_us_return(
     state_tax_refund = _sum_field(extracts, "1099-G", "state_local_tax_refund")
     taxable_grants = _sum_field(extracts, "1099-G", "taxable_grants")
     sch_e_supplemental = _sum_field(extracts, "SCH-E", "net_supplemental_income")
+    gambling_winnings = _sum_field(extracts, "W-2G", "gambling_winnings")
+    fed_withheld += _sum_field(extracts, "W-2G", "federal_income_tax_withheld")
+
+    # 8949 capital asset detail flows into Sch D; if Sch D values are missing
+    # we treat 8949 net gain/loss as long-term (most common case).
+    sch_8949_gain = _sum_field(extracts, "8949", "gain_loss")
 
     short_gain, long_gain = _sch_d_short_long(extracts)
+    if sch_8949_gain != 0.0 and short_gain == 0.0 and long_gain == 0.0:
+        long_gain += sch_8949_gain
 
     # K-1
     k1_business = _sum_field(extracts, "K-1", "ordinary_business_income")
@@ -216,10 +276,21 @@ def compute_us_return(
     # 1098-E student loan interest deduction (capped at $2500)
     student_loan_interest = min(2500.0, _sum_field(extracts, "1098-E", "student_loan_interest"))
 
-    # HSA deduction from clarifying answers (placed above AGI line)
-    hsa_deduction = _to_float(user_answers.get("hsa_contributions", 0))
-    # Traditional IRA / 401(k) outside W-2 reported as adjustment to income.
-    ira_deduction = _to_float(user_answers.get("ira_401k_contributions", 0))
+    # HSA deduction: prefer Form 8889 line, fall back to user answer
+    hsa_deduction = _sum_field(extracts, "8889", "hsa_deduction")
+    if hsa_deduction == 0.0:
+        hsa_deduction = _to_float(user_answers.get("hsa_contributions", 0))
+
+    # Traditional IRA contributions: prefer 5498 box 1, fall back to user answer
+    ira_deduction = _sum_field(extracts, "5498", "ira_contributions")
+    if ira_deduction == 0.0:
+        ira_deduction = _to_float(user_answers.get("ira_401k_contributions", 0))
+
+    # Form 2555 reports foreign-earned wages and the amount the taxpayer is
+    # excluding. We add the foreign-earned amount to income then subtract the
+    # exclusion so non-foreign income (W-2 etc.) is left untouched.
+    feie_total = _sum_field(extracts, "2555", "foreign_earned_income")
+    feie_excluded = _sum_field(extracts, "2555", "foreign_earned_income_excluded")
 
     # Prior-year capital-loss carryover (max $3k applied to ordinary income)
     prior_capital_losses = _to_float(user_answers.get("prior_capital_losses", 0))
@@ -259,14 +330,35 @@ def compute_us_return(
         + unemployment
         + state_tax_refund
         + taxable_grants
-        - ordinary_offset,
+        + gambling_winnings
+        + feie_total
+        - ordinary_offset
+        - feie_excluded,
         2,
     )
 
     above_line = student_loan_interest + hsa_deduction + ira_deduction
     agi = max(0.0, total_income - above_line)
     std_deduction = float(fed_tables.get("standard_deduction", {}).get(status, 0))
-    taxable_income = max(0.0, agi - std_deduction)
+
+    # Schedule A itemized deduction comparison
+    sch_a_total = (
+        _sum_field(extracts, "SCH-A", "medical_expenses")
+        + min(10000.0, _sum_field(extracts, "SCH-A", "state_local_taxes"))
+        + _sum_field(extracts, "SCH-A", "mortgage_interest")
+        + _sum_field(extracts, "SCH-A", "charitable_gifts")
+    )
+    used_itemized = sch_a_total > std_deduction
+    effective_deduction = sch_a_total if used_itemized else std_deduction
+    if used_itemized:
+        notes.append(f"Itemized deduction (${sch_a_total:,.0f}) beats standard (${std_deduction:,.0f}).")
+    taxable_income = max(0.0, agi - effective_deduction)
+
+    # QBI deduction (Section 199A) — 20% of qualified business income from
+    # Sch C / 1099-NEC / K-1, capped at 20% of taxable income (simplified).
+    qbi_eligible = max(0.0, sch_c_profit + nec + k1_business)
+    qbi_deduction = round(min(qbi_eligible, taxable_income) * 0.20, 2) if qbi_eligible > 0 else 0.0
+    taxable_income = max(0.0, taxable_income - qbi_deduction)
 
     # Ordinary taxable income excludes qualified divs + LTCG
     preferential = qualified_dividends + max(0.0, long_gain)
@@ -278,7 +370,26 @@ def compute_us_return(
     federal_tax_before_credits = ordinary_tax + preferential_tax
 
     ctc = _compute_ctc(num_deps, agi, status, fed_tables)
-    federal_tax = max(0.0, federal_tax_before_credits - ctc)
+
+    # Premium Tax Credit reconciliation (1095-A)
+    aptc = _sum_field(extracts, "1095-A", "advance_ptc")
+    annual_premiums = _sum_field(extracts, "1095-A", "annual_premiums")
+    slcsp = _sum_field(extracts, "1095-A", "annual_slcsp")
+    ptc_credit, ptc_repayment = _compute_ptc(annual_premiums, slcsp, aptc, agi, num_deps, status)
+
+    federal_tax = max(0.0, federal_tax_before_credits - ctc - ptc_credit) + ptc_repayment
+
+    # Alternative Minimum Tax (simplified Form 6251)
+    amt_tax = _compute_amt(taxable_income, effective_deduction, status, fed_tables)
+    if amt_tax > federal_tax:
+        notes.append(f"AMT applies: ${amt_tax:,.0f} > regular tax ${federal_tax:,.0f}. Form 6251 required.")
+        federal_tax = amt_tax
+
+    # Net Investment Income Tax (3.8%) for high earners
+    niit_threshold = 250000 if status == "married_filing_jointly" else 200000
+    investment_income = interest_income + ordinary_dividends + max(0.0, long_gain) + max(0.0, short_gain) + misc_royalties
+    niit = round(min(investment_income, max(0.0, agi - niit_threshold)) * 0.038, 2)
+    federal_tax += niit
 
     se_tax = _compute_fica(wages, self_employment_income, status, fed_tables)
 
@@ -303,11 +414,17 @@ def compute_us_return(
     owing = round(max(0.0, balance), 2)
 
     notes.extend([
-        "Simplified prototype: AMT, NIIT, QBI, EITC, and state-specific credits not modelled.",
+        "Simplified prototype: EITC, state-specific credits, and several adjustments not modelled.",
         "Social Security inclusion uses a flat 85% approximation; real rule is income-tested.",
     ])
-    if short_gain < 0 or long_gain < 0:
-        notes.append("Capital losses present; cap on $3000 ordinary offset not modelled in v1.")
+    if niit > 0:
+        notes.append(f"NIIT applied: 3.8% on investment income above ${niit_threshold:,.0f} = ${niit:,.0f}.")
+    if qbi_deduction > 0:
+        notes.append(f"QBI (Section 199A) deduction of ${qbi_deduction:,.0f} (20% of pass-through income).")
+    if ptc_repayment > 0:
+        notes.append(f"Advance Premium Tax Credit exceeded eligible PTC; ${ptc_repayment:,.0f} repayment added.")
+    if feie_excluded > 0:
+        notes.append(f"Foreign Earned Income Exclusion (Form 2555) excluded ${feie_excluded:,.0f} from income.")
 
     line_items = {
         "wages": wages,
@@ -328,14 +445,23 @@ def compute_us_return(
         "unemployment_compensation": unemployment,
         "state_tax_refund_taxable": state_tax_refund,
         "taxable_grants": taxable_grants,
+        "gambling_winnings": gambling_winnings,
+        "feie_excluded": feie_excluded,
         "student_loan_interest_deduction": student_loan_interest,
         "hsa_deduction": hsa_deduction,
         "ira_401k_adjustment": ira_deduction,
         "standard_deduction": std_deduction,
+        "itemized_deduction_sch_a": sch_a_total,
+        "effective_deduction": effective_deduction,
+        "qbi_deduction": qbi_deduction,
         "agi": agi,
         "ordinary_tax": ordinary_tax,
         "preferential_tax": preferential_tax,
+        "amt_tax": amt_tax,
+        "niit": niit,
         "child_tax_credit": ctc,
+        "premium_tax_credit": ptc_credit,
+        "premium_tax_credit_repayment": ptc_repayment,
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
@@ -354,6 +480,8 @@ def compute_us_return(
     credits = {
         "child_tax_credit": ctc,
         "standard_deduction": std_deduction,
+        "premium_tax_credit": ptc_credit,
+        "qbi_deduction": qbi_deduction,
     }
 
     return DraftReturn(
