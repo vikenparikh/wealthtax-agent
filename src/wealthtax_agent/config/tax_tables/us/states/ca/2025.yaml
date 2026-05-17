@@ -1,0 +1,26 @@
+year: 2025
+state: "CA"
+brackets_by_status:
+  single:
+    - {up_to: 10756,  rate: 0.01}
+    - {up_to: 25499,  rate: 0.02}
+    - {up_to: 40245,  rate: 0.04}
+    - {up_to: 55866,  rate: 0.06}
+    - {up_to: 70606,  rate: 0.08}
+    - {up_to: 360659, rate: 0.093}
+    - {up_to: 432787, rate: 0.103}
+    - {up_to: 721314, rate: 0.113}
+    - {up_to: null,   rate: 0.123}
+  married_filing_jointly:
+    - {up_to: 21512,  rate: 0.01}
+    - {up_to: 50998,  rate: 0.02}
+    - {up_to: 80490,  rate: 0.04}
+    - {up_to: 111732, rate: 0.06}
+    - {up_to: 141212, rate: 0.08}
+    - {up_to: 721318, rate: 0.093}
+    - {up_to: 865574, rate: 0.103}
+    - {up_to: 1442628,rate: 0.113}
+    - {up_to: null,   rate: 0.123}
+standard_deduction:
+  single: 5540
+  married_filing_jointly: 11080

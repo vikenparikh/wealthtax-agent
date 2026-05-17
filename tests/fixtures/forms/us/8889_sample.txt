@@ -1,0 +1,5 @@
+Form 8889 Health Savings Accounts
+Tax year: 2024
+HSA contributions: 4150.00
+HSA deduction: 4150.00
+Distributions: 1200.00

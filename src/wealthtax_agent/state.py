@@ -115,6 +115,8 @@ class GraphState(BaseModel):
     filing_year: Optional[int] = None
     jurisdictions: List[Jurisdiction] = Field(default_factory=list)
     user_answers: Dict[str, str] = Field(default_factory=dict)
+    is_amendment: bool = False
+    prior_filed_totals: Dict[str, Dict[str, float]] = Field(default_factory=dict)
 
     classifications: List[FormClassification] = Field(default_factory=list)
     extracts: List[FormExtract] = Field(default_factory=list)

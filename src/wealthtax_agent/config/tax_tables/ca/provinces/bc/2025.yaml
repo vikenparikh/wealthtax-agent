@@ -1,0 +1,14 @@
+year: 2025
+province: "BC"
+brackets:
+  - {up_to: 49279,  rate: 0.0506}
+  - {up_to: 98560,  rate: 0.077}
+  - {up_to: 113158, rate: 0.105}
+  - {up_to: 137407, rate: 0.1229}
+  - {up_to: 186306, rate: 0.147}
+  - {up_to: 259829, rate: 0.168}
+  - {up_to: null,   rate: 0.205}
+basic_personal_amount: 12932
+dividend:
+  eligible: 0.12
+  non_eligible: 0.0196

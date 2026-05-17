@@ -1,0 +1,4 @@
+T2222 Northern Residents Deductions
+Tax year: 2024
+Residency deduction: 4015.00
+Travel deduction: 1200.00

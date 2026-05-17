@@ -56,6 +56,18 @@ CASES = [
     ("1099-G",    "us/1099_g_sample.txt",   "US", "unemployment_compensation",     4500.00),
     ("SCH-SE",    "us/sch_se_sample.txt",   "US", "self_employment_tax",           4239.00),
     ("SCH-E",     "us/sch_e_sample.txt",    "US", "net_supplemental_income",      21500.00),
+    ("8949",      "us/8949_sample.txt",     "US", "gain_loss",                     7000.00),
+    ("8889",      "us/8889_sample.txt",     "US", "hsa_contributions",             4150.00),
+    ("1099-SA",   "us/1099_sa_sample.txt",  "US", "gross_distribution",            1200.00),
+    ("1099-Q",    "us/1099_q_sample.txt",   "US", "gross_distribution",            8000.00),
+    ("5498",      "us/5498_sample.txt",     "US", "ira_contributions",             7000.00),
+    ("1095-A",    "us/1095_a_sample.txt",   "US", "annual_premiums",              14400.00),
+    ("W-2G",      "us/w2g_sample.txt",      "US", "gambling_winnings",             5000.00),
+    ("2555",      "us/2555_sample.txt",     "US", "foreign_earned_income",        95000.00),
+
+    # CA additions
+    ("T1135",     "ca/t1135_sample.txt",    "CA", "total_foreign_property_cost", 250000.00),
+    ("T2222",     "ca/t2222_sample.txt",    "CA", "residency_deduction",           4015.00),
 ]
 
 

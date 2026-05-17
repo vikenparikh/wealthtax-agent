@@ -1,0 +1,4 @@
+T1135 Foreign Income Verification Statement
+Tax year: 2024
+Total cost amount: 250000.00
+Income from foreign property: 12500.00

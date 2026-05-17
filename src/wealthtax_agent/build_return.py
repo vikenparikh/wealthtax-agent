@@ -13,6 +13,7 @@ from wealthtax_agent.filing.ca_netfile import serialize_t1
 from wealthtax_agent.filing.pdf_fill import fill_form
 from wealthtax_agent.filing.quarterly import quarterly_ca_instalments, quarterly_us_1040es
 from wealthtax_agent.filing.us_mef import serialize_1040
+from wealthtax_agent.projection import project_future_years
 from wealthtax_agent.state import DraftReturn, FilingArtifact, FormExtract, GraphState
 
 
@@ -113,7 +114,7 @@ def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, us
 
 
 def _planning_artifact(state: GraphState) -> FilingArtifact:
-    """Year-over-year planning summary; not a filing form."""
+    """Year-over-year planning summary + 5-year tax projection."""
     year = state.filing_year or 2024
     lines: List[str] = []
     lines.append(f"WealthTax Agent — Year-over-Year Planning Summary ({year} -> {year + 1})")
@@ -125,6 +126,24 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
         lines.append(f"  Taxable income:   ${draft.totals.get('taxable_income', 0):,.2f}")
         lines.append(f"  Estimated tax:    ${draft.totals.get('total_tax', 0):,.2f}")
         lines.append(f"  Refund / Owing:   ${draft.totals.get('refund', 0):,.2f} / ${draft.totals.get('balance_owing', 0):,.2f}")
+
+    lines.append("")
+    lines.append("5-Year Projection (3% annual income growth)")
+    lines.append("-" * 70)
+    try:
+        projection = project_future_years(state, growth=0.03, horizon=5)
+        for jurisdiction, rows in projection.items():
+            lines.append(f"\n[{jurisdiction}]")
+            lines.append(f"  {'Year':<6}{'Income':>14}{'Taxable':>14}{'Total Tax':>14}{'Refund/Owing':>16}")
+            for row in rows:
+                ref_owe = f"${row['refund']:,.0f} / ${row['balance_owing']:,.0f}"
+                lines.append(
+                    f"  {row['year']:<6}${row['total_income']:>12,.0f} ${row['taxable_income']:>12,.0f} "
+                    f"${row['total_tax']:>12,.0f}  {ref_owe:>14}"
+                )
+    except Exception as exc:
+        lines.append(f"  (projection unavailable: {exc})")
+
     lines.append("")
     if state.optimization_suggestions:
         lines.append("Plan-ahead actions for next year:")
@@ -144,6 +163,39 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
         mime_type="text/plain",
         content_b64=_b64("\n".join(lines)),
     )
+
+
+def _amendment_artifacts(state: GraphState) -> Dict[str, FilingArtifact]:
+    """Emit 1040-X (US) or T1-ADJ (CA) draft when ``state.is_amendment`` is set."""
+    if not state.is_amendment:
+        return {}
+    year = state.filing_year or 2024
+    out: Dict[str, FilingArtifact] = {}
+    for jurisdiction, draft in state.draft_returns.items():
+        prior = state.prior_filed_totals.get(jurisdiction, {})
+        lines: List[str] = []
+        form_code = "1040-X" if jurisdiction == "US" else "T1-ADJ"
+        lines.append(f"{form_code} Amendment Worksheet ({jurisdiction} {year})")
+        lines.append("=" * 60)
+        lines.append(f"{'Item':<24}{'Originally Filed':>18}{'Amended':>14}{'Difference':>14}")
+        for key in ("total_income", "taxable_income", "total_tax", "refund", "balance_owing"):
+            original = float(prior.get(key, 0.0))
+            amended = float(draft.totals.get(key, 0.0))
+            diff = amended - original
+            lines.append(f"{key:<24}${original:>16,.2f}  ${amended:>12,.2f}  ${diff:>+12,.2f}")
+        lines.append("")
+        lines.append(
+            f"This is a draft of the {form_code} worksheet. Transcribe the "
+            f"three-column figures onto the official {form_code} before filing."
+        )
+        out[f"{jurisdiction.lower()}_amendment"] = FilingArtifact(
+            jurisdiction=jurisdiction,  # type: ignore[arg-type]
+            form_code=form_code,
+            filename=f"{jurisdiction.lower()}_{form_code.lower()}_{year}_draft.txt",
+            mime_type="text/plain",
+            content_b64=_b64("\n".join(lines)),
+        )
+    return out
 
 
 def build_return_node(state: GraphState) -> GraphState:
@@ -167,6 +219,10 @@ def build_return_node(state: GraphState) -> GraphState:
             artifacts["yoy_planning"] = _planning_artifact(state)
         except Exception as exc:
             state.warnings.append(f"YoY planning artifact failed: {exc}")
+        try:
+            artifacts.update(_amendment_artifacts(state))
+        except Exception as exc:
+            state.warnings.append(f"Amendment artifact failed: {exc}")
 
     state.filing_artifacts = artifacts
     return state
