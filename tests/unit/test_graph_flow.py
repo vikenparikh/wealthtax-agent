@@ -13,6 +13,7 @@ def test_graph_executes_nodes_in_expected_order(monkeypatch):
 
     monkeypatch.setattr(graph, "classify_forms_node", make_recorder("classify_forms"))
     monkeypatch.setattr(graph, "extract_forms_node", make_recorder("extract_forms"))
+    monkeypatch.setattr(graph, "apply_corrections_node", make_recorder("apply_corrections"))
     monkeypatch.setattr(graph, "ask_clarifications_node", make_recorder("ask_clarifications"))
     monkeypatch.setattr(graph, "reason_tax_node", make_recorder("reason_tax"))
     monkeypatch.setattr(graph, "optimize_node", make_recorder("optimize"))
@@ -32,6 +33,7 @@ def test_graph_executes_nodes_in_expected_order(monkeypatch):
     assert order == [
         "classify_forms",
         "extract_forms",
+        "apply_corrections",
         "ask_clarifications",
         "reason_tax",
         "optimize",
