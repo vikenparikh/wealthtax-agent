@@ -79,8 +79,13 @@ def _text_for_doc(doc) -> Optional[str]:
 
 
 def extract_forms_node(state: GraphState) -> GraphState:
-    extracts: List[FormExtract] = []
-    legacy_slips: List[Slip] = []
+    # Preserve manually-entered extracts (intake wizard) that don't have a
+    # matching classification — those came in pre-built and should pass through.
+    manual_extracts = [e for e in state.extracts if not any(
+        c.form_code == e.form_code and c.jurisdiction == e.jurisdiction for c in state.classifications
+    )]
+    extracts: List[FormExtract] = list(manual_extracts)
+    legacy_slips: List[Slip] = [Slip(type=e.form_code, fields=e.fields) for e in manual_extracts]
 
     for index, classification in enumerate(state.classifications):
         try:

@@ -110,6 +110,32 @@ class Explanation(BaseModel):
     lines: Dict[str, str] = Field(default_factory=dict)
 
 
+class FieldChange(BaseModel):
+    """One atomic edit produced by parsing a correction prompt or inline edit."""
+
+    op: Literal["set", "add", "remove"] = "set"
+    target: Literal["extract", "user_answer", "form"] = "extract"
+    form_code: Optional[str] = None
+    jurisdiction: Optional[Jurisdiction] = None
+    field: Optional[str] = None  # field name inside the extract or user_answer key
+    new_value: Optional[float | str] = None
+    old_value: Optional[float | str] = None
+    reason: Optional[str] = None
+    low_confidence: bool = False
+
+
+class Correction(BaseModel):
+    """A user-initiated edit: chat prompt, inline edit, or add/remove form."""
+
+    id: str = Field(default_factory=lambda: __import__("uuid").uuid4().hex)
+    kind: Literal["chat", "inline_edit", "add_form", "remove_form"] = "chat"
+    user_prompt: Optional[str] = None
+    changes: List[FieldChange] = Field(default_factory=list)
+    low_confidence: bool = False
+    applied: bool = False
+    reverted: bool = False
+
+
 class GraphState(BaseModel):
     raw_docs: List[Union[InputDocument, bytes]] = Field(default_factory=list)
     filing_year: Optional[int] = None
@@ -138,3 +164,9 @@ class GraphState(BaseModel):
     human_approved: bool = False
     warnings: List[str] = Field(default_factory=list)
     llm_provider: Optional[str] = None
+
+    # Correction loop state
+    corrections: List[Correction] = Field(default_factory=list)
+    applied_corrections: List[Correction] = Field(default_factory=list)
+    revision_number: int = 0
+    correction_diff: Optional[Dict[str, Dict[str, float]]] = None
