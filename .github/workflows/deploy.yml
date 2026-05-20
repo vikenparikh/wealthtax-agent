@@ -2,6 +2,7 @@ name: deploy
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
@@ -9,6 +10,10 @@ on:
         description: "Image tag to deploy (default: short commit SHA on a non-tag run)"
         required: false
         default: ""
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 permissions:
   contents: read

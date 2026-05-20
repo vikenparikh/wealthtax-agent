@@ -1,6 +1,12 @@
 # Deploy
 
-Single-VPS deploy via GitHub Actions → GHCR → SSH → `docker compose`. Ingress goes through a Cloudflare Tunnel (no inbound ports open on the VPS). Triggered by pushing a tag matching `v*` or by clicking **Run workflow** on the `deploy` workflow in the Actions tab.
+Single-VPS deploy via GitHub Actions → GHCR → SSH → `docker compose`. Ingress goes through a Cloudflare Tunnel (no inbound ports open on the VPS). Triggers:
+
+- **Every push to `main`** — continuous deploy of the latest commit (image tagged `:sha-<7>` + `:latest`).
+- **Tag push matching `v*`** — release deploy (image tagged `:v0.5.0` + `:latest`).
+- **Manual `workflow_dispatch`** — pick any branch + optional `image_tag` input.
+
+Deploys are serialized via a `deploy-production` concurrency group, so two pushes in quick succession queue instead of racing.
 
 ## Stack on the VPS
 
@@ -87,20 +93,30 @@ In the Cloudflare dashboard:
 
 ## Trigger a deploy
 
-Two options:
+Three options:
 
-**Option A — push a release tag** (recommended for production):
+**Option A — push to `main`** (continuous deploy, default):
+
+```bash
+git push origin main
+```
+
+Every commit on `main` deploys. The image is tagged `:sha-<short>` + `:latest`.
+
+**Option B — push a release tag** (recommended for production checkpoints):
 
 ```bash
 git tag -a v0.5.1 -m "..."
 git push origin v0.5.1
 ```
 
-GitHub Actions runs the `deploy` workflow on the tag. The image is tagged `:v0.5.1` and `:latest` in GHCR; the VPS pulls `:v0.5.1` and runs migrations + restart.
+The image is tagged `:v0.5.1` + `:latest` in GHCR; the VPS pulls `:v0.5.1`.
 
-**Option B — manual trigger** (good for hotfixes or first-time setup):
+**Option C — manual trigger** (good for hotfixes, rollbacks, or first-time setup):
 
-Actions tab → `deploy` → **Run workflow** → optionally type an `image_tag` (defaults to the short SHA). Pick the branch (`main`).
+Actions tab → `deploy` → **Run workflow** → optionally type an `image_tag` (defaults to the short SHA). Pick the branch.
+
+> **Tip — require approval before deploys land.** GitHub repo Settings → Environments → `production` → enable **Required reviewers**. Each deploy then pauses for human approval before SSHing to the VPS. Strongly recommended once the app has real users.
 
 ## Rollback
 
