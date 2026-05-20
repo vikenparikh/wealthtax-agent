@@ -8,10 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Punch-list captured during the v0.5.0 audit; deferred to v0.5.1:
 
-- Streamlit AppTest smoke coverage: `tests/integration/test_streamlit_signup_and_chat.py`, `tests/integration/test_streamlit_intake_no_upload.py`, `tests/integration/test_streamlit_return_history.py`.
 - Dedicated unit tests: `tests/unit/test_in_itr_serializer.py`, `tests/unit/engines/test_student_loan_cross_border.py`.
 - Split `tests/integration/scenarios/test_scenarios_all.py` into 8 named files so failures point at a single named scenario.
 - A GitHub Release object built from the `v0.5.0` tag with the CHANGELOG body as release notes.
+- Replace or remove `scripts/ui_screenshot_playwright.py` — it has a `SyntaxError` and references the pre-Round F UI; superseded by `tests/integration/test_streamlit_smoke.py`.
+
+### Added (post-v0.5.0, pre-v0.5.1)
+
+- **AppTest smoke coverage** — `tests/integration/test_streamlit_smoke.py` boots `src/wealthtax_agent/main.py` via `streamlit.testing.v1.AppTest` under both `WEALTHTAX_MODE=self_hosted` and `WEALTHTAX_MODE=saas`, asserts no exceptions during initial render, and pins UI invariants (jurisdiction picker offers CA + US + IN; year picker includes 2024+). Closes the "Streamlit AppTest smoke coverage" item from the v0.5.0 audit.
 
 ## [0.5.0] — 2026-05-20
 
