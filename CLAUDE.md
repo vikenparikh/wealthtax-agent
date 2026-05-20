@@ -34,7 +34,7 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 
 | Fact | Value |
 |---|---|
-| `main` HEAD | `9d032f7` (see Session log for latest) |
+| `main` HEAD | `9cf72ad` — `docs: add CLAUDE.md session-handoff file` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
 | Test count | **390 passing**, ~10s wall on a fresh Python 3.12 venv |
@@ -343,13 +343,14 @@ Newest at the top. Format per entry:
 
 ### 2026-05-20 — Handoff doc, AppTest smoke, CI/CD pipeline, v0.5.0 release
 
-- HEAD on main: `9d032f7` (was `80396cc` at session start)
+- HEAD on main: `9cf72ad` (was `80396cc` at session start)
 - Tests: **390 passing** (was 386 → added 4 AppTest smoke tests)
-- Shipped sequentially as four commits:
+- Shipped sequentially as five commits:
   - `445d3d8` — v0.5.0 release prep (`pyproject.toml` 0.1.0→0.5.0, new `CHANGELOG.md`, README refreshed for CA/US/IN multi-jurisdiction).
   - `025692a` — CI/CD pipeline (`.github/workflows/deploy.yml`, `docker-compose.prod.yml` with cloudflared sidecar, `docs/DEPLOY.md` runbook).
   - `57ea250` — Continuous deploy on `main` push + concurrency guard (`deploy-production` group).
   - `9d032f7` — AppTest UI smoke (4 tests in `tests/integration/test_streamlit_smoke.py`).
+  - `9cf72ad` — This handoff doc (`CLAUDE.md`).
 - Local tag `v0.5.0` exists at `445d3d8` but is NOT pushed (sandbox 403s tag refs). User must push from outside.
 - CI/CD is configured but inert — pending 4 GitHub Secrets + Cloudflare Tunnel + VPS `.env`. Full runbook in `docs/DEPLOY.md`.
 - Verified end-to-end: pytest green, `validate.sh` green, AppTest both modes clean, multi-jurisdiction scenarios all pass.
