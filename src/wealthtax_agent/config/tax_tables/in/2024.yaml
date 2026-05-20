@@ -1,0 +1,80 @@
+# India tax tables for AY 2024-25 (FY 2023-24). Prototype only.
+# Amounts in INR. Brackets are total-income based.
+year: 2024
+currency: INR
+
+# New regime (default for AY 2024-25, Section 115BAC)
+new_regime:
+  brackets:
+    - {up_to: 300000,  rate: 0.00}
+    - {up_to: 600000,  rate: 0.05}
+    - {up_to: 900000,  rate: 0.10}
+    - {up_to: 1200000, rate: 0.15}
+    - {up_to: 1500000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  standard_deduction_salary: 50000
+  rebate_87a:
+    income_threshold: 700000
+    max_credit: 25000
+
+# Old regime (with chapter VI-A deductions)
+old_regime:
+  brackets:
+    - {up_to: 250000,  rate: 0.00}
+    - {up_to: 500000,  rate: 0.05}
+    - {up_to: 1000000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  brackets_senior_60_to_80:
+    - {up_to: 300000,  rate: 0.00}
+    - {up_to: 500000,  rate: 0.05}
+    - {up_to: 1000000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  brackets_super_senior_80_plus:
+    - {up_to: 500000,  rate: 0.00}
+    - {up_to: 1000000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  standard_deduction_salary: 50000
+  rebate_87a:
+    income_threshold: 500000
+    max_credit: 12500
+
+# Surcharge applies on income tax (not on income directly).
+surcharge:
+  - {income_above: 5000000,  rate: 0.10}
+  - {income_above: 10000000, rate: 0.15}
+  - {income_above: 20000000, rate: 0.25}
+  - {income_above: 50000000, rate: 0.37}
+# New regime caps surcharge at 25% (no 37% tier).
+surcharge_new_regime_cap: 0.25
+
+# Health & Education Cess
+cess_rate: 0.04
+
+# Chapter VI-A deduction caps (old regime only, except 80CCD(2))
+deductions:
+  section_80c_cap: 150000
+  section_80ccd_1b_nps_cap: 50000           # additional NPS
+  section_80d_self_under_60: 25000
+  section_80d_self_senior_60_plus: 50000
+  section_80d_parents_under_60: 25000
+  section_80d_parents_senior_60_plus: 50000
+  section_80tta_savings_interest_cap: 10000
+  section_80ttb_senior_interest_cap: 50000
+  section_80e_education_loan_cap: null      # uncapped
+  section_24b_home_loan_self_occupied: 200000
+  section_80g_percent_default: 0.50          # without qualifying limit
+
+# Capital gains (FY 2023-24 — entire year is pre-Jul 23 2024 regime)
+capital_gains:
+  ltcg_equity_threshold: 100000   # Section 112A exemption
+  ltcg_equity_rate: 0.10
+  stcg_equity_rate: 0.15          # Section 111A
+  ltcg_other_rate: 0.20           # with indexation
+  stcg_other_taxed_at_slab: true
+
+# HRA exemption (simplified): least of (a) HRA received, (b) actual rent - 10% of salary,
+# (c) 50% of salary (metro) or 40% (non-metro).
+hra:
+  metro_pct: 0.50
+  non_metro_pct: 0.40
+  cities_metro: ["Delhi", "Mumbai", "Kolkata", "Chennai"]

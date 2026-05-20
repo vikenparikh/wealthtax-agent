@@ -23,8 +23,10 @@ from wealthtax_agent.build_return import build_return_node
 from wealthtax_agent.classify_forms import classify_forms_node
 from wealthtax_agent.clarify import ask_clarifications_node, has_outstanding_clarifications
 from wealthtax_agent.corrections import apply_corrections
+from wealthtax_agent.engines.residency import residency_test_node
 from wealthtax_agent.explain_return import explain_return_node, generate_dual_outputs
 from wealthtax_agent.extract_forms import extract_forms_node
+from wealthtax_agent.ingest.dedupe import dedupe_extracts_node
 from wealthtax_agent.optimize import optimize_node
 from wealthtax_agent.parse_docs import parse_docs_node
 from wealthtax_agent.reason_tax import reason_tax_node
@@ -68,6 +70,8 @@ def build_graph():
 
     workflow.add_node("classify_forms", classify_forms_node)
     workflow.add_node("extract_forms", extract_forms_node)
+    workflow.add_node("dedupe_extracts", dedupe_extracts_node)
+    workflow.add_node("residency_test", residency_test_node)
     workflow.add_node("apply_corrections", apply_corrections_node)
     workflow.add_node("ask_clarifications", ask_clarifications_node)
     workflow.add_node("reason_tax", reason_tax_node)
@@ -78,7 +82,9 @@ def build_graph():
 
     workflow.add_edge(START, "classify_forms")
     workflow.add_edge("classify_forms", "extract_forms")
-    workflow.add_edge("extract_forms", "apply_corrections")
+    workflow.add_edge("extract_forms", "dedupe_extracts")
+    workflow.add_edge("dedupe_extracts", "residency_test")
+    workflow.add_edge("residency_test", "apply_corrections")
     workflow.add_edge("apply_corrections", "ask_clarifications")
     workflow.add_conditional_edges(
         "ask_clarifications",

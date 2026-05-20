@@ -1,0 +1,15 @@
+FORM NO. 16
+Certificate under section 203 of the Income-tax Act, 1961
+Tax year: 2024
+Employer: Infosys Technologies Limited
+Employee: Priya Sharma  PAN: ABCDE1234F
+
+Gross salary: 1800000.00
+Basic salary: 900000.00
+House rent allowance HRA received: 360000.00
+Standard deduction: 50000.00
+Deduction under section 80C: 150000.00
+Section 80D: 25000.00
+Section 80E: 0.00
+Professional tax: 2400.00
+Tax deducted at source TDS deducted: 184000.00

@@ -194,11 +194,21 @@ def compute_us_return(
     year: int,
     state: Optional[str] = None,
     user_answers: Dict[str, str] | None = None,
+    residency_status: str = "resident",
 ) -> DraftReturn:
     user_answers = user_answers or {}
     status = _resolve_filing_status(user_answers)
     num_deps = _num_dependents(user_answers)
     notes: List[str] = []
+    if residency_status == "nonresident":
+        notes.append(
+            "US nonresident: file Form 1040-NR. Only US-source income is taxable; no standard deduction "
+            "(except India tax-treaty Article 21 exception)."
+        )
+    elif residency_status == "dual_status":
+        notes.append(
+            "US dual-status year: file Form 1040 with a 1040-NR statement for the nonresident period."
+        )
 
     try:
         fed_tables = load_tables("us", year)

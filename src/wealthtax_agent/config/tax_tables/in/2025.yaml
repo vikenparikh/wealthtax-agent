@@ -1,0 +1,83 @@
+# India tax tables for AY 2025-26 (FY 2024-25). Prototype only.
+# Reflects Finance (No.2) Act 2024 changes — Jul 23 2024 capital-gains rule change.
+year: 2025
+currency: INR
+
+# New regime (default; Budget 2024 revisions)
+new_regime:
+  brackets:
+    - {up_to: 300000,  rate: 0.00}
+    - {up_to: 700000,  rate: 0.05}
+    - {up_to: 1000000, rate: 0.10}
+    - {up_to: 1200000, rate: 0.15}
+    - {up_to: 1500000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  standard_deduction_salary: 75000      # Budget 2024 bumped this
+  rebate_87a:
+    income_threshold: 700000
+    max_credit: 25000
+
+# Old regime (unchanged)
+old_regime:
+  brackets:
+    - {up_to: 250000,  rate: 0.00}
+    - {up_to: 500000,  rate: 0.05}
+    - {up_to: 1000000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  brackets_senior_60_to_80:
+    - {up_to: 300000,  rate: 0.00}
+    - {up_to: 500000,  rate: 0.05}
+    - {up_to: 1000000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  brackets_super_senior_80_plus:
+    - {up_to: 500000,  rate: 0.00}
+    - {up_to: 1000000, rate: 0.20}
+    - {up_to: null,    rate: 0.30}
+  standard_deduction_salary: 50000
+  rebate_87a:
+    income_threshold: 500000
+    max_credit: 12500
+
+surcharge:
+  - {income_above: 5000000,  rate: 0.10}
+  - {income_above: 10000000, rate: 0.15}
+  - {income_above: 20000000, rate: 0.25}
+  - {income_above: 50000000, rate: 0.37}
+surcharge_new_regime_cap: 0.25
+
+cess_rate: 0.04
+
+deductions:
+  section_80c_cap: 150000
+  section_80ccd_1b_nps_cap: 50000
+  section_80d_self_under_60: 25000
+  section_80d_self_senior_60_plus: 50000
+  section_80d_parents_under_60: 25000
+  section_80d_parents_senior_60_plus: 50000
+  section_80tta_savings_interest_cap: 10000
+  section_80ttb_senior_interest_cap: 50000
+  section_80e_education_loan_cap: null
+  section_24b_home_loan_self_occupied: 200000
+  section_80g_percent_default: 0.50
+
+# Capital gains regime change effective Jul 23 2024.
+# Pre-change rates apply to transfers before that date; post-change rates after.
+capital_gains:
+  regime_change_date: "2024-07-23"
+  pre_change:
+    ltcg_equity_threshold: 100000
+    ltcg_equity_rate: 0.10
+    stcg_equity_rate: 0.15
+    ltcg_other_rate: 0.20
+    stcg_other_taxed_at_slab: true
+  post_change:
+    ltcg_equity_threshold: 125000     # bumped to 1.25 lakh
+    ltcg_equity_rate: 0.125
+    stcg_equity_rate: 0.20            # bumped from 15% to 20%
+    ltcg_other_rate: 0.125            # without indexation post-change
+    stcg_other_taxed_at_slab: true
+
+hra:
+  metro_pct: 0.50
+  non_metro_pct: 0.40
+  cities_metro: ["Delhi", "Mumbai", "Kolkata", "Chennai"]

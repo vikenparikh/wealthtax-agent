@@ -135,6 +135,58 @@ SUPPORTED_INTAKE_FORMS: Dict[str, Dict[str, Any]] = {
             _f("net_profit", "Net profit", required=True),
         ],
     },
+    "1098-E": {
+        "jurisdiction": "US",
+        "fields": [
+            _f("student_loan_interest", "Box 1 — Student loan interest paid", required=True),
+        ],
+    },
+
+    # India
+    "FORM-16": {
+        "jurisdiction": "IN",
+        "fields": [
+            _f("gross_salary", "Gross salary", required=True),
+            _f("basic_salary", "Basic salary"),
+            _f("hra_received", "HRA received"),
+            _f("standard_deduction_salary", "Standard deduction"),
+            _f("section_80c_declared", "Section 80C declared"),
+            _f("section_80d_declared", "Section 80D declared"),
+            _f("tds_deducted", "TDS deducted"),
+        ],
+    },
+    "FORM-16A": {
+        "jurisdiction": "IN",
+        "fields": [
+            _f("interest_income", "Interest income"),
+            _f("dividend_income", "Dividend income"),
+            _f("tds_deducted", "TDS deducted", required=True),
+        ],
+    },
+    "INVESTMENTS-80C": {
+        "jurisdiction": "IN",
+        "fields": [
+            _f("amount", "Section 80C investment total (PPF + ELSS + LIC + EPF + principal)", required=True),
+        ],
+    },
+    "MEDICAL-80D": {
+        "jurisdiction": "IN",
+        "fields": [
+            _f("self_premium", "Health insurance premium — self/family", required=True),
+            _f("parents_premium", "Health insurance premium — parents"),
+        ],
+    },
+    "STOCK-GAIN": {
+        "jurisdiction": "IN",
+        "fields": [
+            _f("stcg_equity_pre_change", "STCG equity pre 23-Jul-2024"),
+            _f("stcg_equity_post_change", "STCG equity post 23-Jul-2024"),
+            _f("ltcg_equity_pre_change", "LTCG equity pre 23-Jul-2024"),
+            _f("ltcg_equity_post_change", "LTCG equity post 23-Jul-2024"),
+            _f("stcg_other_pre_change", "STCG other pre 23-Jul-2024"),
+            _f("ltcg_other_pre_change", "LTCG other pre 23-Jul-2024"),
+        ],
+    },
 }
 
 

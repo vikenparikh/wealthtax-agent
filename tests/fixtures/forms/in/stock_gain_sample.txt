@@ -1,0 +1,10 @@
+Capital Gains Statement
+Zerodha Tax P&L Report — FY 2024-25
+PAN: ABCDE1234F
+
+STCG equity pre 23-Jul-2024: 20000.00
+STCG equity post 23-Jul-2024: 30000.00
+LTCG equity pre 23-Jul-2024: 60000.00
+LTCG equity post 23-Jul-2024: 150000.00
+STCG other pre 23-Jul-2024: 0.00
+LTCG other pre 23-Jul-2024: 0.00

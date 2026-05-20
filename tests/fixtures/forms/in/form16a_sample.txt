@@ -1,0 +1,10 @@
+Form 16A
+TDS on income other than salary
+Certificate u/s 203 of the Income Tax Act
+Tax year: 2024
+Payer: HDFC Bank Limited
+Deductee: Priya Sharma  PAN: ABCDE1234F
+
+Interest income on FD: 45000.00
+Dividend received: 8000.00
+Tax deducted: 5300.00

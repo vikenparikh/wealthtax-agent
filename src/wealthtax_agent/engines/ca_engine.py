@@ -87,9 +87,16 @@ def compute_ca_return(
     year: int,
     province: str = "ON",
     user_answers: Dict[str, str] | None = None,
+    residency_status: str = "resident",
 ) -> DraftReturn:
     user_answers = user_answers or {}
     notes: List[str] = []
+    if residency_status == "non_resident":
+        notes.append("Canadian non-resident: only Canada-source income is taxed in Canada.")
+    elif residency_status == "part_year_resident":
+        notes.append(
+            "Canadian part-year resident: world income while resident, Canadian-source only while non-resident."
+        )
 
     try:
         fed_tables = load_tables("ca", year)
@@ -207,6 +214,10 @@ def compute_ca_return(
         + _sum_field(extracts, "T2222", "travel_deduction")
     )
 
+    # Student loan interest (line 31900). 15% federal credit on the interest
+    # paid on Canada Student Loans. Cross-border guardrail can zero this out.
+    student_loan_interest_ca = _to_float(user_answers.get("student_loan_interest_ca", 0))
+
     total_income = round(
         employment_income_after_t2200
         + interest_income
@@ -253,7 +264,13 @@ def compute_ca_return(
     medical_creditable = max(0.0, medical_expenses - medical_threshold)
     medical_credit = medical_creditable * float(lowest_rate)
 
-    fed_non_refundable = (bpa + employment_amount) * float(lowest_rate) + donations_credit + medical_credit
+    student_loan_credit = student_loan_interest_ca * float(lowest_rate) if student_loan_interest_ca > 0 else 0.0
+    fed_non_refundable = (
+        (bpa + employment_amount) * float(lowest_rate)
+        + donations_credit
+        + medical_credit
+        + student_loan_credit
+    )
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
     federal_tax = max(0.0, federal_tax_before_credits - fed_non_refundable - federal_dtc)
 
@@ -304,6 +321,8 @@ def compute_ca_return(
         "employment_income": employment_income,
         "employment_expenses_t2200": employment_expenses,
         "employment_income_net": employment_income_after_t2200,
+        "student_loan_interest_ca": student_loan_interest_ca,
+        "student_loan_credit": student_loan_credit,
         "interest_income": interest_income,
         "taxable_eligible_dividends": taxable_eligible,
         "taxable_non_eligible_dividends": taxable_non_eligible,

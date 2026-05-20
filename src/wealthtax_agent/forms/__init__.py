@@ -18,3 +18,4 @@ from wealthtax_agent.forms.us import (  # noqa: F401
     sch_a, sch_b, sch_c, sch_d, sch_e, sch_se,
     i8949, i8889, i5498, i2555,
 )
+from wealthtax_agent.forms import in_  # noqa: F401

@@ -10,6 +10,7 @@ import json
 from typing import Dict, List
 
 from wealthtax_agent.filing.ca_netfile import serialize_t1
+from wealthtax_agent.filing.in_itr import serialize_itr
 from wealthtax_agent.filing.pdf_fill import fill_form
 from wealthtax_agent.filing.quarterly import quarterly_ca_instalments, quarterly_us_1040es
 from wealthtax_agent.filing.us_mef import serialize_1040
@@ -113,6 +114,38 @@ def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, us
     return artifacts
 
 
+def _in_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, user_answers: Dict[str, str]) -> Dict[str, FilingArtifact]:
+    artifacts: Dict[str, FilingArtifact] = {}
+    regime = "new" if draft.line_items.get("regime", 0) == 1.0 else "old"
+    itr_dict = serialize_itr(draft, extracts, year, regime)
+    itr_json = json.dumps(itr_dict, indent=2)
+    artifacts["in_itr_json"] = FilingArtifact(
+        jurisdiction="IN",
+        form_code="ITR-2",
+        filename=f"in_itr_{year}_draft.json",
+        mime_type="application/json",
+        content_b64=_b64(itr_json),
+    )
+    # Plain-text summary alongside the JSON for human review.
+    lines: List[str] = []
+    lines.append(f"India ITR Draft — Assessment Year {year} (Regime: {regime})")
+    lines.append("=" * 60)
+    lines.append(f"Total income:    INR {draft.totals.get('total_income', 0):,.0f}")
+    lines.append(f"Taxable income:  INR {draft.totals.get('taxable_income', 0):,.0f}")
+    lines.append(f"Total tax:       INR {draft.totals.get('total_tax', 0):,.0f}")
+    lines.append(f"Refund / Owing:  INR {draft.totals.get('refund', 0):,.0f} / INR {draft.totals.get('balance_owing', 0):,.0f}")
+    lines.append("")
+    lines.append("This is a draft only. File on incometax.gov.in.")
+    artifacts["in_itr_summary"] = FilingArtifact(
+        jurisdiction="IN",
+        form_code="ITR-SUMMARY",
+        filename=f"in_itr_{year}_summary.txt",
+        mime_type="text/plain",
+        content_b64=_b64("\n".join(lines)),
+    )
+    return artifacts
+
+
 def _planning_artifact(state: GraphState) -> FilingArtifact:
     """Year-over-year planning summary + 5-year tax projection."""
     year = state.filing_year or 2024
@@ -211,6 +244,8 @@ def build_return_node(state: GraphState) -> GraphState:
                 artifacts.update(_ca_artifacts(draft, extracts, year))
             elif jurisdiction == "US":
                 artifacts.update(_us_artifacts(draft, extracts, year, user_answers))
+            elif jurisdiction == "IN":
+                artifacts.update(_in_artifacts(draft, extracts, year, user_answers))
         except Exception as exc:
             state.warnings.append(f"Filing artifact generation failed for {jurisdiction}: {exc}")
 

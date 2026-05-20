@@ -149,10 +149,14 @@ def _sanitize_text_for_llm(text: str) -> str:
     return sanitized
 
 
+_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+_CSV_MIME = "text/csv"
+
+
 def _infer_mime_type(doc_bytes: bytes, provided_mime_type: Optional[str]) -> str:
     if provided_mime_type:
         lowered = provided_mime_type.lower().strip()
-        if lowered in {"application/pdf", "image/png", "image/jpeg"}:
+        if lowered in {"application/pdf", "image/png", "image/jpeg", _XLSX_MIME, _CSV_MIME}:
             return lowered
 
     if doc_bytes.startswith(b"%PDF"):
@@ -161,6 +165,16 @@ def _infer_mime_type(doc_bytes: bytes, provided_mime_type: Optional[str]) -> str
         return "image/png"
     if doc_bytes.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
+    # XLSX is a ZIP whose first entries include xl/ paths.
+    if doc_bytes.startswith(b"PK\x03\x04") and b"xl/" in doc_bytes[:4096]:
+        return _XLSX_MIME
+    # Heuristic CSV detection: ASCII-only, contains commas + newlines.
+    if doc_bytes[:512].count(b",") >= 2 and (b"\n" in doc_bytes[:1024] or b"\r" in doc_bytes[:1024]):
+        try:
+            doc_bytes[:1024].decode("utf-8")
+            return _CSV_MIME
+        except UnicodeDecodeError:
+            pass
     return "application/pdf"
 
 
@@ -233,11 +247,49 @@ def _extract_text_from_image_locally(image_bytes: bytes) -> str:
         return ""
 
 
+def _extract_text_from_xlsx_locally(xlsx_bytes: bytes) -> str:
+    try:
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+    except Exception:
+        return ""
+
+    try:
+        workbook = load_workbook(BytesIO(xlsx_bytes), read_only=True, data_only=True)
+    except Exception:
+        return ""
+
+    parts: List[str] = []
+    for sheet in workbook.worksheets:
+        parts.append(f"# Sheet: {sheet.title}")
+        for row in sheet.iter_rows(values_only=True):
+            cells = ["" if cell is None else str(cell) for cell in row]
+            if any(c.strip() for c in cells):
+                parts.append("\t".join(cells))
+        parts.append("")
+    return "\n".join(parts).strip()
+
+
+def _extract_text_from_csv_locally(csv_bytes: bytes) -> str:
+    try:
+        text = csv_bytes.decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+    # Normalize CRLF to LF and trim trailing whitespace on each line.
+    lines = [line.strip() for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n") if line.strip()]
+    return "\n".join(lines)
+
+
 def _extract_text_locally(doc_bytes: bytes, mime_type: str) -> str:
     if mime_type == "application/pdf":
         return _extract_text_from_pdf_locally(doc_bytes)
     if mime_type in {"image/png", "image/jpeg"}:
         return _extract_text_from_image_locally(doc_bytes)
+    if mime_type == _XLSX_MIME:
+        return _extract_text_from_xlsx_locally(doc_bytes)
+    if mime_type == _CSV_MIME:
+        return _extract_text_from_csv_locally(doc_bytes)
     return ""
 
 
@@ -278,6 +330,10 @@ def ocr_bytes_to_text(doc_bytes: bytes, mime_type: str) -> str:
     if not _is_low_quality_ocr_text(_normalize_ocr_text(local_text)):
         return local_text
 
+    # Excel / CSV cannot be re-OCR'd by a vision model — return what we got.
+    if mime_type in {_XLSX_MIME, _CSV_MIME}:
+        return local_text
+
     if _local_ocr_only_enabled():
         raise ValueError("Local OCR output quality too low and LOCAL_OCR_ONLY is enabled")
 
@@ -311,7 +367,7 @@ def parse_docs_node(state: GraphState) -> GraphState:
     for index, doc in enumerate(state.raw_docs, start=1):
         try:
             input_doc = _coerce_input_document(doc)
-            if input_doc.mime_type not in {"application/pdf", "image/png", "image/jpeg"}:
+            if input_doc.mime_type not in {"application/pdf", "image/png", "image/jpeg", _XLSX_MIME, _CSV_MIME}:
                 raise ValueError(f"Unsupported file format: {input_doc.mime_type}")
 
             text = ocr_bytes_to_text(input_doc.content, input_doc.mime_type)

@@ -15,6 +15,8 @@ from wealthtax_agent.forms import registry  # noqa: F401 - ensure registry is po
 from wealthtax_agent.forms.registry import all_extractors, supported_form_codes
 from wealthtax_agent.llm import call_with_retry, get_client, load_runtime_config, sanitize_runtime_error
 from wealthtax_agent.parse_docs import (
+    _CSV_MIME,
+    _XLSX_MIME,
     _coerce_input_document,
     _is_low_quality_ocr_text,
     _normalize_ocr_text,
@@ -127,12 +129,12 @@ def classify_forms_node(state: GraphState) -> GraphState:
         try:
             input_doc = _coerce_input_document(doc)
             filename = input_doc.filename
-            if input_doc.mime_type not in {"application/pdf", "image/png", "image/jpeg"}:
+            if input_doc.mime_type not in {"application/pdf", "image/png", "image/jpeg", _XLSX_MIME, _CSV_MIME}:
                 unsupported.append(UnsupportedForm(
                     filename=filename,
                     detected_label=None,
                     reason=f"File format {input_doc.mime_type} is not supported",
-                    suggested_next_step="Re-upload as PDF, PNG, or JPEG.",
+                    suggested_next_step="Re-upload as PDF, PNG, JPEG, XLSX, or CSV.",
                 ))
                 continue
 

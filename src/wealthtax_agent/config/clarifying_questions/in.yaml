@@ -1,0 +1,52 @@
+questions:
+  - id: in_regime
+    prompt: "Old or new tax regime? (auto = pick whichever costs less)"
+    why_it_matters: "Old regime allows 80C/80D/HRA/Section 24(b); new regime has lower slabs and a 75k standard deduction."
+    answer_type: choice
+    options: [auto, new, old]
+    priority: high
+  - id: age
+    prompt: "How old were you on the last day of the financial year?"
+    why_it_matters: "Senior (60+) and super-senior (80+) have higher exemption thresholds and 80TTB instead of 80TTA."
+    answer_type: number
+    priority: high
+  - id: city_of_residence
+    prompt: "Which Indian city did you live in (for HRA exemption)?"
+    why_it_matters: "Metro cities (Delhi, Mumbai, Kolkata, Chennai) get 50% HRA exemption; non-metros 40%."
+    answer_type: text
+    priority: medium
+  - id: annual_rent_paid
+    prompt: "How much annual rent did you pay?"
+    why_it_matters: "Required for the HRA exemption calculation (old regime only)."
+    answer_type: number
+    priority: medium
+  - id: section_80c_ppf
+    prompt: "PPF / NSC / EPF / tax-saving FD contributions this year?"
+    why_it_matters: "Section 80C deduction (old regime) — cap ₹1.5 lakh combined."
+    answer_type: number
+    priority: medium
+  - id: section_80d_self_premium
+    prompt: "Health insurance premium paid for self/family?"
+    why_it_matters: "Section 80D — up to ₹25k (under 60) or ₹50k (senior)."
+    answer_type: number
+    priority: medium
+  - id: parents_are_seniors
+    prompt: "Are your parents senior citizens (60+)?"
+    why_it_matters: "Section 80D for parents — ₹25k (under 60) or ₹50k (senior)."
+    answer_type: yes_no
+    priority: low
+  - id: home_loan_interest_self_occupied
+    prompt: "Home loan interest paid on self-occupied property?"
+    why_it_matters: "Section 24(b) deduction up to ₹2 lakh (old regime only)."
+    answer_type: number
+    priority: low
+  - id: student_loan_interest_in
+    prompt: "Education loan interest paid (Section 80E)?"
+    why_it_matters: "Uncapped deduction for the first 8 years of repayment."
+    answer_type: number
+    priority: low
+  - id: is_indian_citizen
+    prompt: "Are you an Indian citizen?"
+    why_it_matters: "Affects residency-test thresholds (Section 6) and deemed-residency rule."
+    answer_type: yes_no
+    priority: high

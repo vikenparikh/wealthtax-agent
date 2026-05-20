@@ -3,7 +3,7 @@ from typing import Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
-Jurisdiction = Literal["CA", "US"]
+Jurisdiction = Literal["CA", "US", "IN"]
 Confidence = Literal["low", "medium", "high"]
 Horizon = Literal["now", "future"]
 
@@ -170,3 +170,8 @@ class GraphState(BaseModel):
     applied_corrections: List[Correction] = Field(default_factory=list)
     revision_number: int = 0
     correction_diff: Optional[Dict[str, Dict[str, float]]] = None
+
+    # Residency / cross-border state
+    residency_days: Dict[str, int] = Field(default_factory=dict)
+    residency_status: Dict[str, str] = Field(default_factory=dict)
+    residency_notes: List[str] = Field(default_factory=list)

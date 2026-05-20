@@ -1,15 +1,39 @@
 import base64
 import os
 from datetime import datetime
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import streamlit as st
 from pydantic import ValidationError
 
+from wealthtax_agent.auth import (
+    CurrentUser,
+    current_user_from_session,
+    ensure_self_hosted_user,
+    login,
+    logout,
+    signup,
+)
 from wealthtax_agent.config.tax_tables import available_years
+from wealthtax_agent.config import get_settings
+from wealthtax_agent.corrections import compute_correction_diff, parse_correction_prompt, revert_correction
+from wealthtax_agent.corrections.intake import parse_intake_narrative
+from wealthtax_agent.db import create_all_for_tests, get_session
+from wealthtax_agent.db.models import ReturnRevision
+from wealthtax_agent.db.repo import (
+    consume_rate_token,
+    find_return_for_year,
+    list_revisions,
+    list_user_returns,
+    revert_to_revision,
+    save_revision,
+    start_return,
+    write_audit,
+)
 from wealthtax_agent.graph import build_graph
+from wealthtax_agent.intake import SUPPORTED_INTAKE_FORMS, field_spec_for, manual_extract
 from wealthtax_agent.llm import sanitize_runtime_error
-from wealthtax_agent.state import GraphState, InputDocument
+from wealthtax_agent.state import Correction, FieldChange, GraphState, InputDocument
 
 
 MAX_FILES = int(os.getenv("MAX_UPLOAD_FILES", "20"))
@@ -20,6 +44,8 @@ APPROVAL_CHECK_KEYS = (
     "approve_check_responsibility",
 )
 
+
+# ---------- small utilities ----------
 
 def _validate_uploads(uploaded_files) -> list[str]:
     warnings = []
@@ -58,10 +84,6 @@ def _coerce_graph_state(raw_state) -> GraphState:
     return GraphState.model_validate(raw_state)
 
 
-def _step_label(done: bool, text: str) -> str:
-    return f"✅ {text}" if done else f"⏳ {text}"
-
-
 def _build_review_report(state: GraphState, reviewer_name: str) -> str:
     draft = state.draft_return
     if draft is None:
@@ -91,7 +113,7 @@ def _build_review_report(state: GraphState, reviewer_name: str) -> str:
 
 
 def _available_years_combined() -> List[int]:
-    years = set(available_years("ca")) | set(available_years("us"))
+    years = set(available_years("ca")) | set(available_years("us")) | set(available_years("in"))
     if not years:
         return [datetime.now().year - 1]
     return sorted(years)
@@ -100,7 +122,143 @@ def _available_years_combined() -> List[int]:
 def _ensure_session_defaults() -> None:
     st.session_state.setdefault("last_state", None)
     st.session_state.setdefault("answers", {})
+    st.session_state.setdefault("session_id", None)
+    st.session_state.setdefault("manual_extracts", [])
+    st.session_state.setdefault("chat_history", [])
+    st.session_state.setdefault("staged_changes", [])
+    st.session_state.setdefault("active_return_id", None)
+    st.session_state.setdefault("active_revision_number", 0)
+    st.session_state.setdefault("auth_mode", "login")
 
+
+def _ensure_db_ready() -> None:
+    """Create tables on first run for SQLite. Production deploys run Alembic."""
+    settings = get_settings()
+    if settings.database_url.startswith("sqlite"):
+        create_all_for_tests()
+
+
+def _previous_drafts(state: GraphState) -> dict:
+    """Snapshot of draft_returns before re-running the graph, for diffing."""
+    return {j: d.model_copy(deep=True) for j, d in (state.draft_returns or {}).items()}
+
+
+# ---------- auth sidebar ----------
+
+def _render_auth_sidebar() -> Optional[CurrentUser]:
+    """Returns the signed-in user, or None when not yet authenticated.
+
+    In ``self_hosted`` mode we auto-sign-in a single owner. In ``saas`` mode
+    we render sign-up / sign-in forms.
+    """
+    settings = get_settings()
+
+    if settings.mode == "self_hosted":
+        if not st.session_state.session_id:
+            st.session_state.session_id = ensure_self_hosted_user()
+        return current_user_from_session(st.session_state.session_id)
+
+    user = current_user_from_session(st.session_state.session_id)
+    if user:
+        st.sidebar.success(f"Signed in as **{user.email}**")
+        if st.sidebar.button("Sign out", key="sidebar_signout"):
+            logout(st.session_state.session_id)
+            st.session_state.session_id = None
+            st.session_state.last_state = None
+            st.session_state.active_return_id = None
+            st.rerun()
+        return user
+
+    st.sidebar.header("Account")
+    mode = st.sidebar.radio(
+        "Auth", ["Sign in", "Sign up"],
+        horizontal=True,
+        index=0 if st.session_state.auth_mode == "login" else 1,
+        key="auth_mode_radio",
+    )
+    st.session_state.auth_mode = "login" if mode == "Sign in" else "signup"
+
+    with st.sidebar.form("auth_form", clear_on_submit=False):
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        full_name = st.text_input("Full name", value="") if mode == "Sign up" else ""
+        submitted = st.form_submit_button(mode)
+
+    if submitted:
+        if mode == "Sign in":
+            result = login(email, password)
+        else:
+            result = signup(email, password, full_name=full_name or None)
+        if result.success:
+            st.session_state.session_id = result.session_id
+            st.rerun()
+        else:
+            st.sidebar.error(result.error or "Authentication failed.")
+    return None
+
+
+# ---------- return history sidebar ----------
+
+def _render_return_history(user: CurrentUser) -> None:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Your returns")
+    with get_session() as session:
+        returns = list_user_returns(session, user.id)
+        if not returns:
+            st.sidebar.caption("No saved returns yet.")
+            return
+        for ret in returns:
+            label = f"{ret.filing_year} · {', '.join(ret.jurisdictions_json or [])}"
+            if st.sidebar.button(label, key=f"load_return_{ret.id}"):
+                # Load latest revision into the working session.
+                revs = list_revisions(session, user_id=user.id, return_id=ret.id)
+                if revs:
+                    latest = revs[-1]
+                    st.session_state.last_state = GraphState.model_validate(latest.state_json)
+                    st.session_state.active_return_id = ret.id
+                    st.session_state.active_revision_number = latest.revision_number
+                    st.success(f"Loaded {label} (revision {latest.revision_number}).")
+                    st.rerun()
+
+
+# ---------- intake wizard ----------
+
+def _render_manual_intake() -> None:
+    """A simple form so the user can share details without uploading a PDF."""
+    with st.expander("➕ Add a slip by typing the numbers (no upload needed)", expanded=False):
+        codes = sorted(SUPPORTED_INTAKE_FORMS.keys())
+        chosen = st.selectbox("Which form?", codes, key="manual_intake_choice")
+        spec = field_spec_for(chosen)
+
+        values: dict = {}
+        with st.form(f"manual_intake_form_{chosen}"):
+            for field in spec:
+                label = field["label"] + (" *" if field.get("required") else "")
+                values[field["name"]] = st.text_input(label, key=f"mi_{chosen}_{field['name']}")
+            submitted = st.form_submit_button(f"Add this {chosen}")
+        if submitted:
+            try:
+                extract = manual_extract(chosen, values)
+                if not extract.fields:
+                    st.warning("No values were captured. Fill at least one field.")
+                else:
+                    st.session_state.manual_extracts.append(extract)
+                    st.success(f"Added {chosen} with {len(extract.fields)} field(s).")
+            except ValueError as exc:
+                st.error(str(exc))
+
+    if st.session_state.manual_extracts:
+        st.caption(f"Pending manual entries: {len(st.session_state.manual_extracts)}")
+        for idx, e in enumerate(st.session_state.manual_extracts):
+            with st.expander(f"Manual entry {idx + 1}: {e.form_code} ({e.jurisdiction})", expanded=False):
+                for k, v in e.fields.items():
+                    st.markdown(f"- **{k}**: {v:,.2f}")
+                if st.button("Remove", key=f"remove_manual_{idx}"):
+                    st.session_state.manual_extracts.pop(idx)
+                    st.rerun()
+
+
+# ---------- existing display helpers (unchanged) ----------
 
 def _render_unsupported_section(state: GraphState) -> None:
     if not state.unsupported_forms:
@@ -200,23 +358,199 @@ def _render_draft_returns(state: GraphState) -> None:
                         st.markdown(f"- **{k}**: ${v:,.2f}")
 
 
+# ---------- correction loop ----------
+
+def _stage_change(change: FieldChange) -> None:
+    st.session_state.staged_changes.append(change)
+
+
+def _render_correction_chat(user: CurrentUser, state: GraphState) -> None:
+    st.caption(
+        "Tell me in plain English what to fix. Examples: "
+        "_\"Set my T4 box 14 to 92,300\"_, "
+        "_\"Add a 1099-INT for $400 from Chase\"_, "
+        "_\"Remove the 1099-MISC\"_."
+    )
+    for entry in st.session_state.chat_history:
+        with st.chat_message(entry["role"]):
+            st.write(entry["content"])
+
+    prompt = st.chat_input("What should I correct?", key="correction_chat_input")
+    if prompt:
+        # Rate-limit per user.
+        settings = get_settings()
+        with get_session() as session:
+            ok = consume_rate_token(
+                session,
+                user_id=user.id,
+                bucket="correction",
+                max_per_minute=settings.correction_rate_per_minute,
+            )
+        if not ok:
+            st.warning("You're sending corrections too fast. Wait a moment and try again.")
+            return
+
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        changes = parse_correction_prompt(prompt)
+        if not changes:
+            response = "I couldn't parse that into a change. Try being more explicit (form code + field + value)."
+        else:
+            preview = "\n".join(
+                f"- {c.op} `{c.target}` {c.form_code or ''} {c.field or ''} → {c.new_value}"
+                for c in changes
+            )
+            response = f"Parsed {len(changes)} change(s):\n{preview}\n\nClick **Stage** to add them to the pending corrections."
+            st.session_state.pending_parsed = [c.model_dump() for c in changes]
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
+        st.rerun()
+
+    pending = st.session_state.get("pending_parsed")
+    if pending:
+        st.markdown("**Pending parsed changes:**")
+        for idx, c in enumerate(pending):
+            cols = st.columns([4, 1, 1])
+            cols[0].write(f"`{c['op']}` {c.get('form_code') or ''} {c.get('field') or ''} → {c.get('new_value')}")
+            if cols[1].button("Stage", key=f"stage_change_{idx}"):
+                _stage_change(FieldChange(**c))
+                st.success(f"Staged change {idx + 1}.")
+            if cols[2].button("Reject", key=f"reject_change_{idx}"):
+                pending.pop(idx)
+                st.rerun()
+
+    if st.session_state.staged_changes:
+        st.markdown(f"**{len(st.session_state.staged_changes)} staged change(s).**")
+        if st.button("Apply staged corrections", key="apply_staged"):
+            correction = Correction(
+                kind="chat",
+                user_prompt="(staged from chat)",
+                changes=list(st.session_state.staged_changes),
+            )
+            state.corrections.append(correction)
+            st.session_state.staged_changes = []
+            st.session_state.pending_parsed = []
+            st.session_state.run_again = True
+            st.rerun()
+
+    if state.applied_corrections:
+        st.markdown("**Applied corrections (revert any):**")
+        for idx, c in enumerate(state.applied_corrections):
+            cols = st.columns([4, 1])
+            cols[0].write(f"#{idx + 1}: {c.kind} — {c.user_prompt or ''} ({len(c.changes)} change(s))")
+            if cols[1].button("Revert", key=f"revert_{c.id}"):
+                new_state, ok = revert_correction(state, c.id)
+                if ok:
+                    st.session_state.last_state = new_state
+                    st.session_state.run_again = True
+                    st.rerun()
+
+
+def _render_inline_edit(state: GraphState) -> None:
+    """Pencil-style per-field edit: pick a form + field, type the new value,
+    stage as an inline_edit correction. Lower-effort than chat for power users.
+    """
+    if not state.extracts:
+        return
+    with st.expander("✎ Edit a specific field", expanded=False):
+        options = []
+        keys = []
+        for extract in state.extracts:
+            for field, value in extract.fields.items():
+                options.append(f"{extract.form_code}.{field}  (current: ${value:,.2f})")
+                keys.append((extract.form_code, extract.jurisdiction, field))
+        if not options:
+            st.caption("No fields available to edit.")
+            return
+        idx = st.selectbox("Field to edit", range(len(options)), format_func=lambda i: options[i], key="inline_edit_select")
+        new_value = st.number_input("New value", value=0.0, key="inline_edit_value")
+        if st.button("Apply inline edit", key="inline_edit_apply"):
+            form_code, jurisdiction, field = keys[idx]
+            correction = Correction(
+                kind="inline_edit",
+                user_prompt=f"Inline edit: {form_code}.{field}",
+                changes=[FieldChange(
+                    op="set", target="extract",
+                    form_code=form_code, jurisdiction=jurisdiction,
+                    field=field, new_value=float(new_value),
+                    reason="Inline numeric edit",
+                )],
+            )
+            state.corrections.append(correction)
+            st.session_state.run_again = True
+            st.rerun()
+
+
+def _render_diff(state: GraphState) -> None:
+    if not state.correction_diff:
+        return
+    st.markdown("**Last correction's impact:**")
+    for jurisdiction, deltas in state.correction_diff.items():
+        rows = [f"{k}: {v:+,.2f}" for k, v in deltas.items() if v]
+        if rows:
+            st.markdown(f"_{jurisdiction}_: " + " · ".join(rows))
+
+
+# ---------- DB persistence ----------
+
+def _persist_revision(user: CurrentUser, state: GraphState) -> None:
+    """Save the freshly-computed state as a new revision under the user."""
+    settings = get_settings()
+    summary_totals = {j: d.totals for j, d in state.draft_returns.items()} if state.draft_returns else {}
+    with get_session() as session:
+        ret_id = st.session_state.active_return_id
+        if ret_id is None:
+            # Look for an existing return for (user, year); reuse if found.
+            existing = find_return_for_year(session, user_id=user.id, filing_year=state.filing_year or 0)
+            if existing is not None:
+                ret_id = existing.id
+            else:
+                ret = start_return(
+                    session,
+                    user_id=user.id,
+                    filing_year=state.filing_year or 0,
+                    jurisdictions=state.jurisdictions,
+                )
+                ret_id = ret.id
+        revision = save_revision(
+            session,
+            user_id=user.id,
+            return_id=ret_id,
+            state_json=state.model_dump(mode="json"),
+            summary_totals_json=summary_totals,
+            form_snapshots=[
+                {"form_code": e.form_code, "jurisdiction": e.jurisdiction,
+                 "fields_json": e.fields, "source": "manual" if (e.source_filename or "").startswith("manual-") else "upload",
+                 "source_filename": e.source_filename}
+                for e in state.extracts
+            ],
+        )
+        st.session_state.active_return_id = ret_id
+        st.session_state.active_revision_number = revision.revision_number
+        write_audit(session, user_id=user.id, return_id=ret_id, action="revision_saved",
+                    payload={"revision": revision.revision_number, "totals": summary_totals})
+
+
+# ---------- main app ----------
+
 def run_app() -> None:
-    graph = build_graph()
     _ensure_session_defaults()
+    _ensure_db_ready()
+    graph = build_graph()
 
     st.set_page_config(page_title="WealthTax Agent", page_icon="💸")
+
+    user = _render_auth_sidebar()
+    if user is None:
+        st.title("WealthTax Agent")
+        st.write("Sign in (or sign up) on the left to start a return.")
+        return
+
+    _render_return_history(user)
+
     st.title("WealthTax Agent — Multi-Country Tax Filing Assistant")
     st.write(
-        "Upload Canadian and US tax forms. The agent identifies each form, computes draft returns, "
-        "suggests legal tax-reduction moves, and produces filing-ready artifacts. "
+        "Share your tax details (upload slips or type numbers in), get a draft return, "
+        "and prompt me to fix anything in plain English — like talking to a CPA. "
         "You remain responsible for reviewing and filing."
-    )
-
-    st.subheader("Trust & Responsibility")
-    st.markdown(
-        "- **System assists with:** identifying forms, computing draft returns, optimization suggestions\n"
-        "- **You decide:** what to file and whether to use the draft as a starting point\n"
-        "- **Never automated:** transmission to CRA NETFILE or IRS MeF (not certified)"
     )
 
     st.subheader("1) Year, jurisdictions, slips")
@@ -228,51 +562,104 @@ def run_app() -> None:
     with jurisdiction_col:
         jurisdictions = st.multiselect(
             "Jurisdictions to compute",
-            options=["CA", "US"],
+            options=["CA", "US", "IN"],
             default=["CA"],
-            help="Pick one or both. Both selected means a cross-border draft.",
+            help="Pick any combination — CA, US, IN. Multiple selected means a cross-border draft.",
         )
+
+    with st.expander("✈️ Days you spent in each country (drives residency tests)", expanded=False):
+        st.caption(
+            "Used to auto-classify residency (IRS Substantial Presence, CRA 183-day, India Section 6) "
+            "and flag treaty tie-breaker situations."
+        )
+        rd_cols = st.columns(3)
+        days_us = rd_cols[0].number_input("Days in US", min_value=0, max_value=366, value=0, key="days_us")
+        days_ca = rd_cols[1].number_input("Days in Canada", min_value=0, max_value=366, value=0, key="days_ca")
+        days_in = rd_cols[2].number_input("Days in India", min_value=0, max_value=366, value=0, key="days_in")
+        st.caption("Optional: prior-year US days drive the Substantial Presence weighted-day count.")
+        prior_cols = st.columns(2)
+        prior_us_1 = prior_cols[0].number_input("US days in prior year", min_value=0, max_value=366, value=0, key="prior_us_1")
+        prior_us_2 = prior_cols[1].number_input("US days two years ago", min_value=0, max_value=366, value=0, key="prior_us_2")
+
+    with st.expander("💬 Describe your tax year in plain English (one paragraph)", expanded=False):
+        st.caption(
+            "Skip the upload and the form-by-form entry — type a paragraph like a CPA intake call. "
+            "Example: \"I'm an Indian citizen who worked in the US Jan–Jun (W-2 $120k) and moved back "
+            "to India Jul–Dec (Form 16 ₹18L, 80C ₹1.5L). Days: US 180, India 184.\""
+        )
+        narrative = st.text_area("Your story", key="intake_narrative", height=120)
+        if st.button("Stage from narrative", key="stage_narrative") and narrative.strip():
+            intake = parse_intake_narrative(narrative)
+            st.session_state.manual_extracts = list(st.session_state.manual_extracts) + list(intake.extracts)
+            st.session_state.answers.update(intake.user_answers)
+            for country, days in intake.residency_days.items():
+                st.session_state[f"days_{country.lower()}"] = days
+            if intake.jurisdictions:
+                st.session_state["narrative_jurisdictions"] = intake.jurisdictions
+            n = len(intake.extracts)
+            st.success(f"Staged {n} extract(s), {len(intake.residency_days)} day-count(s), "
+                       f"{len(intake.user_answers)} answer(s) from your narrative.")
 
     reviewer_name = st.text_input("Reviewer name (optional)", placeholder="e.g., Alex Chen")
     uploaded_files = st.file_uploader(
-        "Upload tax forms (PDF / images)",
-        type=["pdf", "png", "jpg", "jpeg"],
+        "Upload tax forms (PDF / images / Excel / CSV) — or use the typed intake below",
+        type=["pdf", "png", "jpg", "jpeg", "xlsx", "csv"],
         accept_multiple_files=True,
     )
-
     if uploaded_files:
         with st.expander("Selected files", expanded=False):
             for f in uploaded_files:
                 st.markdown(f"- {f.name} ({_format_bytes(f.size)})")
 
+    _render_manual_intake()
+
     validation_warnings = _validate_uploads(uploaded_files)
     for warning in validation_warnings:
         st.warning(warning)
 
-    generate_disabled = (not uploaded_files) or bool(validation_warnings) or not jurisdictions
-
-    run_clicked = st.button("Generate draft return", disabled=generate_disabled)
+    can_generate = (uploaded_files or st.session_state.manual_extracts) and jurisdictions and not validation_warnings
+    run_clicked = st.button("Generate draft return", disabled=not can_generate)
     run_again = st.session_state.pop("run_again", False)
 
     if run_clicked or run_again:
         with st.spinner("Classifying forms, computing taxes, building artifacts..."):
             try:
-                raw_docs = [
-                    InputDocument(content=f.read(), filename=f.name, mime_type=getattr(f, "type", None))
-                    for f in uploaded_files or []
-                ]
-                if not raw_docs and st.session_state.last_state:
-                    raw_docs = st.session_state.last_state.raw_docs
-                initial_state = GraphState(
-                    raw_docs=raw_docs,
-                    filing_year=int(filing_year),
-                    jurisdictions=list(jurisdictions),
-                    user_answers=dict(st.session_state.answers or {}),
-                )
-                final_state = _coerce_graph_state(graph.invoke(initial_state))
+                # Resume from previous state if we're continuing a session.
+                base = st.session_state.last_state or GraphState()
+                base.filing_year = int(filing_year)
+                base.jurisdictions = list(jurisdictions)
+                base.user_answers.update(st.session_state.answers or {})
+                # Residency days from the per-country expander.
+                rd = {}
+                if days_us:
+                    rd["US"] = int(days_us)
+                if days_ca:
+                    rd["CA"] = int(days_ca)
+                if days_in:
+                    rd["IN"] = int(days_in)
+                if rd:
+                    base.residency_days = rd
+                if prior_us_1 or prior_us_2:
+                    base.user_answers.setdefault("prior_year_days_us_prior_1", str(int(prior_us_1)))
+                    base.user_answers.setdefault("prior_year_days_us_prior_2", str(int(prior_us_2)))
+                # Add freshly uploaded docs.
+                if uploaded_files:
+                    base.raw_docs = base.raw_docs + [
+                        InputDocument(content=f.read(), filename=f.name, mime_type=getattr(f, "type", None))
+                        for f in uploaded_files
+                    ]
+                # Inject manual intake extracts (if any).
+                if st.session_state.manual_extracts:
+                    base.extracts = list(base.extracts) + list(st.session_state.manual_extracts)
+                    st.session_state.manual_extracts = []
+                previous = _previous_drafts(base)
+                final_state = _coerce_graph_state(graph.invoke(base))
+                if previous and final_state.draft_returns:
+                    final_state.correction_diff = compute_correction_diff(previous, final_state.draft_returns)
                 st.session_state.last_state = final_state
                 _reset_approval_checks()
-                st.success("Draft generated. Review below.")
+                _persist_revision(user, final_state)
+                st.success(f"Draft saved as revision {st.session_state.active_revision_number}.")
             except (ValidationError, TypeError, ValueError, RuntimeError) as exc:
                 message = _sanitize_error_message(str(exc))
                 st.session_state.last_state = GraphState(
@@ -284,7 +671,7 @@ def run_app() -> None:
 
     state: GraphState = st.session_state.last_state
     if not state:
-        st.info("Upload forms, pick year + jurisdictions, then click 'Generate draft return'.")
+        st.info("Add slips (upload or manual) + click 'Generate draft return'.")
         return
 
     if state.llm_provider:
@@ -305,11 +692,23 @@ def run_app() -> None:
         st.info("No draft return computed. Check unsupported-forms list above.")
         return
 
+    if state.residency_status:
+        with st.expander("🌍 Residency tests", expanded=False):
+            cols = st.columns(len(state.residency_status))
+            for col, (country, status) in zip(cols, state.residency_status.items()):
+                col.metric(country, status)
+            if state.residency_notes:
+                st.caption("Treaty / threshold notes:")
+                for note in state.residency_notes:
+                    st.markdown(f"- {note}")
+
     st.subheader("2) Draft returns")
     _render_draft_returns(state)
+    _render_diff(state)
 
-    summary_tab, optim_tab, slips_tab, artifacts_tab = st.tabs([
+    summary_tab, correct_tab, optim_tab, slips_tab, artifacts_tab = st.tabs([
         "Explanations",
+        "Correct return (CPA)",
         "Optimization suggestions",
         "Parsed forms",
         "Filing artifacts",
@@ -321,6 +720,10 @@ def run_app() -> None:
                 st.markdown(f"**{key}**: {text}")
         else:
             st.info("No explanation text was generated.")
+
+    with correct_tab:
+        _render_correction_chat(user, state)
+        _render_inline_edit(state)
 
     with optim_tab:
         _render_optimizations(state)
@@ -352,24 +755,18 @@ def run_app() -> None:
     st.markdown("---")
     st.subheader("3) Human decision")
     st.caption("The agent never transmits to CRA NETFILE or IRS MeF. You must file via official channels.")
-    check_slips = st.checkbox(
-        "I verified all line items against my source forms.",
-        key="approve_check_slips",
-    )
-    check_explanations = st.checkbox(
-        "I reviewed the explanations, warning flags, and optimization suggestions.",
-        key="approve_check_explanations",
-    )
-    check_responsibility = st.checkbox(
-        "I understand this tool does not file with CRA/IRS and I remain responsible.",
-        key="approve_check_responsibility",
-    )
+    check_slips = st.checkbox("I verified all line items against my source forms.", key="approve_check_slips")
+    check_explanations = st.checkbox("I reviewed the explanations, warning flags, and optimization suggestions.", key="approve_check_explanations")
+    check_responsibility = st.checkbox("I understand this tool does not file with CRA/IRS and I remain responsible.", key="approve_check_responsibility")
     can_approve = _approval_ready([check_slips, check_explanations, check_responsibility])
 
     if not state.human_approved:
         if st.button("Approve this draft (I take responsibility)", disabled=not can_approve):
             state.human_approved = True
             st.session_state.last_state = state
+            with get_session() as session:
+                write_audit(session, user_id=user.id, return_id=st.session_state.active_return_id,
+                            action="approved", payload={"revision": st.session_state.active_revision_number})
             st.rerun()
         if not can_approve:
             st.caption("Complete all review checks to enable approval.")

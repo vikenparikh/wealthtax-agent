@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import List
 
 from wealthtax_agent.engines.ca_engine import compute_ca_return
+from wealthtax_agent.engines.cross_border import cross_border_node
+from wealthtax_agent.engines.in_engine import compute_in_return
 from wealthtax_agent.engines.us_engine import compute_us_return
 from wealthtax_agent.state import DraftReturn, FormExtract, GraphState, Slip
 
@@ -67,12 +69,19 @@ def reason_tax_node(state: GraphState) -> GraphState:
     drafts = {}
     province = (state.user_answers.get("province_of_residence") or "ON").upper()
     state_code = (state.user_answers.get("state_of_residence") or "CA").upper()
+    regime = (state.user_answers.get("in_regime") or "auto").lower()
 
     if "CA" in jurisdictions:
         ca_extracts = [e for e in extracts if e.jurisdiction == "CA"]
         if not ca_extracts and state.slips:
             ca_extracts = _legacy_extracts_from_slips(state.slips)
-        drafts["CA"] = compute_ca_return(ca_extracts, year=year, province=province, user_answers=state.user_answers)
+        drafts["CA"] = compute_ca_return(
+            ca_extracts,
+            year=year,
+            province=province,
+            user_answers=state.user_answers,
+            residency_status=state.residency_status.get("CA", "resident"),
+        )
 
     if "US" in jurisdictions:
         us_extracts = [e for e in extracts if e.jurisdiction == "US"]
@@ -81,17 +90,31 @@ def reason_tax_node(state: GraphState) -> GraphState:
             year=year,
             state=state_code,
             user_answers=state.user_answers,
+            residency_status=state.residency_status.get("US", "resident"),
         )
 
-    # Cross-border warning
+    if "IN" in jurisdictions:
+        in_extracts = [e for e in extracts if e.jurisdiction == "IN"]
+        drafts["IN"] = compute_in_return(
+            in_extracts,
+            year=year,
+            regime=regime,
+            user_answers=state.user_answers,
+            residency_status=state.residency_status.get("IN", "ROR"),
+        )
+
+    # Cross-border warning + FTC hints + student-loan guardrail
     if len(drafts) > 1 or state.user_answers.get("is_us_person", "").lower() in {"yes", "true", "1"}:
         state.warnings.append(
             "Cross-border situation detected (multiple jurisdictions or US-person status). "
-            "Foreign tax credits and treaty positions are NOT modelled in v1."
+            "Foreign tax credits and treaty positions are estimated; verify with a professional."
         )
 
     state.draft_returns = drafts
     # Surface a single 'draft_return' for backwards compatibility with the UI.
-    # Prefer CA when both exist (older UI was CA-only).
-    state.draft_return = drafts.get("CA") or drafts.get("US")
+    # Prefer CA when present (older UI was CA-only).
+    state.draft_return = drafts.get("CA") or drafts.get("US") or drafts.get("IN")
+
+    # Run cross-border guardrails after all engines have produced drafts.
+    state = cross_border_node(state)
     return state
