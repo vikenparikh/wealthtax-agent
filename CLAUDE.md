@@ -34,7 +34,7 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 
 | Fact | Value |
 |---|---|
-| `main` HEAD | `9cf72ad` — `docs: add CLAUDE.md session-handoff file` |
+| `main` HEAD | `c99062f` — `chore: remove broken ui_screenshot_playwright.py (#5)` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
 | Test count | **390 passing**, ~10s wall on a fresh Python 3.12 venv |
@@ -217,7 +217,6 @@ Items deliberately deferred. Each entry should be self-contained — a future Cl
 
 - Dedicated unit tests: `tests/unit/test_in_itr_serializer.py`, `tests/unit/engines/test_student_loan_cross_border.py`. Currently covered indirectly via the cross-border scenario tests.
 - Split `tests/integration/scenarios/test_scenarios_all.py` into 8 named files so a failure points at a single named scenario rather than the parametrized aggregate.
-- Replace or remove `scripts/ui_screenshot_playwright.py`. It has a `SyntaxError` at line 30 (broken try/except indentation), depends on a `playwright` package that isn't in `requirements.txt`, and uses pre-Round F UI selectors (text like *"Generate draft return"* doesn't match the current widget set). AppTest smoke supersedes its CI value; if you keep it, it's only for browser screenshots in marketing/docs.
 - India sample slips: `sample_tax_slips/` only has CA T4/T5/RRSP samples. Add Form 16 / Form 16A samples for parity.
 - A GitHub Release object built from the `v0.5.0` tag, with the CHANGELOG entry as the release notes.
 
@@ -340,6 +339,14 @@ Newest at the top. Format per entry:
 - 2-4 bullets describing the change
 - Any decisions worth carrying forward
 ```
+
+### 2026-05-21 — Remove broken Playwright screenshot script (PR #5)
+
+- HEAD on main: `c99062f` (was `da7514b`)
+- Tests: **390 passing** (unchanged)
+- Closed v0.5.1 backlog item: removed `scripts/ui_screenshot_playwright.py` (SyntaxError, missing `playwright` dep, pre-Round F UI selectors). AppTest smoke supersedes it.
+- Path: created `claude/cleanup-broken-screenshot-script` branch, opened PR #5, squash-merged. CHANGELOG `[Unreleased]` now has a `### Removed` subsection capturing the deletion.
+- First "real" PR landed in this session sequence — earlier v0.5.0 work was direct-pushed to `main` under explicit user authorization.
 
 ### 2026-05-20 — Handoff doc, AppTest smoke, CI/CD pipeline, v0.5.0 release
 
