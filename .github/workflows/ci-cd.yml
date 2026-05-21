@@ -1,0 +1,225 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  # ─── tests run on every push ────────────────────────────────────────────
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          WEALTHTAX_FERNET_KEY: ""
+        run: |
+          PYTHONPATH=src pytest tests/test_wash_sale.py tests/test_estimated_tax.py tests/test_us_1099_parser.py \
+            tests/unit/db/ tests/unit/engines/ tests/unit/forms/ca/ tests/unit/forms/us/ \
+            tests/unit/forms/in_/ -q --no-cov
+
+  # ─── build + push image (main branch only) ──────────────────────────────
+
+  build-image:
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image
+        run: |
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "ref=ghcr.io/${repo}:sha-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── deploy to VPS via platform-infra (main branch only) ────────────────
+
+  deploy:
+    needs: build-image
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_IMAGE: ${{ needs.build-image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          WEALTHTAX_FERNET_KEY: ${{ secrets.WEALTHTAX_FERNET_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          missing=()
+          for name in VPS_HOST VPS_USER VPS_SSH_KEY POSTGRES_PASSWORD WEALTHTAX_FERNET_KEY \
+                      CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_TUNNEL_ID CLOUDFLARE_API_TOKEN; do
+            [ -z "${!name}" ] && missing+=("$name")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Secrets: ${missing[*]}"
+            exit 1
+          fi
+          echo "All required secrets present."
+
+      - name: Set up SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -T 10 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Configure Cloudflare Tunnel ingress (add wealth.vikenparikh.com)
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CF_ACCOUNT_ID" ] || [ -z "$CF_TUNNEL_ID" ] || [ -z "$CF_API_TOKEN" ]; then
+            echo "::warning::Cloudflare creds missing — skipping tunnel ingress config"
+            exit 0
+          fi
+          # Full ingress config: all platform subdomains + wealth
+          response=$(curl -fsS -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${CF_TUNNEL_ID}/configurations" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "config": {
+                "ingress": [
+                  {"hostname": "assistant.vikenparikh.com", "service": "http://caddy:8080"},
+                  {"hostname": "trad.vikenparikh.com",      "service": "http://caddy:8080"},
+                  {"hostname": "bet.vikenparikh.com",       "service": "http://caddy:8080"},
+                  {"hostname": "agents.vikenparikh.com",    "service": "http://caddy:8080"},
+                  {"hostname": "future.vikenparikh.com",    "service": "http://caddy:8080"},
+                  {"hostname": "wealth.vikenparikh.com",    "service": "http://caddy:8080"},
+                  {"hostname": "claw.vikenparikh.com",      "service": "http://openclaw-gateway:18789"},
+                  {"service": "http_status:404"}
+                ]
+              }
+            }' \
+            || echo '{"success":false}')
+          if echo "$response" | grep -q '"success":true'; then
+            echo "Tunnel ingress updated: wealth.vikenparikh.com wired"
+          else
+            echo "::warning::Tunnel ingress update failed: $response"
+          fi
+
+      - name: Ensure DNS CNAME for wealth.vikenparikh.com
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_TUNNEL_ID" ]; then
+            echo "::warning::CF API creds missing — skipping DNS create"; exit 0
+          fi
+          zone_id=$(curl -fsS "https://api.cloudflare.com/client/v4/zones?name=vikenparikh.com" \
+            -H "Authorization: Bearer $CF_API_TOKEN" | jq -r '.result[0].id')
+          if [ -z "$zone_id" ] || [ "$zone_id" = "null" ]; then
+            echo "::warning::Could not find vikenparikh.com zone"; exit 0
+          fi
+          target="${CF_TUNNEL_ID}.cfargotunnel.com"
+          host="wealth.vikenparikh.com"
+          existing=$(curl -fsS "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?name=${host}" \
+            -H "Authorization: Bearer $CF_API_TOKEN" | jq -r '.result[0].id // "none"')
+          if [ "$existing" = "none" ]; then
+            echo "Creating CNAME: $host -> $target"
+            curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records" \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"type\":\"CNAME\",\"name\":\"${host}\",\"content\":\"${target}\",\"proxied\":true,\"ttl\":1}" \
+              | jq -r '"  -> \(.success): \(.result.name // .errors[0].message)"' || true
+          else
+            echo "CNAME $host already exists ($existing)"
+          fi
+
+      - name: Pull image + restart wealth-api on VPS
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REMOTE="${VPS_USER}@${VPS_HOST}"
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$REMOTE" bash -s <<DEPLOY
+          set -euo pipefail
+          cd /opt/app
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+
+          # Persist image var (idempotent)
+          sed -i '/^WEALTH_IMAGE=/d' .env 2>/dev/null || true
+          echo "WEALTH_IMAGE=${DEPLOY_IMAGE}" >> .env
+          sed -i '/^WEALTH_IMAGE=/d' .env.images 2>/dev/null || true
+          echo "WEALTH_IMAGE=${DEPLOY_IMAGE}" >> .env.images
+
+          docker compose -f infra/docker-compose.yml --env-file .env pull wealth-api
+          docker compose -f infra/docker-compose.yml --env-file .env up -d wealth-api
+          docker image prune -f
+          echo "wealth-api restarted with ${DEPLOY_IMAGE}"
+          DEPLOY
+
+      - name: Smoke test wealth.vikenparikh.com
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS "https://wealth.vikenparikh.com/health" >/dev/null 2>&1; then
+              echo "ok — wealth.vikenparikh.com is reachable"; exit 0
+            fi
+            sleep 6
+          done
+          echo "::warning::Health check timed out — may need cloudflared restart on VPS"
