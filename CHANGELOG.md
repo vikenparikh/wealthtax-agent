@@ -11,11 +11,14 @@ Punch-list captured during the v0.5.0 audit; deferred to v0.5.1:
 - Dedicated unit tests: `tests/unit/test_in_itr_serializer.py`, `tests/unit/engines/test_student_loan_cross_border.py`.
 - Split `tests/integration/scenarios/test_scenarios_all.py` into 8 named files so failures point at a single named scenario.
 - A GitHub Release object built from the `v0.5.0` tag with the CHANGELOG body as release notes.
-- Replace or remove `scripts/ui_screenshot_playwright.py` — it has a `SyntaxError` and references the pre-Round F UI; superseded by `tests/integration/test_streamlit_smoke.py`.
 
 ### Added (post-v0.5.0, pre-v0.5.1)
 
 - **AppTest smoke coverage** — `tests/integration/test_streamlit_smoke.py` boots `src/wealthtax_agent/main.py` via `streamlit.testing.v1.AppTest` under both `WEALTHTAX_MODE=self_hosted` and `WEALTHTAX_MODE=saas`, asserts no exceptions during initial render, and pins UI invariants (jurisdiction picker offers CA + US + IN; year picker includes 2024+). Closes the "Streamlit AppTest smoke coverage" item from the v0.5.0 audit.
+
+### Removed (post-v0.5.0, pre-v0.5.1)
+
+- **`scripts/ui_screenshot_playwright.py`** — had a `SyntaxError` (broken try/except indentation at module top), depended on a `playwright` package not in `requirements.txt`, and used pre-Round F UI selectors that no longer matched the current widget set. UI smoke is now covered by `tests/integration/test_streamlit_smoke.py` (AppTest). Closes the corresponding v0.5.1 punch-list item.
 
 ## [0.5.0] — 2026-05-20
 
