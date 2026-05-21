@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wealthtax-agent"
-version = "0.1.0"
-description = "AI-native Canadian tax draft prototype"
+version = "0.5.0"
+description = "AI-native multi-jurisdiction tax draft assistant (CA / US / IN)"
 readme = "README.md"
 requires-python = ">=3.10"
 

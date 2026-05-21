@@ -1,7 +1,7 @@
-# WealthTax Agent – Canadian Tax Draft Assistant
+# WealthTax Agent – Multi-Jurisdiction Tax Draft Assistant (CA / US / IN)
 
 This is a prototype built for the Wealthsimple builder challenge.
-It redesigns the Canadian personal tax workflow using a modern, human-centered system.
+It redesigns the personal tax workflow for Canada, the United States, and India using a modern, human-centered system with cross-border awareness.
 
 1) 3 min video  of WealthTax Agent- https://drive.google.com/file/d/1KwyjVE9gFBfe6rH5mMn9HvSpVAd14nGe/view?usp=sharing
 
@@ -12,18 +12,33 @@ It redesigns the Canadian personal tax workflow using a modern, human-centered s
 
 ## What it does
 
-- Accepts any uploaded tax form (PDF / image) for **Canada or the United States** and identifies it.
+- Accepts any uploaded tax form (PDF / image / **Excel** / **CSV**) for **Canada, the United States, or India** and identifies it.
 - If the form is outside the v1 supported list, it returns an explicit
   "unsupported form" message with the reason and a suggested next step.
-- Supported forms (33 in total):
+- Supported forms (38 in total):
   - **Canada (13):** T1 + T4, T5, T3, T5008, T2202, T4A, RRSP receipts, T776,
     T2125, T2200 (employment expenses), T4RSP, T4RIF, T5013 (partnership).
   - **United States (20):** 1040 + W-2, 1099-INT/DIV/B/NEC/MISC/R/K/G,
     1098 / 1098-E / 1098-T, SSA-1099, Schedule K-1, Schedules A/B/C/D/E/SE.
+  - **India (5):** Form 16, Form 16A, Form 26AS, AIS (Annual Information Statement), STOCK-GAIN.
 - Computes draft returns using real progressive brackets, BPA / CPP / EI /
   dividend tax credit (CA, with provincial tables for **ON / BC / AB / QC**),
   standard deduction / CTC / FICA / preferential capital-gain rates (US, with
-  state tables for **CA / NY / TX / FL / WA**).
+  state tables for **CA / NY / TX / FL / WA**), and **India's old + new regime**
+  (87A rebate, surcharge tiers, 4% cess, LTCG pre/post-Jul'24 split, sections
+  80C / 80D / 80E / 80G / 24(b), HRA exemption, residency-aware NR / RNOR / ROR).
+- **Auto-runs residency tests** (US Substantial Presence, CA 183-day deemed residency,
+  India §6 ROR / RNOR / NR) and emits **treaty tie-breaker notes** (US-CA Article IV,
+  US-India Article 4) when more than one jurisdiction would treat the user as resident.
+- **Ingests Excel and CSV broker exports** (Schwab / Wealthsimple / Zerodha) and **dedupes**
+  the same form across upload formats (content sha256 + form fingerprint).
+- **Natural-language intake**: a one-paragraph description of the year ("I worked in
+  the US Jan-Jun and moved to India Jul-Dec, W-2 wages $120k...") is a complete
+  alternative to uploading slips — extracts, residency days, and clarifying answers
+  are populated automatically.
+- **Cross-border guardrails**: student-loan interest can only be claimed in one
+  jurisdiction (picks the highest-marginal); RSU vesting is sourced per
+  Rev. Proc. 2008-23; FTC hints are emitted when the same income is taxed twice.
 - Carry-forward aware: prior-year capital losses, RRSP room rollover,
   tuition carry-forward, HSA + traditional IRA above-the-line adjustments.
 - Lets the user pick the **tax year** (multi-year YAML config; 2023 / 2024 / 2025 shipped).
@@ -34,9 +49,11 @@ It redesigns the Canadian personal tax workflow using a modern, human-centered s
   401(k) / IRA top-ups, FHSA, capital-loss harvesting, tuition transfers,
   HSA, student-loan interest, and more.
 - Produces downloadable filing-ready artifacts every run:
-  - Filled draft PDF (T1 summary / 1040 summary).
+  - Filled draft PDF (T1 summary / 1040 summary / ITR summary).
   - CRA NETFILE-shaped XML (CA).
   - IRS MeF-shaped JSON (US).
+  - Indian e-filing-shaped ITR JSON (IN), with PartA-GEN, ScheduleS, ScheduleHP,
+    ScheduleCG, ScheduleVIA, PartB-TI, PartB-TTI.
   - Quarterly estimated-tax vouchers — IRS 1040-ES Q1-Q4 and CRA INNS3 Q1-Q4
     — generated automatically when self-employment income or balance owing
     crosses the threshold.
@@ -78,6 +95,14 @@ Optional endpoint/model overrides:
   ```
   
 `LOCAL_OCR_ONLY=true` forces local OCR-only behavior. For image uploads this requires a local OCR backend (e.g., `tesseract`) to be installed.
+
+Optional deployment-mode flag for the production UI:
+
+  ```bash
+  export WEALTHTAX_MODE=saas   # enables the auth sidebar (email sign-up / sign-in)
+  # or
+  export WEALTHTAX_MODE=self_hosted   # single-user mode, no auth
+  ```
 
 ### 2. Install dependencies
 
