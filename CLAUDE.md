@@ -34,10 +34,10 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 
 | Fact | Value |
 |---|---|
-| `main` HEAD | `c99062f` — `chore: remove broken ui_screenshot_playwright.py (#5)` |
+| `main` HEAD | `37f7f9b` — `fix(security+tests): audit findings` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
-| Test count | **390 passing**, ~10s wall on a fresh Python 3.12 venv |
+| Test count | **478 passing**, ~11s wall on a fresh Python 3.11 venv |
 | Streamlit boot smoke | ✅ green via `./scripts/validate.sh` |
 | AppTest UI smoke | ✅ both `self_hosted` and `saas` modes render without exception |
 | GitHub Actions on `main` | unknown from this sandbox (no MCP tool for `workflow_run`); check the Actions tab in browser |
@@ -339,6 +339,15 @@ Newest at the top. Format per entry:
 - 2-4 bullets describing the change
 - Any decisions worth carrying forward
 ```
+
+### 2026-05-21 — Security & correctness audit (PII, safe-harbour, reconnect, wash-sale, CPA chat)
+
+- HEAD on main: `37f7f9b` (was `c99062f`)
+- Tests: **478 passing** (was 462 → added 16 tests)
+- HIGH fixes: replaced SSN-shaped value in `tests/unit/db/test_crypto.py` (was `"123-45-6789"`) with synthetic `"SYNTH-TAX-ID-0000"`; added `tests/unit/test_cpa_chat.py` (18 tests) asserting disclaimer always present + system prompt never claims to file a return.
+- MED fixes: `engines/estimated_tax.py` §6654 boundary comment clarified; boundary test for AGI == $150,000 uses 100% not 110%; `workers/event_consumer.py` reconnect loop fixed (`<= MAX_RETRIES` → `< MAX_RETRIES`); `TestReconnectRetry` added.
+- MED additions: `tests/test_wash_sale.py` three new edge-case classes — short-against-the-box (covering buy), DRIP partial replacement, options caller-contract documentation.
+- No Anthropic SDK imports found anywhere. Fernet encryption confirmed on all User PII columns (`full_name_enc`, `sin_or_ssn_enc`, `dob_enc`, `address_enc`).
 
 ### 2026-05-21 — Remove broken Playwright screenshot script (PR #5)
 
