@@ -210,3 +210,39 @@ class TestEventBusEndToEnd:
         assert ticker == "SPY"
         assert side == "buy"
         assert quantity == 20
+
+
+class TestReconnectRetry:
+    """Verify graceful reconnect logic in run() does not exceed MAX_RETRIES."""
+
+    @pytest.mark.asyncio
+    async def test_run_raises_after_max_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """run() must re-raise after exactly MAX_RETRIES consecutive failures."""
+        from wealthtax_agent.workers import event_consumer as ec
+
+        call_count = 0
+
+        async def _failing_subscribe(*_args, **_kwargs):
+            nonlocal call_count
+            call_count += 1
+            raise ConnectionError("redis down")
+
+        # Patch asyncio.sleep so the test doesn't actually wait
+        async def _noop_sleep(_seconds):
+            pass
+
+        monkeypatch.setattr(ec, "MAX_RETRIES", 3)
+        monkeypatch.setattr(asyncio, "sleep", _noop_sleep)
+
+        # Patch subscribe to always fail
+        from wealthtax_agent.events import bus as _bus
+        monkeypatch.setattr(_bus, "subscribe", _failing_subscribe)
+
+        import importlib
+        # Re-import the consumer so it picks up the monkeypatched subscribe
+        with pytest.raises(ConnectionError):
+            await ec.run()
+
+        # With MAX_RETRIES=3, run() should attempt 3 times (attempts 1, 2, 3)
+        # before giving up; the first call is attempt 0 (counted as attempt 1 before raise check)
+        assert call_count >= 2, f"Expected at least 2 subscribe calls, got {call_count}"

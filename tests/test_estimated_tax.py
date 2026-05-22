@@ -63,6 +63,18 @@ class TestBasicComputation:
         )
         assert r.safe_harbour_a == pytest.approx(10_000.0, rel=1e-4)
 
+    def test_exact_150k_agi_uses_100pct_not_110pct(self):
+        """IRS §6654(d)(1)(B)(ii): the 110% rate applies only when prior-year AGI is
+        *strictly greater than* $150,000.  Taxpayers at exactly $150,000 use 100%."""
+        r = compute_estimated_payments(
+            tax_year=2025,
+            prior_year_tax=30_000,
+            prior_year_agi=150_000,  # boundary — must NOT trigger 110%
+        )
+        assert r.safe_harbour_a == pytest.approx(30_000.0, rel=1e-4), (
+            "AGI == $150,000 should use 100% safe harbour, not 110%"
+        )
+
     def test_note_includes_draft_disclaimer(self):
         r = compute_estimated_payments(tax_year=2025, prior_year_tax=5_000)
         assert "DRAFT" in r.note

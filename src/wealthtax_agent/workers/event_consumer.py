@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
 
-MAX_RETRIES = 5
+MAX_RETRIES = 5  # maximum number of reconnect attempts before giving up
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ async def run() -> None:
     from wealthtax_agent.events.schemas import TradeFilledEvent
 
     attempt = 0
-    while attempt <= MAX_RETRIES:
+    while True:
         try:
             log.info("wealthtax event consumer starting (attempt %d)", attempt)
             await asyncio.gather(
@@ -125,7 +125,7 @@ async def run() -> None:
             return
         except Exception as exc:
             attempt += 1
-            if attempt > MAX_RETRIES:
+            if attempt >= MAX_RETRIES:
                 log.error(
                     "event consumer: Redis failed %d times — giving up: %s",
                     MAX_RETRIES, exc,

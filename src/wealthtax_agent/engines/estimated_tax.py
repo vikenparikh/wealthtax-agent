@@ -139,7 +139,8 @@ def compute_estimated_payments(
         tax_year=tax_year,
     )
 
-    # Safe harbour A: 100% of prior-year (110% if prior AGI > $150 000)
+    # Safe harbour A: 100% of prior-year (110% if prior AGI > $150 000, §6654(d)(1)(B)(ii))
+    # IRS rule is strictly > $150,000 (not >= ); taxpayers at exactly $150,000 use 100%.
     multiplier_a = 1.10 if prior_year_agi > 150_000 else 1.00
     safe_a = prior_year_tax * multiplier_a
 

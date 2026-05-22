@@ -155,3 +155,66 @@ class TestEmptyAndEdge:
         ]
         _, results = detect_wash_sales(lots)
         assert results == []
+
+
+class TestWashSaleEdgeCases:
+    """Edge cases: short-against-the-box, options (caller-side note), DRIP buys."""
+
+    def test_short_against_the_box_same_ticker_triggers_wash_sale(self):
+        """Short-against-the-box: selling short while holding long on the *same* ticker.
+        Under §1091 the short sale itself is not a wash sale trigger, but a *covering*
+        buy within 30 days of a separate loss sale IS a replacement purchase.
+        This test models: loss sale on Jan 10 + covering buy (same ticker) on Jan 15 →
+        wash sale flagged because the covering buy is within the 30-day window.
+        """
+        lots = [
+            _lot("long1", "QQQ", "buy",  date(2024, 1, 2),  100, 500_000),  # long position
+            _lot("sell1", "QQQ", "sell", date(2024, 1, 10), 100, 480_000),  # sell at loss ($200)
+            _lot("cover", "QQQ", "buy",  date(2024, 1, 15), 100, 490_000),  # covering buy (within window)
+        ]
+        lots[1].adjusted_basis_cents = 500_000
+        _, results = detect_wash_sales(lots)
+        assert len(results) == 1, "Covering buy within 30 days should trigger wash-sale"
+        assert results[0].sell_lot_id == "sell1"
+        assert results[0].replacement_lot_id == "cover"
+        assert results[0].disallowed_loss_cents == 20_000  # $200 loss
+
+    def test_drip_reinvestment_buy_within_window_triggers_wash_sale(self):
+        """Dividend Reinvestment Plan (DRIP) purchases are 'buy' lots.
+        If a DRIP buy falls within 30 days of a loss sale on the same stock,
+        it qualifies as a replacement purchase and triggers §1091.
+        """
+        lots = [
+            _lot("orig",  "VTI", "buy",  date(2024, 3, 1),  50, 1_000_000),   # original buy
+            _lot("sale",  "VTI", "sell", date(2024, 3, 20), 50,   980_000),   # loss sale ($200)
+            _lot("drip",  "VTI", "buy",  date(2024, 4, 1),   2,    39_000),   # DRIP reinvestment
+        ]
+        lots[1].adjusted_basis_cents = 1_000_000
+        _, results = detect_wash_sales(lots)
+        assert len(results) == 1, "DRIP buy within 30 days should be treated as replacement purchase"
+        # Only 2 shares covered out of 50 sold → partial disallowance
+        proportion = 2 / 50
+        expected_disallowed = int(proportion * 20_000)
+        assert results[0].disallowed_loss_cents == expected_disallowed
+
+    def test_options_on_same_underlying_are_not_flagged_by_default(self):
+        """Options on a security are substantially identical to the underlying only
+        in specific conditions (Rev. Rul. 2008-5).  The engine currently requires the
+        CALLER to resolve options to their underlying ticker before calling
+        detect_wash_sales().  This test documents that different tickers (e.g. QQQ vs
+        QQQM without a shared CUSIP) are NOT matched — confirming the caller contract.
+        """
+        # Model an option buy as a synthetic lot with a different ticker and no CUSIP match
+        lots = [
+            _lot("b1",    "QQQ",      "buy",  date(2024, 5, 1),  100, 500_000),
+            _lot("sell1", "QQQ",      "sell", date(2024, 5, 10), 100, 480_000),  # loss
+            _lot("opt",   "QQQ240621C00480000", "buy", date(2024, 5, 12), 1, 150_000),  # call option
+        ]
+        lots[1].adjusted_basis_cents = 500_000
+        _, results = detect_wash_sales(lots)
+        # Different ticker + no shared CUSIP → no wash-sale match
+        # The caller is responsible for mapping option tickers → underlying before calling
+        assert results == [], (
+            "Option ticker without CUSIP mapping should NOT trigger wash-sale; "
+            "caller must resolve options to underlying before calling detect_wash_sales()"
+        )
