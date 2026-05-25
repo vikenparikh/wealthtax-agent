@@ -1,60 +1,43 @@
 #!/bin/bash
-# Local embedded-RAG fallback for when INDEX.md doesn't route the question.
+# Search fallback for when INDEX.md + KG don't route the question.
 #
-# Uses Ollama for embeddings (default model: nomic-embed-text) + a flat
-# numpy file for the store. Zero hosted cost.
+# No embeddings, no Ollama, no model files. Just:
+#   1. Build a one-page file listing (paths + first H1 + frontmatter)
+#   2. Query: grep the listing for keywords, then hand the matching files
+#      and the question to `claude -p` for reasoning
+#
+# Why not embeddings? — we're already using `claude` for everything else;
+# a local embedding daemon adds infra without paying for itself at our repo sizes.
+# The KG + INDEX give us deterministic routing; this layer is the soft-search fallback.
 #
 # Usage:
-#   bash .claude/scripts/build-rag.sh build              # index this repo
+#   bash .claude/scripts/build-rag.sh build                  # build the file listing
 #   bash .claude/scripts/build-rag.sh query "how does X work?"
 #   bash .claude/scripts/build-rag.sh status
 #   bash .claude/scripts/build-rag.sh clean
-#
-# Indexes:
-#   - all .md files
-#   - top of each source file (first 80 lines) — enough for module headers / imports
-# Skips: node_modules, .git, .next, dist, build, __pycache__, vendor, .venv, venv
-#
-# Storage: .claude/rag/{embeddings.npy, chunks.jsonl, manifest.json}
 
 set -euo pipefail
 
 REPO_ROOT="$(pwd)"
 RAG_DIR="$REPO_ROOT/.claude/rag"
-EMBED_MODEL="${RAG_EMBED_MODEL:-nomic-embed-text}"
+LISTING="$RAG_DIR/listing.txt"
 
 CMD="${1:-help}"; shift || true
 
-ensure_ollama() {
-    if ! command -v ollama >/dev/null 2>&1; then
-        echo "ERROR: ollama not installed. brew install ollama (mac) or https://ollama.com/install" >&2
+ensure_claude() {
+    if ! command -v claude >/dev/null 2>&1; then
+        echo "ERROR: 'claude' CLI not on PATH. Install Claude Code first." >&2
         exit 1
     fi
-    if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-        echo "ERROR: ollama daemon not running. Start it: 'ollama serve' (in another terminal)" >&2
-        exit 1
-    fi
-    if ! ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -q "^${EMBED_MODEL}"; then
-        echo "Pulling embedding model: $EMBED_MODEL"
-        ollama pull "$EMBED_MODEL"
-    fi
-}
-
-ensure_python_deps() {
-    python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet --user numpy
 }
 
 case "$CMD" in
     build)
-        ensure_ollama
-        ensure_python_deps
         mkdir -p "$RAG_DIR"
         echo "Scanning files..."
-        FILES_LIST="$RAG_DIR/files.txt"
-        # Exclude .claude/ entirely — it carries symlinks into root vendored
-        # skill packs (~27k files). Only index repo-owned content.
-        # Also skip data/parquet artifacts, model checkpoints, logs.
+
         # Wildcard-prefixed excludes catch nested copies (e.g. dashboard/node_modules).
+        # Pull all candidate files first.
         find . -type f \( -name '*.md' -o -name '*.py' -o -name '*.ts' -o -name '*.tsx' \
             -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.rs' \
             -o -name '*.sh' -o -name '*.yaml' -o -name '*.yml' -o -name '*.toml' \) \
@@ -66,106 +49,113 @@ case "$CMD" in
             -not -path '*/logs/*' -not -path '*/.pytest_cache/*' -not -path '*/.ruff_cache/*' \
             -not -path '*/worktrees/*' -not -path '*/target/*' \
             -not -path '*/.playwright-mcp/*' \
-            > "$FILES_LIST"
-        N=$(wc -l < "$FILES_LIST" | tr -d ' ')
-        echo "Embedding $N files via $EMBED_MODEL..."
+            -not -path '*/forks/*' -not -path './.venv-*' -not -path '*/.venv-*/*' \
+            -not -path '*/site-packages/*' -not -path '*/.tox/*' -not -path '*/coverage/*' \
+            > "$RAG_DIR/files.txt"
 
-        python3 <<PYEOF
-import json, os, subprocess, sys, urllib.request
-import numpy as np
+        N=$(wc -l < "$RAG_DIR/files.txt" | tr -d ' ')
+        echo "Building listing for $N files..."
 
-REPO = "$REPO_ROOT"
-RAG = "$RAG_DIR"
-MODEL = "$EMBED_MODEL"
+        # For each file, capture: path | first H1 (or first non-blank line) | frontmatter tags
+        python3 <<'PYEOF' > "$LISTING"
+import os, re, sys
 
-def embed(text: str) -> list[float]:
-    payload = json.dumps({"model": MODEL, "prompt": text}).encode()
-    req = urllib.request.Request(
-        "http://127.0.0.1:11434/api/embeddings",
-        data=payload, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())["embedding"]
-
-chunks, embs = [], []
-with open(os.path.join(RAG, "files.txt")) as f:
+files_path = ".claude/rag/files.txt"
+with open(files_path) as f:
     files = [l.strip() for l in f if l.strip()]
 
-for i, path in enumerate(files, 1):
+def first_h1(text):
+    for line in text.splitlines()[:40]:
+        if line.startswith("# "):
+            return line[2:].strip()
+    return ""
+
+def first_nonblank(text):
+    for line in text.splitlines()[:40]:
+        s = line.strip()
+        if s and not s.startswith(("#!", "//", "/*", "*", "<!--", '"""', "'''")):
+            return s[:120]
+    return ""
+
+def frontmatter_tags(text):
+    if not text.startswith("---"):
+        return ""
+    end = text.find("\n---", 4)
+    if end == -1:
+        return ""
+    fm = text[4:end]
+    m = re.search(r'^tags:\s*\[(.*?)\]', fm, re.MULTILINE)
+    return m.group(1).strip() if m else ""
+
+for p in files:
     try:
-        if os.path.getsize(path) > 200_000:
-            continue  # skip oversize — nomic-embed-text caps at ~8K tokens
-        with open(path, errors="ignore") as fh:
-            content = fh.read()
+        if os.path.getsize(p) > 500_000:
+            continue
+        with open(p, errors="ignore") as fh:
+            text = fh.read(8000)
     except Exception:
         continue
-    if not content.strip():
-        continue
-    # For markdown, embed whole file (if <8 KB) else head + first section.
-    # For code, embed first 80 lines as the "module header".
-    if path.endswith(".md"):
-        body = content[:8000]
-    else:
-        body = "\n".join(content.splitlines()[:80])
-    if len(body) < 50:
-        continue
-    try:
-        e = embed(body)
-    except Exception as ex:
-        print(f"  skip {path}: {ex}", file=sys.stderr)
-        continue
-    chunks.append({"path": path, "preview": body[:300]})
-    embs.append(e)
-    if i % 25 == 0:
-        print(f"  {i}/{len(files)}")
-
-if not embs:
-    print("No chunks indexed.", file=sys.stderr); sys.exit(1)
-
-arr = np.array(embs, dtype=np.float32)
-arr /= np.linalg.norm(arr, axis=1, keepdims=True) + 1e-12
-np.save(os.path.join(RAG, "embeddings.npy"), arr)
-with open(os.path.join(RAG, "chunks.jsonl"), "w") as out:
-    for c in chunks: out.write(json.dumps(c) + "\n")
-with open(os.path.join(RAG, "manifest.json"), "w") as out:
-    json.dump({"model": MODEL, "n": len(chunks), "dim": int(arr.shape[1])}, out, indent=2)
-print(f"Indexed {len(chunks)} chunks, dim={arr.shape[1]}")
+    title = first_h1(text) or first_nonblank(text)
+    tags = frontmatter_tags(text)
+    line = p
+    if title:
+        line += f" | {title}"
+    if tags:
+        line += f" | [{tags}]"
+    print(line)
 PYEOF
+
+        L=$(wc -l < "$LISTING" | tr -d ' ')
+        cat > "$RAG_DIR/manifest.json" <<EOF
+{"backend": "grep+claude", "n_files": $N, "n_indexed": $L, "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+EOF
+        echo "Indexed $L files (of $N candidates) into $LISTING"
         ;;
 
     query)
+        ensure_claude
         Q="${1:-}"
         [ -z "$Q" ] && { echo "usage: $0 query '<question>'" >&2; exit 1; }
-        ensure_ollama
-        ensure_python_deps
-        [ -f "$RAG_DIR/embeddings.npy" ] || { echo "RAG not built. Run: $0 build" >&2; exit 1; }
-        K="${RAG_TOP_K:-8}"
-        python3 <<PYEOF
-import json, os, urllib.request
-import numpy as np
+        [ -f "$LISTING" ] || { echo "Not built. Run: $0 build" >&2; exit 1; }
 
-RAG = "$RAG_DIR"
-MODEL = json.load(open(os.path.join(RAG, "manifest.json")))["model"]
-Q = """$Q"""
-K = $K
+        # Extract candidate keywords from question (longer than 3 chars, not stopwords)
+        KEYWORDS=$(python3 -c "
+import re
+stop = set('the a an is are was were be been being do does did has have had it its this that they them with for from into about where what when which how why who'.split())
+q = '''$Q'''
+# Split CamelCase / snake_case into parts so 'RiskChain' yields 'Risk' + 'Chain'
+words = re.findall(r'[A-Za-z][A-Za-z0-9_-]{2,}', q)
+parts = []
+for w in words:
+    parts.append(w)
+    # CamelCase split: RiskChain -> Risk, Chain
+    splits = re.findall(r'[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z])|[a-z]+', w)
+    parts.extend(s for s in splits if len(s) >= 3 and s.lower() != w.lower())
+kept = [p for p in set(parts) if p.lower() not in stop and len(p) >= 3]
+print('|'.join(kept))
+")
+        if [ -z "$KEYWORDS" ]; then
+            echo "No keywords extracted; falling back to whole listing." >&2
+            CANDIDATES="$(cat "$LISTING")"
+        else
+            CANDIDATES="$(grep -iE "$KEYWORDS" "$LISTING" | head -40 || true)"
+            if [ -z "$CANDIDATES" ]; then
+                # No keyword hit — pass top 40 of the listing as context
+                CANDIDATES="$(head -40 "$LISTING")"
+                echo "(no keyword match; passing top 40 of listing to Claude)" >&2
+            fi
+        fi
 
-def embed(text):
-    payload = json.dumps({"model": MODEL, "prompt": text}).encode()
-    req = urllib.request.Request("http://127.0.0.1:11434/api/embeddings",
-        data=payload, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())["embedding"]
+        # Hand the listing + question to claude -p for reasoning
+        PROMPT="You are answering a search query against a repository. The user's question is:
 
-q = np.array(embed(Q), dtype=np.float32)
-q /= np.linalg.norm(q) + 1e-12
-M = np.load(os.path.join(RAG, "embeddings.npy"))
-scores = M @ q
-top = np.argsort(-scores)[:K]
-with open(os.path.join(RAG, "chunks.jsonl")) as f:
-    chunks = [json.loads(l) for l in f]
-print(f"Top {K} for: {Q!r}\n")
-for r, i in enumerate(top, 1):
-    print(f"{r}. {scores[i]:.3f}  {chunks[i]['path']}")
-PYEOF
+$Q
+
+Below is a candidate listing of files (path | one-line summary | tags) that might be relevant. Pick the 3-5 most relevant files. Briefly explain why each is a match. Output as a ranked list with format: \`<rank>. \<path\> — <why>\`. Do not invent paths.
+
+Listing:
+$CANDIDATES"
+        claude -p "$PROMPT"
         ;;
 
     status)

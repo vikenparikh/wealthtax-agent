@@ -46,7 +46,15 @@ machine-learning-ops, agent-orchestration, comprehensive-review, git-pr-workflow
 - `git commit` containing secrets (AWS/Anthropic/OpenAI/JWT/PEM) blocked
 - Production DB resets blocked
 
-Override with `# ACK-DANGEROUS` or `# ACK-SECRET` only when intentional.
+Override sentinels (append to the command, use sparingly):
+
+- `# ACK-DANGEROUS` — bypass block-dangerous.sh for one specific command. Example:
+  `rm -rf .claude/rag # ACK-DANGEROUS`
+- `# ACK-SECRET` — bypass block-secret-commit.sh when the matched string is a
+  fixture or placeholder. Example: `git commit -m "add docs" # ACK-SECRET`
+- For raw git outside Claude Code: `GIT_SECRET_ACK=1 git commit ...` (the
+  pre-commit hook installed at `.git/hooks/pre-commit` also enforces secret
+  scanning — bypass with `--no-verify` only if you're certain).
 
 ## Style (see [.claude/rules/10-style.md](.claude/rules/10-style.md))
 
