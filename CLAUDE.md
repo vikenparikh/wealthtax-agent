@@ -34,7 +34,7 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 
 | Fact | Value |
 |---|---|
-| `main` HEAD | `37f7f9b` — `fix(security+tests): audit findings` |
+| `main` HEAD | `0a99869` — `feat(security): enforce FilingArtifact.transmissible=False at the model boundary` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
 | Test count | **485 passing** (+7 from S2 transmission guard), ~18s wall on a fresh Python 3.11 venv |
@@ -342,7 +342,7 @@ Newest at the top. Format per entry:
 
 ### 2026-05-25 — S2 transmission guard (Ralph loop #2)
 
-- HEAD on main: pending commit (was `37f7f9b`)
+- HEAD on main: `0a99869` (was `37f7f9b`)
 - Tests: **485 passing** (was 478 → +7 from `tests/unit/test_transmission_guard.py`)
 - Added `TransmissionBlockedError` in `state.py` and guarded `FilingArtifact` at `__init__`, `__setattr__`, and `model_copy` so `transmissible=True` is impossible to set from any code path.
 - Decision: enforced at the model boundary (single guard, single test) rather than per-production-site asserts as the PRD suggested — same blast radius, half the code, impossible to forget on new artifact sites.
