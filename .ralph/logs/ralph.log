@@ -136,3 +136,10 @@
 [2026-05-25 18:45:14] [INFO] Using modern CLI mode (json output)
 [2026-05-25 18:45:25] [ERROR] ❌ Claude Code execution failed, check: .ralph/logs/claude_output_2026-05-25_18-45-14.log
 [2026-05-25 18:45:25] [WARN] Execution failed, waiting 30 seconds before retry...
+[2026-05-25 18:45:55] [LOOP] === Completed Loop #14 ===
+[2026-05-25 18:45:55] [INFO] Loop #15 - calling init_call_tracking...
+[2026-05-25 18:45:55] [LOOP] === Starting Loop #15 ===
+[2026-05-25 18:45:55] [LOOP] Executing Claude Code (Call 15/100)
+[2026-05-25 18:45:55] [INFO] ⏳ Starting Claude Code execution... (timeout: 15m)
+[2026-05-25 18:45:56] [INFO] Resuming Claude session: f36be910-34b4-43ed-b... (0h old)
+[2026-05-25 18:45:56] [INFO] Using modern CLI mode (json output)
