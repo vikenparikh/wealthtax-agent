@@ -143,3 +143,5 @@
 [2026-05-25 18:45:55] [INFO] ⏳ Starting Claude Code execution... (timeout: 15m)
 [2026-05-25 18:45:56] [INFO] Resuming Claude session: f36be910-34b4-43ed-b... (0h old)
 [2026-05-25 18:45:56] [INFO] Using modern CLI mode (json output)
+[2026-05-25 18:46:07] [ERROR] ❌ Claude Code execution failed, check: .ralph/logs/claude_output_2026-05-25_18-45-55.log
+[2026-05-25 18:46:07] [WARN] Execution failed, waiting 30 seconds before retry...
