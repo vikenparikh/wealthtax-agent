@@ -28,3 +28,6 @@ secrets.*
 # Demo recordings (keep only watermark versions)
 WealthTaxDemoVideos/*
 !WealthTaxDemoVideos/*watermark*
+
+# Search-index artifacts (regenerable via .claude/scripts/build-rag.sh)
+.claude/rag/
