@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from wealthtax_agent.db import Base
+from wealthtax_agent.db.crypto import EncryptedJSON
 
 
 def _uuid() -> str:
@@ -71,6 +72,9 @@ class TaxReturn(Base):
     current_revision_id = Column(String(36), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Encrypted arbitrary fields dict (wizard answers, draft data, etc.)
+    fields = Column(EncryptedJSON, nullable=True)
 
     user = relationship("User", back_populates="returns")
     revisions = relationship("ReturnRevision", back_populates="tax_return", cascade="all, delete-orphan",
