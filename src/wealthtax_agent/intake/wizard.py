@@ -221,3 +221,139 @@ def manual_extract(form_code: str, values: Dict[str, Any], *, source_filename: O
         extractor="rule",
         confidence="high" if cleaned else "low",
     )
+
+
+# ---------------------------------------------------------------------------
+# 5-step intake wizard state machine
+# ---------------------------------------------------------------------------
+
+WIZARD_STEPS: List[str] = [
+    "jurisdiction_year",   # step 1: jurisdiction(s) + filing year
+    "residency_days",      # step 2: days per jurisdiction
+    "income_sources",      # step 3: income sources per jurisdiction
+    "deductions_credits",  # step 4: deductions + credits
+    "review_submit",       # step 5: review + submit
+]
+
+WIZARD_STEP_COUNT = len(WIZARD_STEPS)
+
+
+class WizardState:
+    """Mutable wizard state that can be persisted as a plain dict.
+
+    The state is intentionally free-form so it can accumulate partial data as
+    the user moves through steps.  ``to_dict()`` / ``from_dict()`` are used
+    for DB persistence via ``TaxReturn.fields``.
+    """
+
+    def __init__(self, *, step: int = 0, data: Optional[Dict[str, Any]] = None) -> None:
+        if not (0 <= step < WIZARD_STEP_COUNT):
+            raise ValueError(f"step must be 0-{WIZARD_STEP_COUNT - 1}, got {step}")
+        self.step: int = step
+        self.data: Dict[str, Any] = data or {}
+
+    # ---- navigation ----
+
+    def can_advance(self) -> bool:
+        return self.step < WIZARD_STEP_COUNT - 1
+
+    def can_go_back(self) -> bool:
+        return self.step > 0
+
+    def advance(self, step_data: Dict[str, Any]) -> "WizardState":
+        """Return a *new* WizardState advanced by one step with merged data."""
+        if not self.can_advance():
+            raise ValueError("Already on the last step; cannot advance further.")
+        merged = {**self.data, **step_data}
+        return WizardState(step=self.step + 1, data=merged)
+
+    def go_back(self) -> "WizardState":
+        """Return a *new* WizardState at the previous step."""
+        if not self.can_go_back():
+            raise ValueError("Already on the first step; cannot go back.")
+        return WizardState(step=self.step - 1, data=self.data)
+
+    def update_data(self, partial: Dict[str, Any]) -> "WizardState":
+        """Return a *new* WizardState with additional data merged (same step)."""
+        return WizardState(step=self.step, data={**self.data, **partial})
+
+    # ---- current step label ----
+
+    @property
+    def current_step_name(self) -> str:
+        return WIZARD_STEPS[self.step]
+
+    @property
+    def progress_label(self) -> str:
+        return f"{self.step + 1}/{WIZARD_STEP_COUNT}"
+
+    # ---- serialisation ----
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"wizard_step": self.step, "wizard_data": self.data}
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "WizardState":
+        return cls(step=d.get("wizard_step", 0), data=d.get("wizard_data") or {})
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, WizardState):
+            return NotImplemented
+        return self.step == other.step and self.data == other.data
+
+    def __repr__(self) -> str:
+        return f"WizardState(step={self.step}, data={self.data!r})"
+
+
+# ---------------------------------------------------------------------------
+# DB persistence helpers (thin wrappers — keep repo.py as the only query site)
+# ---------------------------------------------------------------------------
+
+def save_wizard_draft(
+    session,
+    *,
+    user_id: str,
+    return_id: Optional[str],
+    wizard: WizardState,
+    filing_year: int,
+    jurisdictions: List[str],
+) -> "Any":
+    """Upsert a TaxReturn draft for the wizard state.
+
+    If ``return_id`` is None a new row is created; otherwise the existing row
+    is updated in-place.  Returns the (possibly new) ``TaxReturn`` ORM object.
+    """
+    from wealthtax_agent.db.models import TaxReturn  # local import avoids circular
+
+    if return_id is not None:
+        tr = session.get(TaxReturn, return_id)
+        if tr is not None and tr.user_id == user_id:
+            tr.fields = wizard.to_dict()
+            tr.jurisdictions_json = jurisdictions
+            tr.filing_year = filing_year
+            tr.status = "draft"
+            session.flush()
+            return tr
+
+    tr = TaxReturn(
+        user_id=user_id,
+        filing_year=filing_year,
+        jurisdictions_json=jurisdictions,
+        status="draft",
+        fields=wizard.to_dict(),
+    )
+    session.add(tr)
+    session.flush()
+    return tr
+
+
+def load_wizard_draft(session, *, return_id: str, user_id: str) -> Optional[WizardState]:
+    """Load a wizard draft from the DB; returns None if not found or unauthorised."""
+    from wealthtax_agent.db.models import TaxReturn
+
+    tr = session.get(TaxReturn, return_id)
+    if tr is None or tr.user_id != user_id:
+        return None
+    if not tr.fields:
+        return WizardState()
+    return WizardState.from_dict(tr.fields)

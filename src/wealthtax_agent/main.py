@@ -197,6 +197,59 @@ def _render_auth_sidebar() -> Optional[CurrentUser]:
     return None
 
 
+# ---------- landing (unauthenticated) ----------
+
+def _render_landing() -> None:
+    """Landing page shown to unauthenticated / pre-login visitors."""
+    st.title("WealthTax Agent")
+    st.subheader("Multi-country personal tax drafting — CA · US · IN")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Upload your slips**\nDrop PDFs, images, or Excel. We extract the numbers.")
+    with col2:
+        st.markdown("**Get a draft return**\nOld + new India regime, FTC, FEIE, 80C — computed in seconds.")
+    with col3:
+        st.markdown("**Plain-English edits**\nTell us what changed; we update the draft. No arithmetic from the AI.")
+    st.info("Sign in or sign up on the left to get started.")
+
+
+# ---------- top navigation ----------
+
+_NAV_PAGES = ["Home", "New Return", "My Returns", "Settings"]
+
+
+def _render_top_nav() -> str:
+    """Render a top-navigation bar; returns the selected page name."""
+    cols = st.columns(len(_NAV_PAGES))
+    selected = st.session_state.get("nav_page", "Home")
+    for col, page in zip(cols, _NAV_PAGES):
+        if col.button(page, key=f"nav_{page}", use_container_width=True):
+            st.session_state["nav_page"] = page
+            selected = page
+    return selected
+
+
+# ---------- dashboard ----------
+
+def _render_dashboard(user: CurrentUser) -> None:
+    """Dashboard: return count, most-recent return summary, CPA disclaimer."""
+    st.subheader("Dashboard")
+    with get_session() as session:
+        returns = list_user_returns(session, user.id)
+    count = len(returns)
+    st.metric("Saved returns", count)
+    if returns:
+        latest = returns[0]
+        jurisdictions = ", ".join(latest.jurisdictions_json or [])
+        st.write(f"Most recent: **{latest.filing_year}** — {jurisdictions} ({latest.status})")
+    else:
+        st.write("No returns yet. Start one using 'New Return' above.")
+    st.caption(
+        "WealthTax Agent produces draft returns for review purposes only. "
+        "Always verify with a qualified CPA or tax professional before filing."
+    )
+
+
 # ---------- return history sidebar ----------
 
 def _render_return_history(user: CurrentUser) -> None:
@@ -540,11 +593,22 @@ def run_app() -> None:
 
     user = _render_auth_sidebar()
     if user is None:
-        st.title("WealthTax Agent")
-        st.write("Sign in (or sign up) on the left to start a return.")
+        _render_landing()
         return
 
     _render_return_history(user)
+
+    nav_page = _render_top_nav()
+
+    if nav_page == "My Returns":
+        st.title("WealthTax Agent — My Returns")
+        _render_dashboard(user)
+        return
+
+    if nav_page == "Settings":
+        st.title("WealthTax Agent — Settings")
+        st.write("Settings will appear here in a future release.")
+        return
 
     st.title("WealthTax Agent — Multi-Country Tax Filing Assistant")
     st.write(
