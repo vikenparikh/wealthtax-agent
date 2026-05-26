@@ -37,7 +37,7 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 | `main` HEAD | `37f7f9b` — `fix(security+tests): audit findings` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
-| Test count | **478 passing**, ~11s wall on a fresh Python 3.11 venv |
+| Test count | **485 passing** (+7 from S2 transmission guard), ~18s wall on a fresh Python 3.11 venv |
 | Streamlit boot smoke | ✅ green via `./scripts/validate.sh` |
 | AppTest UI smoke | ✅ both `self_hosted` and `saas` modes render without exception |
 | GitHub Actions on `main` | unknown from this sandbox (no MCP tool for `workflow_run`); check the Actions tab in browser |
@@ -339,6 +339,14 @@ Newest at the top. Format per entry:
 - 2-4 bullets describing the change
 - Any decisions worth carrying forward
 ```
+
+### 2026-05-25 — S2 transmission guard (Ralph loop #2)
+
+- HEAD on main: pending commit (was `37f7f9b`)
+- Tests: **485 passing** (was 478 → +7 from `tests/unit/test_transmission_guard.py`)
+- Added `TransmissionBlockedError` in `state.py` and guarded `FilingArtifact` at `__init__`, `__setattr__`, and `model_copy` so `transmissible=True` is impossible to set from any code path.
+- Decision: enforced at the model boundary (single guard, single test) rather than per-production-site asserts as the PRD suggested — same blast radius, half the code, impossible to forget on new artifact sites.
+- AC2 from `.ralph/fix_plan.md` is now green; 9 ACs remain.
 
 ### 2026-05-21 — Security & correctness audit (PII, safe-harbour, reconnect, wash-sale, CPA chat)
 

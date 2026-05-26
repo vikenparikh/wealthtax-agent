@@ -1,6 +1,15 @@
-from typing import Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
+
+
+class TransmissionBlockedError(RuntimeError):
+    """Raised when code attempts to mark a ``FilingArtifact`` as transmissible.
+
+    WealthTax never transmits returns to CRA/IRS/ITD; this guard blocks the
+    boolean from being flipped to ``True`` at the model boundary so neither
+    a coding bug nor a hostile config can produce a transmissible artifact.
+    """
 
 
 Jurisdiction = Literal["CA", "US", "IN"]
@@ -80,6 +89,30 @@ class FilingArtifact(BaseModel):
     schema_version: str = "0.1"
     transmissible: bool = False
     note: str = "Draft only. Not transmitted to CRA/IRS."
+
+    def __init__(self, **data: Any) -> None:
+        if data.get("transmissible") is True:
+            raise TransmissionBlockedError(
+                "FilingArtifact.transmissible cannot be True — WealthTax never "
+                "transmits returns to CRA/IRS/ITD."
+            )
+        super().__init__(**data)
+
+    def model_copy(self, *, update: Optional[Dict[str, Any]] = None, deep: bool = False) -> "FilingArtifact":
+        if update and update.get("transmissible") is True:
+            raise TransmissionBlockedError(
+                "FilingArtifact.transmissible cannot be True — WealthTax never "
+                "transmits returns to CRA/IRS/ITD."
+            )
+        return super().model_copy(update=update, deep=deep)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "transmissible" and value is True:
+            raise TransmissionBlockedError(
+                "FilingArtifact.transmissible cannot be True — WealthTax never "
+                "transmits returns to CRA/IRS/ITD."
+            )
+        super().__setattr__(name, value)
 
 
 class DraftReturn(BaseModel):
