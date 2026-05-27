@@ -707,12 +707,26 @@ def _render_wizard_step_2(user: "CurrentUser", wizard: WizardState) -> Optional[
     prior_us_2 = prior_cols[1].number_input("US days — two years ago", min_value=0, max_value=366,
                                               value=wizard.data.get("prior_us_2", 0), key="wiz_prior_us_2")
 
+    if int(days_us) == 0 and int(days_ca) == 0 and int(days_in) == 0:
+        st.warning(
+            "All residency-day fields are 0. This will classify you as non-resident in "
+            "every jurisdiction and may produce incorrect tax treatment. "
+            "Update at least one country's days before proceeding.",
+            icon="⚠️",
+        )
+
     nav_cols = st.columns(2)
     if nav_cols[0].button("Back", key="wiz_back_2"):
         new_wizard = wizard.go_back()
         _wizard_save(user, new_wizard)
         return new_wizard
     if nav_cols[1].button("Next", key="wiz_next_2"):
+        if int(days_us) == 0 and int(days_ca) == 0 and int(days_in) == 0:
+            st.error(
+                "Cannot proceed: enter at least one day in any jurisdiction, "
+                "or confirm you had no taxable presence anywhere this year."
+            )
+            return None
         new_wizard = wizard.advance({
             "days_us": int(days_us), "days_ca": int(days_ca), "days_in": int(days_in),
             "prior_us_1": int(prior_us_1), "prior_us_2": int(prior_us_2),
