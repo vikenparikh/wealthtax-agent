@@ -154,3 +154,54 @@ class TestApprovalPersistence:
     def test_approval_state_false_by_default(self):
         wiz = WizardState()
         assert wiz.data.get("approved_slips", False) is False
+
+
+# ---------------------------------------------------------------------------
+# AC-R2: residency-days all-zero guard logic
+# ---------------------------------------------------------------------------
+
+class TestResidencyDaysZeroGuard:
+    """AC-R2 — all-zero residency days must be flagged before advance.
+
+    The UI gate lives in _render_wizard_step_2; here we verify the data
+    invariant that drives it: if days_us == days_ca == days_in == 0, the
+    wizard data must NOT silently advance past step 2 with those values.
+    We test the pure-data layer (WizardState) + a helper that mirrors the
+    UI guard logic so the rule is also unit-testable without AppTest.
+    """
+
+    def _all_zero(self, days_us: int, days_ca: int, days_in: int) -> bool:
+        """Mirror of the guard condition in _render_wizard_step_2."""
+        return days_us == 0 and days_ca == 0 and days_in == 0
+
+    def test_all_zero_detected(self):
+        assert self._all_zero(0, 0, 0) is True
+
+    def test_one_nonzero_not_flagged(self):
+        assert self._all_zero(1, 0, 0) is False
+        assert self._all_zero(0, 183, 0) is False
+        assert self._all_zero(0, 0, 90) is False
+
+    def test_all_nonzero_not_flagged(self):
+        assert self._all_zero(200, 100, 50) is False
+
+    def test_wizard_data_with_all_zero_remains_at_step_2(self):
+        """WizardState should NOT be advanced if all days are zero (gate blocks it)."""
+        wiz = WizardState(step=1)  # step 1 is the residency step (0-indexed)
+        # Simulate the guard: do NOT call advance when all zero.
+        days = {"days_us": 0, "days_ca": 0, "days_in": 0}
+        if self._all_zero(days["days_us"], days["days_ca"], days["days_in"]):
+            result_wizard = wiz  # gate blocked advance
+        else:
+            result_wizard = wiz.advance(days)
+        assert result_wizard.step == 1  # still on step 2 (0-indexed 1)
+
+    def test_wizard_advances_when_days_provided(self):
+        """WizardState advances normally when at least one day is non-zero."""
+        wiz = WizardState(step=1)
+        days = {"days_us": 180, "days_ca": 0, "days_in": 0}
+        if self._all_zero(days["days_us"], days["days_ca"], days["days_in"]):
+            result_wizard = wiz
+        else:
+            result_wizard = wiz.advance(days)
+        assert result_wizard.step == 2

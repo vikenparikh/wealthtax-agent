@@ -33,5 +33,26 @@ services:
     ports:
       - "8501:8501"
 
+  healthz:
+    build: .
+    command: >
+      .venv/bin/uvicorn wealthtax_agent.healthz:app
+      --host 0.0.0.0 --port 8502 --workers 1
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql+psycopg://wealthtax:wealthtax@db:5432/wealthtax"
+      WEALTHTAX_FERNET_KEY: "${WEALTHTAX_FERNET_KEY}"
+      WEALTHTAX_MODE: "saas"
+      GROQ_API_KEY: "${GROQ_API_KEY}"
+    ports:
+      - "8502:8502"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8502/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   db_data: {}
