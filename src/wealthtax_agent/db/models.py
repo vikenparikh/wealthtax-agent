@@ -238,3 +238,130 @@ class WashSale(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     disallowed_lot = relationship("Lot", foreign_keys="[Lot.wash_sale_id]", back_populates="wash_sale")
+
+
+# ---------------------------------------------------------------------------
+# P2-AC2 — TaxReturn audit log
+#
+# Every state mutation (create / update / status_change) appends one row to
+# ``tax_return_events`` with a sha256 fingerprint of the before/after payload.
+# Enforced by SQLAlchemy mapper events declared below the class.
+# ---------------------------------------------------------------------------
+
+
+class TaxReturnEvent(Base):
+    """Append-only audit log of TaxReturn mutations.
+
+    Contract (P2-AC2):
+      - One row per create / update / status_change
+      - ``user_id`` is NOT NULL — every event must be attributable
+      - ``before_hash`` is None for ``create`` events; non-null otherwise
+      - ``after_hash`` is always a 64-char sha256 hex digest
+    """
+
+    __tablename__ = "tax_return_events"
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    user_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    return_id = Column(
+        String(36),
+        ForeignKey("tax_returns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_type = Column(String(32), nullable=False)  # create | update | status_change
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    before_hash = Column(String(64), nullable=True)
+    after_hash = Column(String(64), nullable=False)
+
+
+# --- SQLAlchemy mapper event hooks ------------------------------------------
+# Imported lazily here to avoid a circular import at module load.
+
+def _hash_taxreturn_payload(payload: Optional[dict]) -> Optional[str]:
+    import hashlib
+    import json
+
+    if payload is None:
+        return None
+    blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _taxreturn_snapshot(target: "TaxReturn") -> dict:
+    """Capture the auditable fields of a TaxReturn for hashing."""
+    return {
+        "filing_year": target.filing_year,
+        "jurisdictions_json": target.jurisdictions_json,
+        "status": target.status,
+        "current_revision_id": target.current_revision_id,
+        "fields": target.fields,
+    }
+
+
+def _register_taxreturn_audit_hooks() -> None:
+    from sqlalchemy import event, inspect
+
+    def _after_insert(mapper, connection, target):  # noqa: ARG001
+        after = _hash_taxreturn_payload(_taxreturn_snapshot(target))
+        connection.execute(
+            TaxReturnEvent.__table__.insert().values(
+                id=_uuid(),
+                user_id=target.user_id,
+                return_id=target.id,
+                event_type="create",
+                timestamp=datetime.utcnow(),
+                before_hash=None,
+                after_hash=after,
+            )
+        )
+
+    def _after_update(mapper, connection, target):  # noqa: ARG001
+        state = inspect(target)
+        # Reconstruct the *previous* values for the auditable columns.
+        before_payload: dict = {}
+        after_payload: dict = {}
+        status_changed = False
+        for col in ("filing_year", "jurisdictions_json", "status",
+                    "current_revision_id", "fields"):
+            hist = state.attrs[col].history
+            if hist.has_changes():
+                # `deleted` holds prior value; `added` holds new value.
+                old = hist.deleted[0] if hist.deleted else None
+                new = hist.added[0] if hist.added else getattr(target, col)
+                before_payload[col] = old
+                after_payload[col] = new
+                if col == "status":
+                    status_changed = True
+            else:
+                current = getattr(target, col)
+                before_payload[col] = current
+                after_payload[col] = current
+
+        if before_payload == after_payload:
+            # No auditable change — flush without logging.
+            return
+
+        event_type = "status_change" if status_changed else "update"
+        connection.execute(
+            TaxReturnEvent.__table__.insert().values(
+                id=_uuid(),
+                user_id=target.user_id,
+                return_id=target.id,
+                event_type=event_type,
+                timestamp=datetime.utcnow(),
+                before_hash=_hash_taxreturn_payload(before_payload),
+                after_hash=_hash_taxreturn_payload(after_payload),
+            )
+        )
+
+    event.listen(TaxReturn, "after_insert", _after_insert)
+    event.listen(TaxReturn, "after_update", _after_update)
+
+
+_register_taxreturn_audit_hooks()
