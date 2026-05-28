@@ -36,6 +36,7 @@ from wealthtax_agent.intake.wizard import (
     WIZARD_STEP_COUNT,
     WIZARD_STEPS,
     WizardState,
+    load_wizard_draft,
     save_wizard_draft,
 )
 from wealthtax_agent.llm import sanitize_runtime_error
@@ -284,7 +285,12 @@ def _render_top_nav() -> str:
 # ---------- dashboard ----------
 
 def _render_dashboard(user: CurrentUser) -> None:
-    """Dashboard: return count, most-recent return summary, CPA disclaimer."""
+    """Dashboard: return count, most-recent return summary, CPA disclaimer.
+
+    Each saved return gets an ``Edit`` button that pre-populates the wizard
+    from the encrypted ``TaxReturn.fields`` payload via ``load_wizard_draft``
+    so the user can resume an in-progress draft without re-typing.
+    """
     st.subheader("Dashboard")
     with get_session() as session:
         returns = list_user_returns(session, user.id)
@@ -294,6 +300,24 @@ def _render_dashboard(user: CurrentUser) -> None:
         latest = returns[0]
         jurisdictions = ", ".join(latest.jurisdictions_json or [])
         st.write(f"Most recent: **{latest.filing_year}** — {jurisdictions} ({latest.status})")
+
+        st.markdown("##### Saved returns")
+        for ret in returns:
+            label = (
+                f"{ret.filing_year} · "
+                f"{', '.join(ret.jurisdictions_json or []) or '—'} "
+                f"({ret.status})"
+            )
+            cols = st.columns([4, 1])
+            cols[0].write(label)
+            if cols[1].button("Edit", key=f"dash_edit_{ret.id}"):
+                with get_session() as session:
+                    loaded = load_wizard_draft(
+                        session, return_id=ret.id, user_id=user.id
+                    )
+                st.session_state.wizard = loaded or WizardState()
+                st.session_state.wizard_return_id = ret.id
+                st.rerun()
     else:
         st.write("No returns yet. Start one using 'New Return' above.")
     st.caption(

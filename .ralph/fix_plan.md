@@ -24,13 +24,13 @@
 - [x] **P2-AC11** — Run `python -m pytest tests/unit/test_wizard_tooltips.py --co -q` and confirm no test requires a `GROQ_API_KEY` or `ANTHROPIC_API_KEY` env var; `load_tooltip` must be purely file-based with no external calls.
 - [x] **P2-AC12** — Run `bash scripts/check_tab_order.sh` (script reads the wizard form field definitions from `intake/wizard.py` and asserts they appear in logical DOM order: jurisdiction before year, income before deductions, deductions before review); script exits 0 when order is correct and exits 1 with a diff when a field is out of sequence.
 - [x] **P2-AC13** — Run `pytest --no-cov -q` and confirm total passing count is >= 545 (Phase 1 baseline ~530 + at least 15 new Phase 2 tests); zero failures, zero errors.
-- [ ] `intake/wizard.py` 5-step machine: (1) jurisdiction + year, (2) residency days, (3) income
-- [ ] Auto-save to `TaxReturn(status="draft")` on each Next click; survive restart.
-- [ ] Return History "Edit" button pre-populates wizard from stored (decrypted) fields.
-- [ ] Sidebar step indicator (1/5 … 5/5) with back/next.
-- [ ] Landing (`_render_landing()`) for unauthenticated / pre-login: product name, 3-bullet value
-- [ ] Top nav: Home | New Return | My Returns | Settings.
-- [ ] Dashboard (`_render_dashboard()`): return count, most recent return summary, CPA disclaimer.
+- [x] `intake/wizard.py` 5-step machine: (1) jurisdiction + year, (2) residency days, (3) income (already implemented as WizardState + 5 _render_wizard_step_* helpers in main.py)
+- [x] Auto-save to `TaxReturn(status="draft")` on each Next click; survive restart. (`_wizard_save` → `save_wizard_draft` already wired)
+- [x] Return History "Edit" button pre-populates wizard from stored (decrypted) fields. (this loop — Edit button in `_render_dashboard` calls `load_wizard_draft` + restores session_state)
+- [x] Sidebar step indicator (1/5 … 5/5) with back/next. (already implemented as `_render_wizard_step_indicator`)
+- [x] Landing (`_render_landing()`) for unauthenticated / pre-login: product name, 3-bullet value (already implemented)
+- [x] Top nav: Home | New Return | My Returns | Settings. (already implemented as `_NAV_PAGES` + `_render_top_nav`)
+- [x] Dashboard (`_render_dashboard()`): return count, most recent return summary, CPA disclaimer. (already implemented; this loop added per-return Edit button)
 
 ## Medium Priority
 
@@ -39,6 +39,7 @@
 
 
 ## Completed
+- [x] Edit-prefill — `_render_dashboard` now renders an Edit button per saved TaxReturn that calls `load_wizard_draft(return_id, user_id)` to repopulate `st.session_state.wizard` + `wizard_return_id` so a partial draft resumes without re-typing; foreign user_id rejected (returns None); empty `fields` returns a fresh `WizardState()`. 3 new tests in `tests/unit/test_wizard_edit_prefill.py`; 677 → 680 passing
 - [x] P2-AC9 — E2E wizard flow integration test (`tests/integration/test_e2e_wizard_flow.py`): walks `WizardState` through all 5 steps (jurisdiction_year → residency_days → income_sources → deductions_credits → review_submit), bridges wizard payload to `GraphState`, runs `build_graph().invoke()`, and asserts `draft_returns[<jurisdiction>].estimated_tax > 0` plus ≥1 `FilingArtifact` per selected jurisdiction. Covers CA-only and CA+US paths. LLM stubbed at `wealthtax_agent.llm` module level (no network); AppTest boot-smoke under `WEALTHTAX_MODE=self_hosted` + `GROQ_API_KEY=gsk-test-key` confirms the wizard renders without exception; 7 new tests, 670→677 passing
 - [x] Project enabled for Ralph
 - [x] P2-AC6 / P2-AC11 — file-based wizard tooltip loader (CA/US/IN markdown + 25 tests, no LLM env needed)
