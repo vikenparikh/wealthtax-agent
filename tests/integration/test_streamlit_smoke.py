@@ -73,3 +73,95 @@ def test_year_picker_includes_supported_years():
     assert selectboxes, "expected at least the Tax-year selectbox"
     year_options = selectboxes[0].options
     assert any(int(y) >= 2024 for y in year_options), year_options
+
+
+# ---------------------------------------------------------------------------
+# P2-AC10 — review-report rendering must be cached by DraftReturn fingerprint.
+# Reviewer UI can re-render the report many times per Streamlit rerun; the
+# underlying compute step must run exactly once per distinct DraftReturn.
+# ---------------------------------------------------------------------------
+
+
+class TestReviewReportCache:
+    @staticmethod
+    def _sample_draft():
+        from wealthtax_agent.state import DraftReturn
+
+        return DraftReturn(
+            jurisdiction="CA",
+            tax_year=2024,
+            total_income=85_000.0,
+            taxable_income=80_000.0,
+            estimated_tax=14_500.0,
+            estimated_refund=200.0,
+            line_items={"rrsp_deduction": 5_000.0},
+            totals={
+                "total_income": 85_000.0,
+                "taxable_income": 80_000.0,
+                "total_tax": 14_500.0,
+                "refund": 200.0,
+                "balance_owing": 0.0,
+            },
+        )
+
+    def test_render_review_report_caches_by_draft_fingerprint(self):
+        """Two render calls with the same draft → one engine-compute call."""
+        import unittest.mock as mock
+
+        from wealthtax_agent import render_review_report as rrr
+
+        rrr.clear_review_report_cache()
+        draft = self._sample_draft()
+
+        with mock.patch(
+            "wealthtax_agent.render_review_report.compute_review_totals",
+            wraps=rrr.compute_review_totals,
+        ) as spy:
+            first = rrr.render_review_report(draft, reviewer_name="Reviewer A")
+            second = rrr.render_review_report(draft, reviewer_name="Reviewer A")
+
+        assert spy.call_count == 1, (
+            f"expected exactly one engine compute, got {spy.call_count}"
+        )
+        assert first == second
+        assert "Total tax:" in first
+        assert "14,500.00" in first
+
+    def test_distinct_drafts_each_trigger_compute(self):
+        """Cache must key on draft fingerprint — different draft → new compute."""
+        import unittest.mock as mock
+
+        from wealthtax_agent import render_review_report as rrr
+
+        rrr.clear_review_report_cache()
+        draft_a = self._sample_draft()
+        draft_b = self._sample_draft()
+        draft_b.total_income = 90_000.0
+        draft_b.totals["total_income"] = 90_000.0
+
+        with mock.patch(
+            "wealthtax_agent.render_review_report.compute_review_totals",
+            wraps=rrr.compute_review_totals,
+        ) as spy:
+            rrr.render_review_report(draft_a, reviewer_name="R")
+            rrr.render_review_report(draft_b, reviewer_name="R")
+
+        assert spy.call_count == 2
+
+    def test_clear_cache_forces_recompute(self):
+        import unittest.mock as mock
+
+        from wealthtax_agent import render_review_report as rrr
+
+        rrr.clear_review_report_cache()
+        draft = self._sample_draft()
+
+        with mock.patch(
+            "wealthtax_agent.render_review_report.compute_review_totals",
+            wraps=rrr.compute_review_totals,
+        ) as spy:
+            rrr.render_review_report(draft)
+            rrr.clear_review_report_cache()
+            rrr.render_review_report(draft)
+
+        assert spy.call_count == 2
