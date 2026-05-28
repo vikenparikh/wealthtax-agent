@@ -20,7 +20,10 @@ from wealthtax_agent.db import models  # noqa: F401, E402  - registers tables
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False so our app loggers (e.g.
+    # wealthtax_agent.llm / .graph / .build_return) keep their handlers when
+    # tests run `alembic upgrade head` mid-suite.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 env_url = os.getenv("DATABASE_URL")
 if env_url:
