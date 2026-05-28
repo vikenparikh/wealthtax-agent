@@ -56,11 +56,16 @@ Override sentinels (append to the command, use sparingly):
   pre-commit hook installed at `.git/hooks/pre-commit` also enforces secret
   scanning — bypass with `--no-verify` only if you're certain).
 
-## Style (see [.claude/rules/10-style.md](.claude/rules/10-style.md))
+## Rules (always-applied, in [.claude/rules/](.claude/rules/))
 
-- Terse. 1-3 sentences default. No preamble, no trailing filler.
-- Code comments: only when WHY is non-obvious.
-- Markdown links for file refs, no backticks.
+- [00-safety.md](.claude/rules/00-safety.md) — hook-enforced blocks + override sentinels
+- [10-style.md](.claude/rules/10-style.md) — terse output, no preamble, comments only for non-obvious WHY
+- [20-software-engineering.md](.claude/rules/20-software-engineering.md) — design, change discipline, error handling, security, perf, reviews
+- [30-ml-deep-learning.md](.claude/rules/30-ml-deep-learning.md) — leakage hunting, validation, reproducibility, train/serve parity
+- [40-quant-finance.md](.claude/rules/40-quant-finance.md) — risk-first, honest backtesting, sizing, execution, tax/PII
+- [50-data-training-testing.md](.claude/rules/50-data-training-testing.md) — data quality, pipeline determinism, eval gates, repro checklist
+
+Read the rule file relevant to the work before writing code in that domain.
 
 ## End of session
 
