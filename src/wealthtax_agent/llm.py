@@ -8,6 +8,10 @@ from typing import Callable, Optional, TypeVar
 
 from openai import OpenAI
 
+from wealthtax_agent.logging_utils import get_logger
+
+_log = get_logger("wealthtax_agent.llm")
+
 
 T = TypeVar("T")
 _DOTENV_LOADED_KEYS = set()
@@ -169,6 +173,15 @@ def call_with_retry(callable_fn: Callable[[], T], max_attempts: int = 3, base_de
         except Exception as exc:
             last_error = exc
             retryable = _is_retryable_error(exc)
+            _log.warning(
+                "llm_call_failed",
+                extra={
+                    "attempt": attempt,
+                    "max_attempts": max_attempts,
+                    "retryable": retryable,
+                    "error": sanitize_runtime_error(str(exc)),
+                },
+            )
             if not retryable:
                 break
             if attempt == max_attempts:

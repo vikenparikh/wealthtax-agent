@@ -14,8 +14,11 @@ from wealthtax_agent.filing.in_itr import serialize_itr
 from wealthtax_agent.filing.pdf_fill import fill_form
 from wealthtax_agent.filing.quarterly import quarterly_ca_instalments, quarterly_us_1040es
 from wealthtax_agent.filing.us_mef import serialize_1040
+from wealthtax_agent.logging_utils import get_logger
 from wealthtax_agent.projection import project_future_years
 from wealthtax_agent.state import DraftReturn, FilingArtifact, FormExtract, GraphState
+
+_log = get_logger("wealthtax_agent.build_return")
 
 
 def _b64(data: bytes | str) -> str:
@@ -237,6 +240,14 @@ def build_return_node(state: GraphState) -> GraphState:
     user_answers = state.user_answers or {}
     artifacts: Dict[str, FilingArtifact] = dict(state.filing_artifacts)
 
+    _log.info(
+        "build_return_start",
+        extra={
+            "year": year,
+            "jurisdictions": sorted(state.draft_returns.keys()),
+        },
+    )
+
     for jurisdiction, draft in state.draft_returns.items():
         extracts = [e for e in state.extracts if e.jurisdiction == jurisdiction]
         try:
@@ -248,6 +259,10 @@ def build_return_node(state: GraphState) -> GraphState:
                 artifacts.update(_in_artifacts(draft, extracts, year, user_answers))
         except Exception as exc:
             state.warnings.append(f"Filing artifact generation failed for {jurisdiction}: {exc}")
+            _log.error(
+                "build_return_failed",
+                extra={"jurisdiction": jurisdiction, "year": year, "error": str(exc)},
+            )
 
     if state.draft_returns:
         try:

@@ -1,0 +1,256 @@
+./ARCHITECTURE.md | WealthTax Agent — Architecture
+./CHANGELOG.md | Changelog
+./pyproject.toml | [build-system]
+./tests/test_event_consumer.py | ---------------------------------------------------------------------------
+./tests/unit/test_llm_config.py | import wealthtax_agent.llm as llm
+./tests/unit/test_clarify.py | from wealthtax_agent.clarify import ask_clarifications_node
+./tests/unit/test_projection.py | from wealthtax_agent.engines.ca_engine import compute_ca_return
+./tests/unit/test_tax_tables_loader.py | import pytest
+./tests/unit/test_filing_artifacts.py | import base64
+./tests/unit/forms/us/__init__.py
+./tests/unit/forms/us/test_us_extractors.py | from pathlib import Path
+./tests/unit/forms/ca/test_ca_extractors.py | from pathlib import Path
+./tests/unit/forms/ca/__init__.py
+./tests/unit/forms/__init__.py
+./tests/unit/forms/in_/__init__.py
+./tests/unit/forms/in_/test_in_extractors.py | from pathlib import Path
+./tests/unit/forms/test_all_forms_extraction.py | (form_code, fixture relative path, jurisdiction, must-extract field, expected value)
+./tests/unit/test_auth.py | import os
+./tests/unit/test_excel_csv_ingestion.py | from io import BytesIO
+./tests/unit/test_optimize.py | from unittest.mock import patch
+./tests/unit/test_graph_flow.py | import wealthtax_agent.graph as graph
+./tests/unit/test_persistence.py | from pathlib import Path
+./tests/unit/intake/__init__.py
+./tests/unit/intake/test_manual_extract.py | from wealthtax_agent.engines.ca_engine import compute_ca_return
+./tests/unit/test_explain_return_node.py | import wealthtax_agent.explain_return as explain_return
+./tests/unit/engines/test_ca_engine.py | from wealthtax_agent.engines.ca_engine import compute_ca_return
+./tests/unit/engines/test_cross_border.py | from wealthtax_agent.engines.cross_border import (
+./tests/unit/engines/test_us_engine.py | from wealthtax_agent.engines.us_engine import compute_us_return
+./tests/unit/engines/__init__.py
+./tests/unit/engines/test_us_engine_advanced.py | gambling winnings, capital-asset 8949 flow."""
+./tests/unit/engines/test_ca_engine_advanced.py | T1135 awareness, T2222 Northern Residents Deduction."""
+./tests/unit/engines/test_residency.py | ---------- US Substantial Presence ----------
+./tests/unit/engines/test_in_engine.py | ---------- New regime ----------
+./tests/unit/db/test_crypto.py | Use synthetic data that does NOT look like a real SSN/SIN.
+./tests/unit/db/conftest.py | import os
+./tests/unit/db/__init__.py
+./tests/unit/db/test_models_roundtrip.py | from wealthtax_agent.db import get_session
+./tests/unit/test_fixtures.py | from pathlib import Path
+./tests/unit/test_reason_tax.py | from wealthtax_agent.reason_tax import reason_tax_node
+./tests/unit/test_parse_docs_node.py | import wealthtax_agent.parse_docs as parse_docs
+./tests/unit/test_main_helpers.py | from types import SimpleNamespace
+./tests/unit/test_dedupe.py | from wealthtax_agent.ingest.dedupe import (
+./tests/unit/test_classify_forms.py | from wealthtax_agent.classify_forms import _heuristic_classify
+./tests/unit/test_cpa_chat.py | ---------------------------------------------------------------------------
+./tests/unit/corrections/test_revert.py | from wealthtax_agent.corrections import apply_corrections, revert_correction
+./tests/unit/corrections/test_intake_narrative.py | from wealthtax_agent.corrections.intake import (
+./tests/unit/corrections/__init__.py
+./tests/unit/corrections/test_parse_correction_prompt.py | from unittest.mock import patch
+./tests/unit/corrections/test_apply_corrections.py | from wealthtax_agent.corrections import apply_corrections
+./tests/conftest.py | import os
+./tests/test_wash_sale.py | from __future__ import annotations
+./tests/integration/test_graph_with_new_nodes.py | from wealthtax_agent.graph import build_graph
+./tests/integration/test_amendment_flow.py | import base64
+./tests/integration/test_supported_file_formats.py | from pathlib import Path
+./tests/integration/test_multi_user_isolation.py | import os
+./tests/integration/test_llm_failure_safe.py | We monkeypatch every LLM entry point to raise, then run the deterministic part
+./tests/integration/test_pipeline_ca_full.py | We bypass real OCR by injecting pre-built ``classifications`` and ``extracts``
+./tests/integration/test_pipeline_us_full.py | import base64
+./tests/integration/test_clarification_resume.py | with answers populated continues to ``reason_tax`` and produces a draft."""
+./tests/integration/test_streamlit_smoke.py | modes and asserts the initial render succeeds. Catches widget-binding regressions
+./tests/integration/test_pipeline_every_form.py | multi-country pipeline and asserts the resulting artifacts are valid.
+./tests/integration/test_correction_chat_end_to_end.py | The pipeline goes: ingest fixtures -> apply_corrections -> reason_tax ->
+./tests/integration/test_unsupported_form.py | ``state.unsupported_forms`` with a clear reason and next step."""
+./tests/integration/scenarios/conftest.py | Each scenario runs the full graph end-to-end with a stubbed LLM (so the rule-
+./tests/integration/scenarios/test_scenario_us_to_ca_with_india_vacation.py | rest of the year, vacation in India for 1 month.
+./tests/integration/scenarios/test_scenario_rsu_grant_us_vest_ca.py | Inputs:
+./tests/integration/scenarios/__init__.py
+./tests/integration/scenarios/test_scenarios_all.py | ---------- Scenario: Indian citizen on H1B returning to India ----------
+./tests/integration/test_pipeline_end_to_end.py | import wealthtax_agent.explain_return as explain_return
+./tests/integration/test_streamlit_entrypoint.py | from wealthtax_agent.main import main
+./tests/integration/test_planning_includes_projection.py | import base64
+./tests/integration/test_pipeline_with_synthetic_fixture.py | import re
+./tests/test_us_1099_parser.py | ---------------------------------------------------------------------------
+./tests/test_estimated_tax.py | from __future__ import annotations
+./tests/test_smoke_imports.py | def test_smoke_imports():
+./docs/demo_screenshots.md | Demo Screenshots Guide
+./docs/architecture.md | Architecture
+./docs/demo_runbook.md | Demo Runbook (3 minutes)
+./docs/run_history.md | Validation Run History
+./docs/DEPLOY.md | Deploy
+./docs/demo_voiceover.md | Demo Voiceover Script (2:30)
+./docs/SUBMISSION_CHECKLIST.md | Submission Checklist (Wealthsimple AI Builder)
+./docs/SUBMISSION.md | Wealthsimple AI Builder Submission – WealthTax Agent
+./README.md | WealthTax Agent – Multi-Jurisdiction Tax Draft Assistant (CA / US / IN)
+./scripts/regen_and_test_samples.sh | set -euo pipefail
+./scripts/validate.sh | Validation Run History
+./scripts/app.sh | set -euo pipefail
+./scripts/validate_real_flow.py | import os
+./scripts/validate_live_graph.py | from pathlib import Path
+./.github/workflows/ci-cd.yml | name: ci-cd
+./.github/workflows/deploy.yml | name: deploy
+./.github/workflows/tests.yml | name: tests
+./docker-compose.yml | version: "3.9"
+./docker-compose.prod.yml | services:
+./alembic/env.py | Make ``src/`` importable so we can pull in our metadata.
+./alembic/versions/d01bfd6ae83a_initial_schema.py | revision identifiers, used by Alembic.
+./stop.sh | set -euo pipefail
+./sample_tax_slips/generate_realistic_samples.py | from __future__ import annotations
+./start.sh | set -euo pipefail
+./CLAUDE.md | Claude session handoff — `wealthtax-agent`
+./src/wealthtax_agent/optimize.py | Deterministic rules first; the LLM is only used to rewrite each rationale
+./src/wealthtax_agent/classify_forms.py | Trigger extractor registration on import.
+./src/wealthtax_agent/auth.py | Wraps ``passlib`` for bcrypt + the ``db.repo`` helpers so callers don't need
+./src/wealthtax_agent/parsers/us/form_1099_int.py | from __future__ import annotations
+./src/wealthtax_agent/parsers/us/form_k1.py | Handles K-1 from Form 1065 (partnership), 1120-S (S-corp), and 1041 (estate).
+./src/wealthtax_agent/parsers/us/__init__.py | from wealthtax_agent.parsers.us.form_1099_b import parse_1099b
+./src/wealthtax_agent/parsers/us/form_w2.py | from __future__ import annotations
+./src/wealthtax_agent/parsers/us/form_1099_b.py | Extracts proceeds (Box 1d), cost basis (Box 1e), short/long-term indicator
+./src/wealthtax_agent/parsers/us/form_1099_div.py | from __future__ import annotations
+./src/wealthtax_agent/parsers/ca/__init__.py | from wealthtax_agent.parsers.ca.form_t4 import parse_t4
+./src/wealthtax_agent/parsers/ca/form_t5.py | from __future__ import annotations
+./src/wealthtax_agent/parsers/ca/form_rrsp.py | T4RSP boxes
+./src/wealthtax_agent/parsers/ca/form_t4.py | from __future__ import annotations
+./src/wealthtax_agent/parsers/__init__.py | Every parser returns a ``ParsedSlip`` — a jurisdiction-normalised envelope
+./src/wealthtax_agent/parsers/base.py | from __future__ import annotations
+./src/wealthtax_agent/persistence.py | Lets the user keep a year's draft + answers around between sessions, and
+./src/wealthtax_agent/clarify.py | Question templates live in ``config/clarifying_questions/<jurisdiction>.yaml``.
+./src/wealthtax_agent/forms/us/i1099_nec.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1098_e.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/sch_d.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_div.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/sch_se.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/sch_a.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/w2g.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1095_a.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/sch_e.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i8889.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_misc.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_sa.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_r.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_k.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/__init__.py
+./src/wealthtax_agent/forms/us/i1098.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i8949.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1098_t.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/ssa_1099.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_q.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i5498.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_b.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i2555.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/sch_b.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/w2.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_int.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/i1099_g.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/k1.py | from __future__ import annotations
+./src/wealthtax_agent/forms/us/sch_c.py | from __future__ import annotations
+./src/wealthtax_agent/forms/registry.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t4.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t5013.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t4a.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t5.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t776.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t2200.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t4rif.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/__init__.py
+./src/wealthtax_agent/forms/ca/t5008.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t2125.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t2222.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/rrsp.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t2202.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t4rsp.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t1135.py | from __future__ import annotations
+./src/wealthtax_agent/forms/ca/t3.py | from __future__ import annotations
+./src/wealthtax_agent/forms/__init__.py | Importing the per-form modules registers each extractor by side-effect.
+./src/wealthtax_agent/forms/in_/stock_gain.py | The engine looks for pre/post Jul 23 2024 split fields. This extractor
+./src/wealthtax_agent/forms/in_/__init__.py | from wealthtax_agent.forms.in_ import form16, form16a, form26as, ais, stock_gain  # noqa: F401
+./src/wealthtax_agent/forms/in_/form26as.py | from __future__ import annotations
+./src/wealthtax_agent/forms/in_/form16a.py | from __future__ import annotations
+./src/wealthtax_agent/forms/in_/ais.py | from __future__ import annotations
+./src/wealthtax_agent/forms/in_/form16.py | from __future__ import annotations
+./src/wealthtax_agent/forms/base.py | from __future__ import annotations
+./src/wealthtax_agent/forms/_helpers.py | from __future__ import annotations
+./src/wealthtax_agent/config/__init__.py | ``settings`` carries env-driven values (DB URL, encryption key, mode, etc.);
+./src/wealthtax_agent/config/tax_tables.py | Layout:
+./src/wealthtax_agent/config/clarifying_questions/us.yaml | questions:
+./src/wealthtax_agent/config/clarifying_questions/ca.yaml | questions:
+./src/wealthtax_agent/config/clarifying_questions/in.yaml | questions:
+./src/wealthtax_agent/config/settings.py | Used everywhere we need a DB URL, encryption key, mode, etc. Keeping it in
+./src/wealthtax_agent/config/tax_tables/us/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/us/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/us/2024.yaml | US federal tax tables, tax year 2024. Approximate; prototype only.
+./src/wealthtax_agent/config/tax_tables/us/states/ca/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/us/states/ca/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/us/states/ca/2024.yaml | year: 2024
+./src/wealthtax_agent/config/tax_tables/us/states/fl/2023.yaml | Florida does not levy a personal state income tax.
+./src/wealthtax_agent/config/tax_tables/us/states/fl/2025.yaml | Florida does not levy a personal state income tax.
+./src/wealthtax_agent/config/tax_tables/us/states/fl/2024.yaml | Florida does not levy a personal state income tax.
+./src/wealthtax_agent/config/tax_tables/us/states/tx/2023.yaml | Texas does not levy a personal state income tax.
+./src/wealthtax_agent/config/tax_tables/us/states/tx/2025.yaml | Texas does not levy a personal state income tax.
+./src/wealthtax_agent/config/tax_tables/us/states/tx/2024.yaml | Texas does not levy a personal state income tax.
+./src/wealthtax_agent/config/tax_tables/us/states/ny/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/us/states/ny/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/us/states/ny/2024.yaml | year: 2024
+./src/wealthtax_agent/config/tax_tables/us/states/wa/2023.yaml | Washington does not levy a personal state income tax on wages.
+./src/wealthtax_agent/config/tax_tables/us/states/wa/2025.yaml | Washington does not levy a personal state income tax on wages.
+./src/wealthtax_agent/config/tax_tables/us/states/wa/2024.yaml | Washington does not levy a personal state income tax on wages.
+./src/wealthtax_agent/config/tax_tables/in/2025.yaml | India tax tables for AY 2025-26 (FY 2024-25). Prototype only.
+./src/wealthtax_agent/config/tax_tables/in/2024.yaml | India tax tables for AY 2024-25 (FY 2023-24). Prototype only.
+./src/wealthtax_agent/config/tax_tables/ca/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/ca/provinces/bc/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/ca/provinces/bc/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/ca/provinces/bc/2024.yaml | year: 2024
+./src/wealthtax_agent/config/tax_tables/ca/provinces/ab/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/ca/provinces/ab/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/ca/provinces/ab/2024.yaml | Alberta's bracket structure (2024).
+./src/wealthtax_agent/config/tax_tables/ca/provinces/on/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/ca/provinces/on/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/ca/provinces/on/2024.yaml | Ontario dividend tax credit (decimal of grossed-up amount)
+./src/wealthtax_agent/config/tax_tables/ca/provinces/qc/2023.yaml | year: 2023
+./src/wealthtax_agent/config/tax_tables/ca/provinces/qc/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/ca/provinces/qc/2024.yaml | Quebec computes its own return on TP-1; this is a simplified estimator only.
+./src/wealthtax_agent/config/tax_tables/ca/2025.yaml | year: 2025
+./src/wealthtax_agent/config/tax_tables/ca/2024.yaml | Canada federal tax table for the 2024 tax year (filed in 2025).
+./src/wealthtax_agent/extract_forms.py | Pipeline: for each ``FormClassification``, look up the matching extractor
+./src/wealthtax_agent/ingest/dedupe.py | Two fingerprint flavors:
+./src/wealthtax_agent/ingest/__init__.py | from wealthtax_agent.ingest.dedupe import (
+./src/wealthtax_agent/graph.py | Two compiled graphs are exposed:
+./src/wealthtax_agent/reason_tax.py | If no jurisdiction was explicitly chosen we fall back to the legacy CA-only
+./src/wealthtax_agent/__init__.py
+./src/wealthtax_agent/llm.py | import os
+./src/wealthtax_agent/parse_docs.py | import base64
+./src/wealthtax_agent/build_return.py | Replaces the prior pass-through stub.
+./src/wealthtax_agent/intake/__init__.py | Lets a user share their tax details without uploading a PDF — useful for the
+./src/wealthtax_agent/intake/wizard.py | Field specs per supported intake form. Engines already know how to consume
+./src/wealthtax_agent/engines/in_engine.py | Pure functions. Tables loaded from ``config/tax_tables/in/<year>.yaml``.
+./src/wealthtax_agent/engines/estimated_tax.py | Given YTD P&L, W-2 withholding, and last-year tax liability, computes the
+./src/wealthtax_agent/engines/residency.py | ---------- United States ----------
+./src/wealthtax_agent/engines/__init__.py
+./src/wealthtax_agent/engines/wash_sale.py | Algorithm
+./src/wealthtax_agent/engines/ca_engine.py | Pure functions; no LLM. Tables are loaded from
+./src/wealthtax_agent/engines/cross_border.py | Two situations matter for v1:
+./src/wealthtax_agent/engines/us_engine.py | Pure functions; no LLM. Tables are loaded from
+./src/wealthtax_agent/db/models.py | Schema is intentionally portable between SQLite (dev) and Postgres (prod):
+./src/wealthtax_agent/db/__init__.py | The engine is built lazily from settings so tests can swap ``DATABASE_URL``
+./src/wealthtax_agent/db/crypto.py | Uses Fernet (AES-128-CBC + HMAC) from ``cryptography``. The key comes from
+./src/wealthtax_agent/db/repo.py | ---------- User ----------
+./src/wealthtax_agent/workers/__init__.py | wealthtax-agent background workers
+./src/wealthtax_agent/workers/event_consumer.py | ---------------------------------------------------------------------------
+./src/wealthtax_agent/filing/ca_netfile.py | from __future__ import annotations
+./src/wealthtax_agent/filing/us_mef.py | from __future__ import annotations
+./src/wealthtax_agent/filing/__init__.py
+./src/wealthtax_agent/filing/pdf_fill.py | Two paths:
+./src/wealthtax_agent/filing/quarterly.py | US: 1040-ES quarterly vouchers (Q1: Apr 15, Q2: Jun 15, Q3: Sep 15, Q4: Jan 15
+./src/wealthtax_agent/filing/in_itr.py | This is a planning artifact only — stamped ``transmissible=false``. The
+./src/wealthtax_agent/events/__init__.py
+./src/wealthtax_agent/events/bus.py | Usage (publisher):
+./src/wealthtax_agent/events/schemas.py | ---------------------------------------------------------------------------
+./src/wealthtax_agent/main.py | import base64
+./src/wealthtax_agent/projection.py | Given the current year's ``DraftReturn`` and (optionally) a growth rate, project
+./src/wealthtax_agent/explain_return.py | import json
+./src/wealthtax_agent/services/__init__.py
+./src/wealthtax_agent/services/cpa_chat.py | ``ask()`` is the single entry point.  It builds a context-enriched prompt
+./src/wealthtax_agent/services/claude_llm.py | This is the canonical LLM client for wealthtax-agent.  It mirrors the
+./src/wealthtax_agent/state.py | from typing import Dict, List, Literal, Optional, Union
+./src/wealthtax_agent/corrections/intake.py | Takes one paragraph describing the user's year and produces a structured
+./src/wealthtax_agent/corrections/__init__.py | Pipeline:

@@ -3,7 +3,7 @@
 > One-page context graph. Read this BEFORE reading anything else in this repo.
 > Rebuild with: `bash .claude/scripts/build-index.sh > .claude/INDEX.md`
 >
-> Generated 2026-05-25T20:16Z.
+> Generated 2026-05-28T22:41Z.
 
 ## About
 
@@ -34,6 +34,7 @@ This is a prototype built for the Wealthsimple builder challenge.
 | [docs/demo_runbook.md](docs/demo_runbook.md) | Demo Runbook (3 minutes) |
 | [docs/demo_screenshots.md](docs/demo_screenshots.md) | Demo Screenshots Guide |
 | [docs/demo_voiceover.md](docs/demo_voiceover.md) | Demo Voiceover Script (2:30) |
+| [docs/groq-dpa-marker.md](docs/groq-dpa-marker.md) | Groq Data Processing Agreement — Marker |
 | [docs/run_history.md](docs/run_history.md) | Validation Run History |
 
 ## Key files at root
@@ -49,10 +50,11 @@ This is a prototype built for the Wealthsimple builder challenge.
 
 ## Code surface
 
-- Python: 7711 files
+- Python: 7791 files
+- TypeScript: 1 files
 - JavaScript: 164 files
-- Shell: 10 files
-- Markdown: 72 files
+- Shell: 11 files
+- Markdown: 95 files
 
 ## Memory pointers
 

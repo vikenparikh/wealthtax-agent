@@ -20,6 +20,9 @@ Two compiled graphs are exposed:
 from langgraph.graph import END, START, StateGraph
 
 from wealthtax_agent.build_return import build_return_node
+from wealthtax_agent.logging_utils import get_logger
+
+_log = get_logger("wealthtax_agent.graph")
 from wealthtax_agent.classify_forms import classify_forms_node
 from wealthtax_agent.clarify import ask_clarifications_node, has_outstanding_clarifications
 from wealthtax_agent.corrections import apply_corrections
@@ -48,6 +51,7 @@ def _clarification_router(state: GraphState) -> str:
 
 
 def build_legacy_graph():
+    _log.info("graph_build_start", extra={"variant": "legacy"})
     workflow = StateGraph(GraphState)
     workflow.add_node("parse_docs", parse_docs_node)
     workflow.add_node("reason_tax", reason_tax_node)
@@ -66,6 +70,7 @@ def build_legacy_graph():
 
 
 def build_graph():
+    _log.info("graph_build_start", extra={"variant": "full"})
     workflow = StateGraph(GraphState)
 
     workflow.add_node("classify_forms", classify_forms_node)

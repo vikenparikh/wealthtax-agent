@@ -265,11 +265,25 @@ def compute_ca_return(
     medical_credit = medical_creditable * float(lowest_rate)
 
     student_loan_credit = student_loan_interest_ca * float(lowest_rate) if student_loan_interest_ca > 0 else 0.0
+
+    # Property tax credit (line 61120 / Ontario Trillium Benefit umbrella).
+    # Eligible expense capped at $12,000 per the wizard tooltip; credit applied
+    # at the lowest federal rate to mirror the tuition/student-loan credit shape.
+    raw_property_tax = _to_float(user_answers.get("property_tax_paid", 0))
+    property_tax_eligible = min(max(0.0, raw_property_tax), 12000.0)
+    property_tax_credit = property_tax_eligible * float(lowest_rate)
+    if raw_property_tax > 12000.0:
+        notes.append(
+            f"Property tax paid ${raw_property_tax:,.0f} exceeds $12,000 cap; "
+            "credit computed on the first $12,000."
+        )
+
     fed_non_refundable = (
         (bpa + employment_amount) * float(lowest_rate)
         + donations_credit
         + medical_credit
         + student_loan_credit
+        + property_tax_credit
     )
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
     federal_tax = max(0.0, federal_tax_before_credits - fed_non_refundable - federal_dtc)
@@ -323,6 +337,9 @@ def compute_ca_return(
         "employment_income_net": employment_income_after_t2200,
         "student_loan_interest_ca": student_loan_interest_ca,
         "student_loan_credit": student_loan_credit,
+        "property_tax_paid": raw_property_tax,
+        "property_tax_eligible": property_tax_eligible,
+        "property_tax_credit": property_tax_credit,
         "interest_income": interest_income,
         "taxable_eligible_dividends": taxable_eligible,
         "taxable_non_eligible_dividends": taxable_non_eligible,

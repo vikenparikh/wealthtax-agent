@@ -351,10 +351,22 @@ def compute_us_return(
     agi = max(0.0, total_income - above_line)
     std_deduction = float(fed_tables.get("standard_deduction", {}).get(status, 0))
 
-    # Schedule A itemized deduction comparison
+    # Schedule A itemized deduction comparison. SALT bucket combines state +
+    # local income/sales tax (SCH-A.state_local_taxes) with user-supplied
+    # property tax (state_local_property_tax), capped together at $10,000.
+    raw_property_tax_us = _to_float(user_answers.get("state_local_property_tax", 0))
+    sch_a_state_local = _sum_field(extracts, "SCH-A", "state_local_taxes")
+    salt_uncapped = sch_a_state_local + max(0.0, raw_property_tax_us)
+    salt_deduction = min(10000.0, salt_uncapped)
+    if salt_uncapped > 10000.0:
+        notes.append(
+            f"SALT cap applied: state/local + property tax ${salt_uncapped:,.0f} "
+            f"capped at $10,000 (Schedule A)."
+        )
+
     sch_a_total = (
         _sum_field(extracts, "SCH-A", "medical_expenses")
-        + min(10000.0, _sum_field(extracts, "SCH-A", "state_local_taxes"))
+        + salt_deduction
         + _sum_field(extracts, "SCH-A", "mortgage_interest")
         + _sum_field(extracts, "SCH-A", "charitable_gifts")
     )
@@ -462,6 +474,8 @@ def compute_us_return(
         "ira_401k_adjustment": ira_deduction,
         "standard_deduction": std_deduction,
         "itemized_deduction_sch_a": sch_a_total,
+        "state_local_property_tax": raw_property_tax_us,
+        "salt_deduction_capped": salt_deduction,
         "effective_deduction": effective_deduction,
         "qbi_deduction": qbi_deduction,
         "agi": agi,

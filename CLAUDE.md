@@ -37,7 +37,7 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 | `main` HEAD | `0a99869` — `feat(security): enforce FilingArtifact.transmissible=False at the model boundary` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
-| Test count | **485 passing** (+7 from S2 transmission guard), ~18s wall on a fresh Python 3.11 venv |
+| Test count | **627 passing** (+11 from P2-AC7 Groq rate limiter; prior baseline 616), ~18s wall on a fresh Python 3.11 venv |
 | Streamlit boot smoke | ✅ green via `./scripts/validate.sh` |
 | AppTest UI smoke | ✅ both `self_hosted` and `saas` modes render without exception |
 | GitHub Actions on `main` | unknown from this sandbox (no MCP tool for `workflow_run`); check the Actions tab in browser |
@@ -331,6 +331,32 @@ This file is alive. Keep it accurate.
 ## Session log
 
 Newest at the top. Format per entry:
+
+### 2026-05-27 — P2-AC8 structured logging (Ralph loop)
+
+- HEAD on main: `0a99869` (unchanged — not yet committed/pushed)
+- Tests: **616 passing** (was 606 → +10 from `tests/unit/test_structured_logging.py`)
+- New module: `src/wealthtax_agent/logging_utils.py` — `JSONFormatter` emits single-line JSON per record; `scrub_pii()` recursively redacts SSN (`\b\d{3}-\d{2}-\d{4}\b`), SIN (`\b\d{9}\b`), and PAN (`\b[A-Z]{5}\d{4}[A-Z]\b`) substrings before serialisation. `get_logger()` is idempotent and `propagate=False` so pytest's root logger doesn't double-print.
+- Wired into: `llm.py` (retry-failure warning with attempt/max/retryable/error), `graph.py` (`graph_build_start` on both `build_graph()` and `build_legacy_graph()`), `build_return.py` (`build_return_start` + per-jurisdiction `build_return_failed` error path).
+- Decision: PAN regex runs before SIN regex because SIN (9 contiguous digits) would otherwise eat the 4-digit numeric block in PAN (`[A-Z]{5}\d{4}[A-Z]`). SSN must run before SIN for the same reason on the dashed form.
+- Decision: enforced via the model boundary (one formatter, one scrubber, idempotent factory) instead of per-call-site JSON formatting — keeps emission sites readable (`_log.info("event", extra={...})`) and impossible to forget on new emission sites.
+
+### 2026-05-27 — P2-AC5 property tax inputs (Ralph loop)
+
+- HEAD on main: `0a99869` (unchanged — not yet committed/pushed)
+- Tests: **606 passing** (was 596 → +10 from `tests/unit/engines/test_property_tax_inputs.py`)
+- CA engine: `user_answers["property_tax_paid"]` accepted; eligible expense capped at $12,000; credit applied at the lowest federal rate (mirrors `student_loan_credit` shape) and rolled into `fed_non_refundable`. Surfaces in `line_items` as `property_tax_paid`, `property_tax_eligible`, `property_tax_credit`.
+- US engine: `user_answers["state_local_property_tax"]` accepted; combined with `SCH-A.state_local_taxes` into a single SALT bucket capped at $10,000; then folded into the Schedule A itemised total (only reduces tax when itemising beats the standard deduction). Surfaces in `line_items` as `state_local_property_tax` and `salt_deduction_capped`.
+- Decision: applied the CA expense as a credit (not a deduction) because the wizard tooltip framing ("max credit: $12,000 CA") implied a CRA-style non-refundable credit rather than a federal deduction line; this keeps the change additive and reversible.
+
+### 2026-05-27 — P2-AC6 + P2-AC11 wizard tooltip loader (Ralph loop)
+
+- HEAD on main: `0a99869` (unchanged — not yet committed/pushed)
+- Tests: **596 passing** (was 571 → +25 from `tests/unit/test_wizard_tooltips.py`)
+- New module: `src/wealthtax_agent/content/tooltips/` — `__init__.py` exposes `load_tooltip()` and `available_tooltips()` with an `lru_cache`-backed markdown parser; content lives alongside as `ca.md`, `us.md`, `in.md` (12 sections each).
+- Decision: kept the loader inside `tooltips/__init__.py` rather than `content/tooltips.py` to avoid the module-vs-package shadowing conflict; `_TOOLTIPS_DIR = Path(__file__).resolve().parent` so the package directory IS the content directory.
+- P2-AC11 satisfied as a side effect — loader has zero env-var dependencies (verified via `monkeypatch.delenv` for GROQ/ANTHROPIC/OPENAI keys + `importlib.reload`).
+
 
 ```
 ### YYYY-MM-DD — Headline
