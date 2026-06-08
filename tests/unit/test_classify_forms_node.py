@@ -62,10 +62,10 @@ def test_node_classifies_supported_doc_and_caches_text(monkeypatch):
 
 
 def test_node_flags_unsupported_mime_type():
-    # mime is derived from the filename extension, so use a genuinely unsupported one.
+    # filename extension drives the derived MIME; a .zip is unsupported.
     out = classify_forms_node(GraphState(raw_docs=[_doc(filename="archive.zip", mime="application/zip")]))
     assert out.classifications == []
-    assert any("not supported" in u.reason for u in out.unsupported_forms)
+    assert any(u.reason and "not supported" in u.reason for u in out.unsupported_forms)
 
 
 def test_node_flags_low_quality_ocr(monkeypatch):
