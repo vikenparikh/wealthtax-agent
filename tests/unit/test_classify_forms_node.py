@@ -61,9 +61,16 @@ def test_node_classifies_supported_doc_and_caches_text(monkeypatch):
     assert get_cached_text_for(b"t4bytes") == "T4 Statement of Remuneration Paid"
 
 
-def test_node_flags_unsupported_mime_type():
-    # filename extension drives the derived MIME; a .zip is unsupported.
-    out = classify_forms_node(GraphState(raw_docs=[_doc(filename="archive.zip", mime="application/zip")]))
+def test_node_flags_unsupported_mime_type(monkeypatch):
+    # _infer_mime_type normalises every input to one of the 5 supported types,
+    # so the only way to reach the unsupported-format guard is a coerced doc
+    # whose mime is outside that set — pin that defensive branch directly.
+    monkeypatch.setattr(
+        cf,
+        "_coerce_input_document",
+        lambda doc: InputDocument(content=b"x", filename="archive.zip", mime_type="application/zip"),
+    )
+    out = classify_forms_node(GraphState(raw_docs=[_doc()]))
     assert out.classifications == []
     assert any(u.reason and "not supported" in u.reason for u in out.unsupported_forms)
 
