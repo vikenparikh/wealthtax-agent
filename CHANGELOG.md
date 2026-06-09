@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### CI/CD
+
+- Build/deploy migrated from GitHub Actions to VPS-native CI (`infra/autodeploy/ci-repos.yaml`): the host `vps-ci.timer` now builds, tests, and deploys wealthtax-agent. Build/deploy mechanism only — the tax-filing/submission path is unchanged and stays separately gated.
+
 Punch-list captured during the v0.5.0 audit; deferred to v0.5.1:
 
 - Dedicated unit tests: `tests/unit/test_in_itr_serializer.py`, `tests/unit/engines/test_student_loan_cross_border.py`.
