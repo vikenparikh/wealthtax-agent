@@ -95,7 +95,10 @@ def extract_forms_node(state: GraphState) -> GraphState:
             if extractor is None:
                 continue
 
-            doc = state.raw_docs[index] if index < len(state.raw_docs) else None
+            doc_index = classification.source_doc_index
+            if doc_index is None:
+                doc_index = index
+            doc = state.raw_docs[doc_index] if 0 <= doc_index < len(state.raw_docs) else None
             text = _text_for_doc(doc) if doc is not None else None
             if not text:
                 continue
