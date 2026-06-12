@@ -1,3 +1,4 @@
+import hashlib
 import os
 import random
 import re
@@ -37,12 +38,17 @@ def _load_dotenv_if_present() -> None:
     else:
         return
 
-    mtime = env_path.stat().st_mtime
-    if _DOTENV_CACHE["path"] == str(env_path) and _DOTENV_CACHE["mtime"] == mtime:
+    # Invalidate on content, not mtime: filesystem mtime granularity can be
+    # coarser than the gap between two rewrites, so an mtime-only key would
+    # miss a same-second edit and serve a stale config. Hashing a tiny .env on
+    # each config load is negligible and makes invalidation exact.
+    raw = env_path.read_bytes()
+    fingerprint = (str(env_path), len(raw), hashlib.sha256(raw).hexdigest())
+    if _DOTENV_CACHE.get("fingerprint") == fingerprint:
         return
 
     parsed = {}
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+    for raw_line in raw.decode("utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
@@ -61,7 +67,8 @@ def _load_dotenv_if_present() -> None:
         _DOTENV_LOADED_KEYS.add(key)
 
     _DOTENV_CACHE["path"] = str(env_path)
-    _DOTENV_CACHE["mtime"] = mtime
+    _DOTENV_CACHE["mtime"] = env_path.stat().st_mtime
+    _DOTENV_CACHE["fingerprint"] = fingerprint
 
 
 def sanitize_runtime_error(message: str) -> str:
