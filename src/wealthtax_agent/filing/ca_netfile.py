@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import List
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import quoteattr
 
 from wealthtax_agent.state import DraftReturn, FormExtract
 
@@ -25,11 +25,11 @@ def serialize_t1(draft: DraftReturn, extracts: List[FormExtract], year: int) -> 
         if e.jurisdiction != "CA":
             continue
         fields_xml = "\n".join(
-            f"      <Field name=\"{escape(k)}\">{_fmt(float(v))}</Field>"
+            f"      <Field name={quoteattr(k)}>{_fmt(float(v))}</Field>"
             for k, v in e.fields.items()
         )
         slips_xml.append(
-            f"    <Slip code=\"{escape(e.form_code)}\" source=\"{escape(e.source_filename or '')}\">\n"
+            f"    <Slip code={quoteattr(e.form_code)} source={quoteattr(e.source_filename or '')}>\n"
             f"{fields_xml}\n"
             "    </Slip>"
         )
