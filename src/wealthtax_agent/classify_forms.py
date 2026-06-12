@@ -161,6 +161,7 @@ def classify_forms_node(state: GraphState) -> GraphState:
                 continue
 
             classification.filename = filename
+            classification.source_doc_index = index - 1
             classifications.append(classification)
             _DOC_TEXT_CACHE[_doc_text_key(input_doc.content)] = sanitized
         except Exception as exc:

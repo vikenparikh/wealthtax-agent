@@ -40,6 +40,10 @@ class FormClassification(BaseModel):
     form_code: Optional[str] = None
     confidence: Confidence = "low"
     reason: Optional[str] = None
+    # Index into GraphState.raw_docs that produced this classification.
+    # classifications is sparse (unsupported docs are dropped), so a
+    # positional classifications[i] <-> raw_docs[i] mapping is unsafe.
+    source_doc_index: Optional[int] = None
 
 
 class FormExtract(BaseModel):
