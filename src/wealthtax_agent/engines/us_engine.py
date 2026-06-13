@@ -407,9 +407,17 @@ def compute_us_return(
         notes.append(f"AMT applies: ${amt_tax:,.0f} > regular tax ${federal_tax:,.0f}. Form 6251 required.")
         federal_tax = amt_tax
 
-    # Net Investment Income Tax (3.8%) for high earners
+    # Net Investment Income Tax (3.8%) for high earners (§1411).
+    # Net investment income includes rents and royalties by default; only
+    # income from a trade/business in which the taxpayer materially participates
+    # (non-passive) is excluded — that active income (Schedule C, K-1 business)
+    # is tracked separately above and correctly left out here.
     niit_threshold = 250000 if status == "married_filing_jointly" else 200000
-    investment_income = interest_income + ordinary_dividends + max(0.0, long_gain) + max(0.0, short_gain) + misc_royalties
+    investment_income = (
+        interest_income + ordinary_dividends
+        + max(0.0, long_gain) + max(0.0, short_gain)
+        + misc_royalties + misc_rents + sch_e_supplemental
+    )
     niit = round(min(investment_income, max(0.0, agi - niit_threshold)) * 0.038, 2)
     federal_tax += niit
 
