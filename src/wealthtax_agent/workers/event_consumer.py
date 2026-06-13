@@ -102,6 +102,46 @@ async def handle_receipt_captured(event: object) -> None:
 # Worker entry point with reconnect loop
 # ---------------------------------------------------------------------------
 
+def _ensure_schema() -> None:
+    """Ensure the DB schema is up-to-date before the consumer starts processing events.
+
+    For SQLite (dev / fallback): use SQLAlchemy's ``create_all`` so tests and
+    standalone runs work without Alembic being present.
+
+    For any other DB (Postgres in production): run ``alembic upgrade head``
+    via subprocess so the consumer is always in sync with the latest migration
+    even after a fresh container pull.
+    """
+    import subprocess
+    import sys
+
+    from wealthtax_agent.config import get_settings
+
+    db_url = get_settings().database_url
+    if db_url.startswith("sqlite"):
+        from wealthtax_agent.db import create_all_for_tests
+        create_all_for_tests()
+        log.info("schema: SQLite create_all complete (%s)", db_url)
+    else:
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if result.returncode != 0:
+                log.error(
+                    "schema: alembic upgrade head failed (rc=%d):\n%s",
+                    result.returncode,
+                    result.stderr,
+                )
+            else:
+                log.info("schema: alembic upgrade head OK")
+        except Exception:
+            log.error("schema: alembic upgrade head raised an exception", exc_info=True)
+
+
 async def run() -> None:
     """Subscribe to relevant channels; reconnect on Redis failure.
 
@@ -109,6 +149,8 @@ async def run() -> None:
     """
     from wealthtax_agent.events.bus import subscribe
     from wealthtax_agent.events.schemas import TradeFilledEvent
+
+    _ensure_schema()
 
     attempt = 0
     while True:
