@@ -101,3 +101,36 @@ in RESEARCH step). After fix, count must be >= 952 (existing 951 + new test(s)).
 - No holding-period tack-on (§1091 also requires the replacement lot to tack on the holding
   period of the sold shares) was implemented or tested — that is a separate, lower-urgency
   correctness item and is NOT proposed for this cycle (honest scope boundary).
+
+---
+
+## Cycle 1 — DEVELOP (2026-06-13)
+
+### Shipped: §1091 wash-sale replacement-lot over-attribution fix → PR #46
+
+**Branch:** `fix/wash-sale-replacement-capacity` (off `origin/main`).
+
+**Change:** `engines/wash_sale.py` — added a `consumed_qty` map (`rep_buy.id -> shares used`)
+carried across the sells loop. Available shares = `rep_buy.quantity - consumed`; a replacement
+with no remaining capacity is skipped, so a loss sell with no replacement shares left keeps its
+loss allowed. 7-line behavioural change, narrow and reversible.
+
+**Test:** `tests/test_wash_sale_replacement_capacity.py` (2 tests) — proven FAIL-before /
+PASS-after by reverting only the engine hunk:
+- Before: `len(results) == 2` (`[('s1', 10000), ('s2', 11000)]`), `rep.adjusted_basis_cents == 116_000`.
+- After:  `len(results) == 1` (`s1` only), s2 loss ALLOWED, `rep.adjusted_basis_cents == 105_000`.
+- Plus a proportional-split case: 15-share rep across two 10-share sells → s1 $100 disallowed,
+  s2 $50 disallowed, rep basis += 15_000 (never more).
+
+**Before/after delta:**
+| Metric | Before | After |
+|---|---|---|
+| Disallowances for the shared-replacement scenario | 2 (over-attributed) | 1 (§1091-correct) |
+| `rep.adjusted_basis_cents` (10+10 sells, 10-share rep) | 116_000 (inflated) | 105_000 (correct) |
+| Total disallowed loss | 21_000 | 10_000 |
+| Downstream effect | future gain under-reported on Sch D / 8949 | correct |
+| Test count | 951 passing | **953 passing** (+2) |
+| Existing `tests/test_wash_sale.py` | green | green (no regressions) |
+
+**Scope honesty:** paper tax-CALC only; no filing/NETFILE/MeF/live paths touched. Holding-period
+tack-on (separate §1091 requirement) still NOT implemented — remains a future-cycle item.
