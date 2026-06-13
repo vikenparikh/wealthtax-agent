@@ -128,6 +128,14 @@ def detect_wash_sales(lots: List[LotRecord]) -> Tuple[List[LotRecord], List[Wash
 
     results: List[WashSaleResult] = []
 
+    # Track shares of each replacement buy already consumed by an *earlier*
+    # loss sell in this call. §1091 disallows a loss only to the extent the
+    # sold shares are replaced; a single replacement buy cannot cover more
+    # shares than it holds. Without this, two loss sells inside one buy's
+    # 61-day window would each fully attribute it, over-reporting both the
+    # disallowed loss and the replacement lot's adjusted basis.
+    consumed_qty: dict = {}  # rep_buy.id -> shares already used
+
     for sell in sells:
         sell_date = _normalise_date(sell.trade_date)
         proceeds_cents = sell.original_basis_cents  # for a sell, basis = cost of shares being sold
@@ -203,7 +211,14 @@ def detect_wash_sales(lots: List[LotRecord]) -> Tuple[List[LotRecord], List[Wash
             if remaining_loss <= 0 or remaining_qty <= 0:
                 break
 
-            covered_qty = min(rep_buy.quantity, remaining_qty)
+            # Only the shares of this replacement buy not already consumed by an
+            # earlier loss sell are available to absorb this loss.
+            available_qty = rep_buy.quantity - consumed_qty.get(rep_buy.id, 0)
+            if available_qty <= 0:
+                continue  # fully consumed by an earlier sell — no capacity left
+
+            covered_qty = min(available_qty, remaining_qty)
+            consumed_qty[rep_buy.id] = consumed_qty.get(rep_buy.id, 0) + covered_qty
             proportion  = covered_qty / sell.quantity
             disallowed  = int(proportion * loss_cents)
 
