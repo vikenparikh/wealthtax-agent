@@ -213,3 +213,43 @@ the full 85% of benefits. The IRS Pub 915 worksheet is deterministic and well-de
 **Scope honesty:** paper tax-CALC only; no filing/live touched. Simplification: tax-exempt
 interest not added to provisional income (not tracked by prototype). Future-cycle items still
 open: CTC fraction-thereof rounding; NIIT MAGI-vs-AGI (FEIE add-back); §1091 holding-period tack-on.
+
+---
+
+## Cycle 4 — RESEARCH + DEVELOP (2026-06-13)
+
+### Improvement: §1222 short/long netting + §1211 $3,000 current-year capital-loss limit → PR #49
+
+**Research method:** read the US capital-gains section of `us_engine.py`. The income sum used
+`max(0.0, short_gain) + max(0.0, long_gain)` (lines ~364-365) — each character floored at zero.
+Cross-checked: only *prior-year* carryover (`prior_capital_losses` user answer) reduced ordinary
+income; current-year losses had no path. (Rejected alternatives this cycle: §1091 holding-period
+tack-on — inert, nothing downstream consumes a replacement lot's holding period; AMT cap-gains
+carve-out — the AMT function is already "highly simplified" so an exact-value test would be
+arbitrary.)
+
+**Why highest-value:** affects a very large, ordinary population — anyone who sold investments at
+a net loss in the year (extremely common). Two correctness failures: (1) current-year net loss
+gave $0 deduction vs the $3,000 §1211(b) allowance; (2) short/long not netted (§1222) overstated
+income. Both have clear, often-large dollar impact and are unambiguous statute.
+
+**Why measurable / verify-plan (fails-before / passes-after):**
+- $5k current ST loss → $3,000 deducted + $2,000 carryover (was $0).
+- +$10k ST, −$4k LT → net $6k ST gain (was $10k taxed).
+- +$2k ST, −$9k LT → $3,000 deducted + $4,000 carryover (was $2k taxed).
+- GUARD: +$5k ST, +$8k LT unchanged.
+- Proven by reverting only the engine hunk: 4 assertions fail (0.0==3000.0, 10000.0==6000.0,
+  KeyError capital_loss_carryover), then pass.
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| $5k current-year ST loss | $0 deducted, loss lost | $3,000 deducted + $2,000 carryover |
+| +$10k ST / −$4k LT | income $10,000 | net $6,000 ST gain |
+| +$2k ST / −$9k LT | $2,000 taxed | $3,000 deducted + $4,000 carryover |
+| Prior-year carryover (existing) | preserved | preserved (unchanged tests) |
+| Test count | 960 passing | **964 passing** (+4) |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. MFS $1,500 limit not modelled
+(status unsupported). Future-cycle items still open: CTC fraction-thereof rounding; NIIT
+MAGI-vs-AGI (FEIE add-back); AMT capital-gains preferential carve-out.
