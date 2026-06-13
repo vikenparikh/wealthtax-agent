@@ -174,3 +174,42 @@ correctly excluded — so the fix is clean with no passive/active ambiguity in t
 
 **Scope honesty:** paper tax-CALC only; no filing/NETFILE/MeF/live touched. CTC
 fraction-thereof rounding and NIIT MAGI-vs-AGI (FEIE add-back) remain future-cycle items.
+
+---
+
+## Cycle 3 — RESEARCH + DEVELOP (2026-06-13)
+
+### Improvement: Social Security taxed via provisional-income worksheet, not flat 85% → PR #48
+
+**Research method:** the engine self-flagged the gap in a note ("Social Security inclusion
+uses a flat 85% approximation; real rule is income-tested"). Confirmed at
+`us_engine.py:322` — `taxable_ssa = ssa_net * 0.85` unconditionally. Also confirmed NO
+engine-level SS-taxability test existed (only form extraction) — a coverage gap.
+
+**Why highest-value:** affects an entire population (retirees) and the magnitude is large
+— a flat 85% inclusion taxes SS-only / low-income retirees who legally owe $0 on benefits.
+Unlike the deferred CTC rounding (≤$50, narrow band), this can mis-state taxable income by
+the full 85% of benefits. The IRS Pub 915 worksheet is deterministic and well-defined.
+
+**Why measurable / verify-plan (fails-before / passes-after):**
+- SS-only $24k single → $0 taxable (was $20,400).
+- $20k pension + $20k SS single → $2,500 (50% tier; was $17,000).
+- MFJ $10k pension + $30k SS → $0 (base1 32,000; was $25,500).
+- GUARD: $100k pension + $30k SS → $25,500 (85% cap, UNCHANGED — proves high earners were
+  already correct and the fix does not over-correct).
+- Proven by reverting only the engine hunk: 3 fail (20400==0, 17000==2500, 25500==0), the
+  guard passes both before/after.
+
+**Before/after delta:**
+| Scenario | Before (flat 85%) | After (worksheet) |
+|---|---|---|
+| SS-only $24k, single | $20,400 taxable | $0 |
+| $20k pension + $20k SS, single | $17,000 | $2,500 |
+| MFJ $10k pension + $30k SS | $25,500 | $0 |
+| $100k pension + $30k SS (guard) | $25,500 | $25,500 (unchanged) |
+| Test count | 956 passing | **960 passing** (+4) |
+| Engine SS-taxability test coverage | none | 4 tests |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. Simplification: tax-exempt
+interest not added to provisional income (not tracked by prototype). Future-cycle items still
+open: CTC fraction-thereof rounding; NIIT MAGI-vs-AGI (FEIE add-back); §1091 holding-period tack-on.

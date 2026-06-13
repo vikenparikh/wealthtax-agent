@@ -189,6 +189,36 @@ def _compute_fica(w2_wages: float, se_net: float, status: str, fed_tables: Dict[
     return round(se_ss_tax + se_medicare_tax + additional_medicare, 2)
 
 
+def _taxable_social_security(ssa_net: float, other_income: float, status: str) -> float:
+    """Taxable portion of Social Security benefits (IRS Pub 915 worksheet).
+
+    ``other_income`` is modified AGI excluding Social Security (tax-exempt
+    interest would also be added if tracked). Provisional income = that plus
+    one-half of benefits. Result is 0%, up to 50%, or up to 85% of benefits.
+
+    Thresholds are fixed in statute (not inflation-indexed):
+      - single / HoH / MFS-apart : base1 25,000, base2 34,000
+      - married filing jointly   : base1 32,000, base2 44,000
+    """
+    if ssa_net <= 0:
+        return 0.0
+    if status == "married_filing_jointly":
+        base1, base2 = 32000.0, 44000.0
+    else:
+        base1, base2 = 25000.0, 34000.0
+
+    provisional = other_income + 0.5 * ssa_net
+    if provisional <= base1:
+        return 0.0
+    if provisional <= base2:
+        # 50% tier only
+        return round(min(0.5 * ssa_net, 0.5 * (provisional - base1)), 2)
+    # Above base2: 85% tier stacked on the (capped) 50% tier.
+    tier_50 = min(0.5 * ssa_net, 0.5 * (base2 - base1))
+    taxable = 0.85 * (provisional - base2) + tier_50
+    return round(min(taxable, 0.85 * ssa_net), 2)
+
+
 def compute_us_return(
     extracts: List[FormExtract],
     year: int,
@@ -318,10 +348,9 @@ def compute_us_return(
     else:
         ordinary_offset = 0.0
 
-    # Social security partial inclusion (simplified: 85%)
-    taxable_ssa = ssa_net * 0.85 if ssa_net > 0 else 0.0
-
-    total_income = round(
+    # All income other than Social Security. The taxable portion of SS depends
+    # on this (via provisional income), so it is summed first.
+    other_income = round(
         wages
         + interest_income
         + ordinary_dividends
@@ -332,7 +361,6 @@ def compute_us_return(
         + misc_other
         + sch_e_supplemental
         + pension_taxable
-        + taxable_ssa
         + max(0.0, short_gain)
         + max(0.0, long_gain)
         + k1_business
@@ -348,6 +376,16 @@ def compute_us_return(
     )
 
     above_line = student_loan_interest + hsa_deduction + ira_deduction
+
+    # Social Security taxability — IRS provisional-income worksheet (Pub 915),
+    # replacing the prior flat-85% inclusion which over-taxed low/middle-income
+    # retirees (an SS-only retiree owes $0, not 85%). Provisional income is
+    # modified AGI excluding SS plus one-half of benefits (tax-exempt interest,
+    # which would also be added, is not tracked by this prototype).
+    provisional_base = max(0.0, other_income - above_line)
+    taxable_ssa = _taxable_social_security(ssa_net, provisional_base, status)
+
+    total_income = round(other_income + taxable_ssa, 2)
     agi = max(0.0, total_income - above_line)
     std_deduction = float(fed_tables.get("standard_deduction", {}).get(status, 0))
 
@@ -445,7 +483,8 @@ def compute_us_return(
 
     notes.extend([
         "Simplified prototype: EITC, state-specific credits, and several adjustments not modelled.",
-        "Social Security inclusion uses a flat 85% approximation; real rule is income-tested.",
+        "Social Security taxability uses the IRS provisional-income worksheet (0/50/85%); "
+        "tax-exempt interest is not added to provisional income in this prototype.",
     ])
     if niit > 0:
         notes.append(f"NIIT applied: 3.8% on investment income above ${niit_threshold:,.0f} = ${niit:,.0f}.")

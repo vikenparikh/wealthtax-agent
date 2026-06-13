@@ -147,3 +147,51 @@ def test_niit_excludes_active_business_income():
     ]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
     assert draft.line_items["niit"] == 0.0
+
+
+# --- Social Security taxability: IRS provisional-income worksheet (Pub 915) ---
+# Previously a flat 85% of benefits was always included, over-taxing low/middle
+# income retirees (an SS-only retiree owes $0, not 85%).
+
+def _ssa(net_benefits: float) -> FormExtract:
+    return FormExtract(form_code="SSA-1099", jurisdiction="US",
+                       fields={"net_benefits": net_benefits})
+
+
+def _pension(taxable: float) -> FormExtract:
+    return FormExtract(form_code="1099-R", jurisdiction="US",
+                       fields={"taxable_amount": taxable})
+
+
+def test_social_security_only_retiree_owes_zero_on_benefits():
+    """SS-only retiree: provisional income = 0.5 * benefits = 12,000 < 25,000
+    base -> 0% of benefits taxable. FAILS before (85% -> 20,400) / PASSES after."""
+    draft = compute_us_return([_ssa(24000.0)], year=2024,
+                              user_answers={"filing_status": "single"})
+    assert draft.line_items["taxable_social_security"] == 0.0
+
+
+def test_social_security_middle_income_partial_inclusion():
+    """$20k pension + $20k SS, single: provisional = 20,000 + 10,000 = 30,000,
+    inside the 25,000-34,000 band -> 50% tier = min(10,000, 0.5*(30,000-25,000))
+    = 2,500 taxable. FAILS before (85% -> 17,000)."""
+    draft = compute_us_return([_pension(20000.0), _ssa(20000.0)], year=2024,
+                              user_answers={"filing_status": "single"})
+    assert draft.line_items["taxable_social_security"] == 2500.0
+
+
+def test_social_security_high_income_caps_at_85pct_unchanged():
+    """$100k pension + $30k SS, single: provisional 115,000 >> 34,000 -> capped
+    at 85% of benefits = 25,500. High earners were already correct, so this is
+    unchanged by the fix (guards against over-correction)."""
+    draft = compute_us_return([_pension(100000.0), _ssa(30000.0)], year=2024,
+                              user_answers={"filing_status": "single"})
+    assert draft.line_items["taxable_social_security"] == round(0.85 * 30000.0, 2)
+
+
+def test_social_security_mfj_higher_thresholds():
+    """MFJ base1 is 32,000. $10k pension + $30k SS -> provisional = 10,000 +
+    15,000 = 25,000 < 32,000 -> 0% taxable (a single filer would owe tax here)."""
+    draft = compute_us_return([_pension(10000.0), _ssa(30000.0)], year=2024,
+                              user_answers={"filing_status": "married_filing_jointly"})
+    assert draft.line_items["taxable_social_security"] == 0.0
