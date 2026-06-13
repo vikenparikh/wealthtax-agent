@@ -22,6 +22,35 @@ log = logging.getLogger(__name__)
 
 MAX_RETRIES = 5  # maximum number of reconnect attempts before giving up
 
+# Platform-level trad fills are not user-scoped; they are attributed to this
+# sentinel user. lots.user_id is a NOT-NULL FK to users.id, so the row must
+# exist or the INSERT fails on a FK-enforcing backend (Postgres). SQLite does
+# not enforce FKs by default, which masked this in tests.
+SYSTEM_USER_ID = "system"
+SYSTEM_USER_EMAIL = "system@wealthtax.internal"
+# Deliberately not a valid bcrypt hash — the sentinel user can never log in.
+_SYSTEM_USER_UNUSABLE_PASSWORD = "!"
+
+
+def _ensure_system_user(session) -> None:
+    """Idempotently create the sentinel 'system' user that platform-level Lot
+    rows are attributed to, satisfying the lots.user_id FK. Self-healing: if
+    the row is missing (fresh DB, or it was deleted) it is recreated."""
+    from wealthtax_agent.db.models import User
+
+    if session.get(User, SYSTEM_USER_ID) is not None:
+        return
+    session.add(
+        User(
+            id=SYSTEM_USER_ID,
+            email=SYSTEM_USER_EMAIL,
+            hashed_password=_SYSTEM_USER_UNUSABLE_PASSWORD,
+        )
+    )
+    # Flush so the FK target is visible to the Lot INSERT in this same
+    # transaction (commit happens when the get_session() block exits).
+    session.flush()
+
 
 # ---------------------------------------------------------------------------
 # Handlers
@@ -67,8 +96,9 @@ async def handle_trade_filled(event: object) -> None:
 
     try:
         with get_session() as session:
+            _ensure_system_user(session)
             lot = Lot(
-                user_id="system",
+                user_id=SYSTEM_USER_ID,
                 ticker=pl.symbol,
                 side=side,
                 trade_date=event.occurred_at,

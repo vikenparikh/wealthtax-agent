@@ -246,3 +246,64 @@ class TestReconnectRetry:
         # With MAX_RETRIES=3, run() should attempt 3 times (attempts 1, 2, 3)
         # before giving up; the first call is attempt 0 (counted as attempt 1 before raise check)
         assert call_count >= 2, f"Expected at least 2 subscribe calls, got {call_count}"
+
+
+# ---------------------------------------------------------------------------
+# Sentinel 'system' user — the lots.user_id FK target (Postgres regression)
+#
+# lots.user_id is a NOT-NULL FK to users.id. The consumer attributes platform
+# fills to a sentinel user_id="system" that previously did not exist, so the
+# INSERT failed with a ForeignKeyViolation on Postgres (SQLite does not enforce
+# FKs by default, which masked it). handle_trade_filled now ensures the system
+# user exists first.
+# ---------------------------------------------------------------------------
+
+class TestSystemUserSentinel:
+    @pytest.mark.asyncio
+    async def test_handler_creates_system_user(self) -> None:
+        from wealthtax_agent.db import get_session
+        from wealthtax_agent.db.models import User
+        from wealthtax_agent.workers.event_consumer import (
+            SYSTEM_USER_ID,
+            handle_trade_filled,
+        )
+
+        await handle_trade_filled(_make_event(event_id="evt-sysuser-1"))
+
+        with get_session() as session:
+            user = session.get(User, SYSTEM_USER_ID)
+            assert user is not None, "sentinel system user must exist for the lots FK"
+            assert user.email  # NOT NULL unique column populated
+            assert user.hashed_password  # NOT NULL column populated
+
+    @pytest.mark.asyncio
+    async def test_system_user_creation_is_idempotent(self) -> None:
+        """Two fills must not create two system users (no unique-email clash)."""
+        from wealthtax_agent.db import get_session
+        from wealthtax_agent.db.models import Lot, User
+        from wealthtax_agent.workers.event_consumer import (
+            SYSTEM_USER_ID,
+            handle_trade_filled,
+        )
+
+        await handle_trade_filled(_make_event(event_id="evt-sysuser-2a"))
+        await handle_trade_filled(_make_event(event_id="evt-sysuser-2b"))
+
+        with get_session() as session:
+            n_users = session.query(User).filter(User.id == SYSTEM_USER_ID).count()
+            n_lots = session.query(Lot).count()
+        assert n_users == 1
+        assert n_lots == 2
+
+    def test_lot_source_value_fits_column_width(self) -> None:
+        """The source value the consumer writes must fit the column on strict-
+        length backends (Postgres). Guards against re-introducing the overflow
+        that SQLite silently tolerated."""
+        from wealthtax_agent.db.models import Lot
+        from wealthtax_agent.workers import event_consumer as ec
+
+        max_len = Lot.__table__.c.source.type.length
+        # the literal the handler writes
+        assert len("trad-platform-event") <= max_len
+        # and the sentinel email fits its column too
+        assert len(ec.SYSTEM_USER_EMAIL) <= 320
