@@ -103,3 +103,47 @@ def test_amt_triggers_for_high_income_minimal_deductions():
     extracts = [_w2(500000.0)]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
     assert draft.line_items["amt_tax"] >= 0
+
+
+# --- NIIT must include rents/royalties (§1411), not just interest/divs/gains ---
+
+def test_niit_includes_rental_income():
+    """Rental income (1099-MISC rents) is net investment income under §1411.
+    It flows into AGI but was previously omitted from the NIIT base, so the
+    3.8% tax was understated for landlords above the threshold.
+
+    FAILS before the fix (niit == 0, rents excluded) / PASSES after (niit ==
+    3.8% of the $30k rental)."""
+    extracts = [
+        _w2(220000.0),  # AGI 220k from wages alone -> over single 200k threshold
+        FormExtract(form_code="1099-MISC", jurisdiction="US", fields={"rents": 30000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+
+    assert draft.line_items["rental_income"] == 30000.0  # rental is in income
+    # AGI = 250k; excess over threshold (50k) exceeds NII (30k), so NII binds.
+    assert draft.line_items["niit"] == round(0.038 * 30000.0, 2)  # 1140.00
+    assert any("NIIT" in n for n in draft.notes)
+
+
+def test_niit_includes_schedule_e_supplemental_income():
+    """Schedule E rental/royalty (supplemental) income is also §1411 NII."""
+    extracts = [
+        _w2(210000.0),
+        FormExtract(form_code="SCH-E", jurisdiction="US",
+                    fields={"net_supplemental_income": 40000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    # AGI = 250k; excess 50k > NII 40k, so NII binds -> 3.8% * 40k.
+    assert draft.line_items["niit"] == round(0.038 * 40000.0, 2)  # 1520.00
+
+
+def test_niit_excludes_active_business_income():
+    """Active trade/business income (Schedule C) is NOT net investment income —
+    a Schedule-C-only high earner owes no NIIT (self-employment income is
+    subject to SE tax, not the 3.8% investment tax)."""
+    extracts = [
+        FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 300000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["niit"] == 0.0
