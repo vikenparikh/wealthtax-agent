@@ -134,3 +134,43 @@ PASS-after by reverting only the engine hunk:
 
 **Scope honesty:** paper tax-CALC only; no filing/NETFILE/MeF/live paths touched. Holding-period
 tack-on (separate §1091 requirement) still NOT implemented — remains a future-cycle item.
+
+---
+
+## Cycle 2 — RESEARCH + DEVELOP (2026-06-13)
+
+### Improvement: Include rents/royalties in the NIIT base (§1411) → PR #47
+
+**Research method:** read the full US tax-assembly path in `engines/us_engine.py`
+(QDCGT worksheet, CTC phaseout, AMT, NIIT, FICA). Two real bugs surfaced:
+1. **NIIT omits rental + Schedule E income** (line ~412): `investment_income` summed
+   interest + ordinary_dividends + gains + royalties but NOT `misc_rents` (1099-MISC
+   rents) or `sch_e_supplemental` — both flow into AGI yet escaped the 3.8% tax.
+2. CTC phaseout uses `(agi - start) // 1000` (truncates) but §24(b)(2) says "or
+   fraction thereof" → should round UP. (Lower value: ≤$50, narrow AGI band — logged
+   as a future-cycle candidate, NOT shipped this cycle.)
+
+**Why NIIT chosen (highest-value):** dollar impact scales with rental income × 3.8%
+(can be thousands), affects any high-earner landlord, vs. the CTC bug's ≤$50 in a
+narrow band. §1411 inclusion of rents/royalties is unambiguous for the default
+(passive) case; active business income (Sch C, K-1) is tracked separately and stays
+correctly excluded — so the fix is clean with no passive/active ambiguity in the test.
+
+**Why measurable / verify-plan (fails-before / passes-after):**
+- `test_niit_includes_rental_income`: $220k W-2 + $30k rents → NIIT 0 before, $1,140 after.
+- `test_niit_includes_schedule_e_supplemental_income`: $210k W-2 + $40k Sch E → $1,520 (0 before).
+- `test_niit_excludes_active_business_income` (guard): Sch C $300k → NIIT $0 (both before/after).
+- Proven by reverting only the engine hunk: the two "includes" tests fail (`0.0 == 1140.0` /
+  `0.0 == 1520.0`), then pass with the fix.
+
+**Before/after delta:**
+| Metric | Before | After |
+|---|---|---|
+| NIIT on $30k passive rental (AGI 250k, single) | $0 (omitted) | $1,140 (3.8%) |
+| NIIT on $40k Schedule E (AGI 250k, single) | $0 (omitted) | $1,520 (3.8%) |
+| NIIT on $300k Schedule C (active) | $0 | $0 (correctly excluded) |
+| Test count | 953 passing | **956 passing** (+3) |
+| Existing NIIT / engine tests | green | green (no regressions) |
+
+**Scope honesty:** paper tax-CALC only; no filing/NETFILE/MeF/live touched. CTC
+fraction-thereof rounding and NIIT MAGI-vs-AGI (FEIE add-back) remain future-cycle items.
