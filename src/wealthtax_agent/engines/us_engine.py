@@ -189,6 +189,45 @@ def _compute_fica(w2_wages: float, se_net: float, status: str, fed_tables: Dict[
     return round(se_ss_tax + se_medicare_tax + additional_medicare, 2)
 
 
+def _net_capital_gains(net_short: float, net_long: float, prior_carryover: float,
+                       status: str) -> tuple[float, float, float, float]:
+    """Schedule D netting (§1222) + current-year capital-loss limitation (§1211).
+
+    ``net_short`` / ``net_long`` may be negative (current-year losses);
+    ``prior_carryover`` is a positive prior-year loss amount. Returns
+    ``(short_for_ordinary, long_for_preferential, ordinary_loss_deduction,
+    loss_carryover_to_next_year)``, all >= 0.
+
+    - Short- and long-term are netted against each other; a loss in one
+      character offsets a gain in the other.
+    - A net capital loss reduces ordinary income up to $3,000, with the excess
+      carried to next year. (The $1,500 married-filing-separately limit is not
+      modelled — this engine does not support that status.)
+    """
+    prior = max(0.0, prior_carryover)
+    combined = net_short + net_long - prior
+
+    if combined > 0:
+        s, l, p = net_short, net_long, prior
+        # Prior-year loss reduces gains, long first then short (mirrors the
+        # engine's prior behaviour).
+        if l > 0:
+            a = min(p, l); l -= a; p -= a
+        if p > 0 and s > 0:
+            a = min(p, s); s -= a; p -= a
+        # §1222: net the two characters against each other.
+        if s < 0:
+            l += s; s = 0.0
+        if l < 0:
+            s += l; l = 0.0
+        return round(max(0.0, s), 2), round(max(0.0, l), 2), 0.0, 0.0
+
+    # Net capital loss → §1211 ordinary deduction (capped), remainder carries over.
+    loss = -combined
+    deduction = min(loss, 3000.0)
+    return 0.0, 0.0, round(deduction, 2), round(loss - deduction, 2)
+
+
 def _taxable_social_security(ssa_net: float, other_income: float, status: str) -> float:
     """Taxable portion of Social Security benefits (IRS Pub 915 worksheet).
 
@@ -332,21 +371,19 @@ def compute_us_return(
     feie_total = _sum_field(extracts, "2555", "foreign_earned_income")
     feie_excluded = _sum_field(extracts, "2555", "foreign_earned_income_excluded")
 
-    # Prior-year capital-loss carryover (max $3k applied to ordinary income)
+    # Schedule D netting (§1222) of current-year short/long, the current-year
+    # net-loss deduction limit (§1211, max $3,000 against ordinary income), and
+    # any prior-year carryover the user supplied — handled together.
     prior_capital_losses = _to_float(user_answers.get("prior_capital_losses", 0))
-    if prior_capital_losses > 0:
-        if long_gain > 0:
-            applied = min(prior_capital_losses, long_gain)
-            long_gain -= applied
-            prior_capital_losses -= applied
-        if prior_capital_losses > 0 and short_gain > 0:
-            applied = min(prior_capital_losses, short_gain)
-            short_gain -= applied
-            prior_capital_losses -= applied
-        # Remaining loss reduces ordinary income up to $3,000.
-        ordinary_offset = min(prior_capital_losses, 3000.0)
-    else:
-        ordinary_offset = 0.0
+    short_gain, long_gain, ordinary_offset, capital_loss_carryover = _net_capital_gains(
+        short_gain, long_gain, prior_capital_losses, status
+    )
+    if capital_loss_carryover > 0:
+        total_net_loss = ordinary_offset + capital_loss_carryover
+        notes.append(
+            f"Net capital loss of ${total_net_loss:,.0f} exceeds the $3,000 annual limit; "
+            f"${ordinary_offset:,.0f} deducted this year, ${capital_loss_carryover:,.0f} carries forward."
+        )
 
     # All income other than Social Security. The taxable portion of SS depends
     # on this (via provisional income), so it is summed first.
@@ -361,8 +398,8 @@ def compute_us_return(
         + misc_other
         + sch_e_supplemental
         + pension_taxable
-        + max(0.0, short_gain)
-        + max(0.0, long_gain)
+        + short_gain
+        + long_gain
         + k1_business
         + k_payments
         + unemployment
@@ -503,6 +540,7 @@ def compute_us_return(
         "short_term_capital_gain": short_gain,
         "long_term_capital_gain": long_gain,
         "capital_loss_ordinary_offset": ordinary_offset,
+        "capital_loss_carryover": capital_loss_carryover,
         "self_employment_income": self_employment_income,
         "1099_k_payments": k_payments,
         "rental_income": misc_rents,

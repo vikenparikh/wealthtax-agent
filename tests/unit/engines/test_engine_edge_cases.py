@@ -103,3 +103,58 @@ def test_ca_prior_capital_losses_fully_offset_gains():
     assert d.line_items["net_capital_gains"] == 0.0
     assert d.line_items["taxable_capital_gains"] == 0.0
     assert any("prior-year capital losses" in n for n in d.notes)
+
+
+# --- US current-year capital-loss limitation (§1211) + short/long netting (§1222) ---
+
+def test_us_current_year_net_capital_loss_deducts_3000_with_carryover():
+    """A $5,000 current-year short-term loss (no prior carryover) deducts $3,000
+    against ordinary income and carries $2,000 forward. Before the fix the loss
+    vanished entirely (max(0, -5000) = 0, ordinary_offset = 0)."""
+    d = compute_us_return(
+        [_f("W-2", "US", wages=80000), _f("SCH-D", "US", net_short_term_capital_gain=-5000)],
+        2024, user_answers={"filing_status": "single"},
+    )
+    assert d.line_items["capital_loss_ordinary_offset"] == 3000.0
+    assert d.line_items["capital_loss_carryover"] == 2000.0
+    assert d.line_items["short_term_capital_gain"] == 0.0
+
+
+def test_us_long_term_loss_nets_against_short_term_gain():
+    """§1222: a $4,000 long-term loss offsets a $10,000 short-term gain → net
+    $6,000 short-term gain. Before the fix each was floored at 0 independently,
+    so income was overstated ($10,000 taxed, $4,000 loss ignored)."""
+    d = compute_us_return(
+        [_f("SCH-D", "US", net_short_term_capital_gain=10000, net_long_term_capital_gain=-4000)],
+        2024, user_answers={"filing_status": "single"},
+    )
+    assert d.line_items["short_term_capital_gain"] == 6000.0
+    assert d.line_items["long_term_capital_gain"] == 0.0
+    assert d.line_items["capital_loss_ordinary_offset"] == 0.0
+
+
+def test_us_long_term_loss_exceeding_short_gain_becomes_limited_net_loss():
+    """$2,000 short gain + $9,000 long loss → $7,000 net loss → $3,000 deducted,
+    $4,000 carried forward. Before the fix the $2,000 short gain was taxed and
+    the $9,000 long loss ignored."""
+    d = compute_us_return(
+        [_f("SCH-D", "US", net_short_term_capital_gain=2000, net_long_term_capital_gain=-9000)],
+        2024, user_answers={"filing_status": "single"},
+    )
+    assert d.line_items["capital_loss_ordinary_offset"] == 3000.0
+    assert d.line_items["capital_loss_carryover"] == 4000.0
+    assert d.line_items["short_term_capital_gain"] == 0.0
+    assert d.line_items["long_term_capital_gain"] == 0.0
+
+
+def test_us_both_gains_positive_unchanged_guard():
+    """Guard: when both characters are gains, netting leaves them untouched —
+    the fix does not disturb the common all-gains case."""
+    d = compute_us_return(
+        [_f("SCH-D", "US", net_short_term_capital_gain=5000, net_long_term_capital_gain=8000)],
+        2024, user_answers={"filing_status": "single"},
+    )
+    assert d.line_items["short_term_capital_gain"] == 5000.0
+    assert d.line_items["long_term_capital_gain"] == 8000.0
+    assert d.line_items["capital_loss_ordinary_offset"] == 0.0
+    assert d.line_items["capital_loss_carryover"] == 0.0
