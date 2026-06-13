@@ -199,8 +199,10 @@ class Lot(Base):
     is_wash_sale = Column(Boolean, default=False, nullable=False)
     wash_sale_id = Column(String(36), ForeignKey("wash_sales.id"), nullable=True)
 
-    # Source: "upload" = from a 1099-B parser, "trad_audit" = imported from Trad-Platform
-    source = Column(String(16), nullable=False, default="upload")
+    # Source: "upload" = from a 1099-B parser, "trad_audit" = imported from Trad-Platform,
+    # "trad-platform-event" = live event-bus fill. 32 chars so descriptive source codes
+    # fit on strict-length backends (Postgres); SQLite ignores varchar length.
+    source = Column(String(32), nullable=False, default="upload")
     source_ref = Column(String(255), nullable=True)   # e.g. audit.sqlite row id
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
