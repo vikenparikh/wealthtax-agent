@@ -826,3 +826,21 @@ MATRIX | tax 1099-DIV box 2a capital gain distributions as LTCG | mutual-fund/ET
   deducted, only manual entry. Genuine wiring gap, ~₹2,500, next-cycle candidate.
 
 Suite 995 -> 996. NOT converged: IN professional_tax key-bridge + US early_withdrawal_penalty remain.
+
+---
+
+## Cycle 27 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | read professional tax from Form 16 (not only the manual user answer) | §16(iii) deduction (#61) was wired only to a manual key, so form-uploaded professional tax — the primary path — was silently dropped | fail: form professional_tax ₹2,500 -> deduction ₹0 / taxable ₹10L — pass: -> ₹9,97,500 | gated? N | PR #67
+
+**MAINTAIN:** #66 merged green (HEAD 8773593); main green at 996.
+
+This is the IN follow-up flagged in cycle-26's audit (Form-16 `professional_tax` extract key did not
+match the engine's `professional_tax_paid` user-answer read). Fixed with form-then-manual fallback +
+₹2,500 cap. Suite 996 -> 997.
+
+**Remaining from the extractor-vs-engine audit:** US early_withdrawal_penalty (1099-INT box 2, an
+above-the-line deduction; captured-but-unused) — next-cycle candidate (niche-ish). After that the
+extractor-vs-engine contract is substantially clean; the other captured-but-unused US fields are
+special-rate/complex (collectibles 28%, unrecaptured 1250, §1202, dependent-care benefits, excess
+SS/Medicare withholding) or documented simplifications (tax-exempt interest -> SS provisional income).
