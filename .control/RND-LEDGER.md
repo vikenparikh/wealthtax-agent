@@ -716,3 +716,40 @@ default 2 preserves all prior behaviour (23 existing residency tests pass unchan
 advisory. DEFERRED-risky still: IN intra-capital-gains loss netting (§70 matrix). Surfaces now swept:
 credits, income heads, residency. Remaining items need per-province DATA or carry risk. Cross-border
 audience-relevance (FEIE→NIIT-MAGI, returning-NRI→ROR) keeps surfacing genuine fixes — keep that lens.
+
+---
+
+## Cycle 19 — MAINTAIN + HONEST NO-OP (2026-06-14)
+
+### MAINTAIN: #62 open/mergeable (pending MC merge); all #43–#61 merged; main green at 987.
+
+### NOTHING-HIGH-VALUE this cycle — no PR opened (correct outcome, not padding)
+
+Swept the last two un-audited tax-calc surfaces this cycle and found them correct:
+- **Cross-border student-loan single-claim** (`enforce_single_student_loan`): correctly detects a loan
+  claimed in >1 jurisdiction, keeps the highest-marginal one, zeros the others. The non-recompute of
+  the loser draft's tax is a DOCUMENTED limitation (the warning tells the user to re-run), a design
+  choice — not a bug.
+- **Estimated tax §6654** (`estimated_tax.py`): safe-harbour A = 100% prior (110% if prior AGI > $150k,
+  strict >), safe-harbour B = 90% current, `recommended = min(A, B)`. All correct (the >$150k boundary
+  was already fixed in an earlier session).
+
+**Comprehensive-sweep status (this time, unlike cycle-15):** tax-calculation surfaces are now ALL
+swept — US/CA/IN engines (income heads + credits + statutory caps), residency (SPT / CA-183 / IN-§6 /
+ROR), cross-border (FTC advisory, student-loan single-claim, RSU sourcing), estimated tax (§6654).
+20 fixes shipped (#43–#62). Non-tax-calc surfaces (graph pipeline, filing serializers, optimize, DB)
+are well-tested and out of the tax-correctness scope.
+
+**Remaining backlog — genuinely blocked, NOT clean wins:**
+- Need per-province/year DATA (guessing risks wrong tax): BC/AB/QC donation excess rates, CA age
+  amount base + phase-out, CA BPA phase-out, provincial pension-income-amount cap.
+- Implementation RISK (won't force): IN intra-capital-gains §70 loss netting (STCG/LTCG set-off across
+  the equity/other × pre/post-change matrix), IN surcharge marginal relief (CG-surcharge entanglement).
+- Need new INPUT collection that intake doesn't provide: US additional std deduction (65+/blind), CA
+  age amount (no age input).
+- Advisory/design limitations, not bugs: FTC hint-only, student-loan non-recompute.
+
+**Conclusion:** the clean, no-data, no-risk, high-value tax-calculation vein is exhausted (now verified
+across ALL tax-calc surfaces, not just credits as in the premature cycle-15 call). Future cycles will
+be HONEST NO-OPs unless: a new form/requirement lands, confirmed per-province table data is provided,
+or age/blind/resident-year inputs are added to intake.
