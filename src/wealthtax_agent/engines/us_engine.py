@@ -454,7 +454,13 @@ def compute_us_return(
     # property tax (state_local_property_tax), capped together at $10,000.
     raw_property_tax_us = _to_float(user_answers.get("state_local_property_tax", 0))
     sch_a_state_local = _sum_field(extracts, "SCH-A", "state_local_taxes")
-    salt_uncapped = sch_a_state_local + max(0.0, raw_property_tax_us)
+    # State income tax for SALT: prefer the Schedule A total when the user
+    # supplied it, otherwise fall back to W-2 box 17 withholding (the primary
+    # source most filers have). Only the Sch A field was read before, so an
+    # itemizer who uploaded a W-2 but no Sch A entry lost their state income tax
+    # — usually the largest SALT component — from the deduction.
+    state_income_tax_salt = sch_a_state_local if sch_a_state_local > 0 else _sum_field(extracts, "W-2", "state_income_tax")
+    salt_uncapped = state_income_tax_salt + max(0.0, raw_property_tax_us)
     salt_deduction = min(10000.0, salt_uncapped)
     if salt_uncapped > 10000.0:
         notes.append(

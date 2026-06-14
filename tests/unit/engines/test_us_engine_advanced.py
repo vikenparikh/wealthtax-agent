@@ -351,3 +351,35 @@ def test_early_withdrawal_penalty_is_above_line_deduction():
     assert d1.line_items["early_withdrawal_penalty"] == 500.0
     # AGI = wages 90k + interest 3k - 500 penalty = 92,500 (vs 90k baseline)
     assert d1.line_items["agi"] == 90000.0 + 3000.0 - 500.0
+
+
+def test_salt_includes_w2_state_income_tax_for_itemizer():
+    """W-2 box 17 state income tax withheld is part of SALT (Schedule A line 5a)
+    — usually the largest component. The engine read only the Sch A field, so an
+    itemizer who uploaded a W-2 (box 17) but no Sch A state-tax entry lost it.
+
+    FAILS before the fix: salt_deduction_capped = 0 (W-2 box 17 ignored)."""
+    extracts = [
+        FormExtract(form_code="W-2", jurisdiction="US", fields={
+            "wages": 200000.0, "federal_income_tax_withheld": 30000.0,
+            "state_income_tax": 9000.0,
+        }),
+        FormExtract(form_code="SCH-A", jurisdiction="US", fields={"mortgage_interest": 20000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["salt_deduction_capped"] == 9000.0  # W-2 box 17 now in SALT
+
+
+def test_salt_prefers_schedule_a_total_over_w2_no_double_count():
+    """When the user supplies the Schedule A state/local total it is used as-is
+    (it already includes withholding) — the W-2 box 17 is not added on top."""
+    extracts = [
+        FormExtract(form_code="W-2", jurisdiction="US", fields={
+            "wages": 200000.0, "state_income_tax": 9000.0,
+        }),
+        FormExtract(form_code="SCH-A", jurisdiction="US", fields={
+            "mortgage_interest": 20000.0, "state_local_taxes": 7000.0,
+        }),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["salt_deduction_capped"] == 7000.0  # Sch A total, not 7000+9000
