@@ -363,3 +363,40 @@ values ($50k SCH-C: $7,080 → $6,373.52; $20k+$50k qual-div: $1,080 → $797.41
 **Scope honesty:** paper tax-CALC only; no filing/live touched. Secondary §199A nuance (reduce QBI
 itself by ½ SE tax) intentionally out of scope. Remaining future items: IN surcharge marginal relief;
 CTC fraction-thereof rounding; NIIT MAGI-vs-AGI (FEIE add-back); AMT cap-gain preferential carve-out.
+## Cycle 8 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: resolved conflicting PR #51 (real value)
+On sync, PR #51 (India §87A) had gone `CONFLICTING` — a pure append-conflict in `.control/RND-LEDGER.md`
+(main carried #50's cycle-5 entry; #51 carried cycle-6, both appended after cycle-4). Merged
+origin/main into the branch, resolved the ledger as a union (cycles 1–6 in order), re-ran the full
+suite green (969), pushed → #51 is **MERGEABLE/CLEAN** again. Functional files merged cleanly.
+
+### DEVELOP: CTC phase-out rounds excess UP (§24(b)(2)) → PR #53
+
+**Why (honest value):** LOWER-value than prior cycles (≤$50/return) but a genuine, zero-risk
+correctness bug. `_compute_ctc` used `(agi - start) // 1000` (floor), but §24(b)(2) reduces the
+credit "$50 for each $1,000 or fraction thereof" → round UP. AGI just over a $1,000 boundary gave
+$50 too much credit. Fixed with `math.ceil`.
+
+**Verify-plan (fails-before / passes-after):**
+- AGI $200,500 (single, 1 child): CTC $1,950 (was $2,000).
+- GUARD: AGI $205,000 (exact $5k over): $1,750 (unchanged).
+- Proven by reverting only the engine hunk: partial-step test fails (2000==1950), guard passes.
+
+**Convergence note (honest):** the genuinely HIGH-value tax-calculation gaps are now substantially
+addressed across US + IN engines (cycles 1–7: §1091 capacity, NIIT rents, SS provisional-income,
+§1211/§1222 capital losses, QBI §199A, India §87A marginal relief, ½ SE-tax §164(f)). CTC rounding
+was the last clean, unambiguous, zero-risk item. REMAINING backlog is genuinely lower-value OR
+carries incorrectness risk — flagged here rather than forced:
+  - IN surcharge marginal relief — high $ per return but small population AND real capital-gains-
+    surcharge entanglement (tax-at-threshold + 15% CG-surcharge cap). Risk of shipping subtly-wrong
+    tax (worse than the current conservative over-tax). NOT to be forced without careful CG modelling.
+  - CA basic-personal-amount phase-out — ~$232/top-earner; needs multi-year table-config changes.
+  - NIIT MAGI-vs-AGI (FEIE add-back) — only FEIE filers (tiny population).
+  - AMT capital-gains preferential carve-out — AMT is already heavily simplified; an exact-value
+    test would be arbitrary.
+  - §199A: reduce QBI itself by ½ SE tax — secondary reg nuance, small.
+Expect future cycles to trend toward HONEST NOTHING-HIGH-VALUE no-ops unless new requirements/forms
+land. That is the correct outcome, not a prompt to manufacture work.
+
+**Delta:** test count 967 → **969** (+2). Full suite green.
