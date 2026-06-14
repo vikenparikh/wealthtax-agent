@@ -805,3 +805,24 @@ but-unused field is a candidate bug. This is a distinct surface from the engine-
 
 Suite 994 -> 995. Convergence is NOT confirmed — re-run the extractor-vs-engine field audit for ALL
 forms (US/CA/IN) next cycle before any further no-op.
+
+---
+
+## Cycle 26 — FULL LIFECYCLE (2026-06-14) — extractor-vs-engine field audit (US/IN)
+
+MATRIX | tax 1099-DIV box 2a capital gain distributions as LTCG | mutual-fund/ETF capital gain distributions (very common in taxable accounts) were captured but dropped -> under-reported income/tax | fail: long_term_capital_gain $0 — pass: $8,000 box-2a -> $8,000 LTCG | gated? N | PR #66
+
+**MAINTAIN:** #65 merged green (HEAD 11693da); main green at 995.
+
+**Audit completed (extractor-captured fields vs engine-read fields):**
+- US: box 2a capital_gain_distributions captured-but-unused -> FIXED (#66). Other US captured-but-unused
+  are niche/complex/documented (early_withdrawal_penalty above-line deduction; tax_exempt_interest =
+  documented SS-provisional simplification; excess-SS/medicare withholding; tips; collectibles/1250/1202
+  special-rate gains; dependent_care_benefits). early_withdrawal_penalty is the cleanest follow-up.
+- CA: clean after #65 (pension_adjustment is correctly informational-only — affects next-year RRSP room,
+  not current tax).
+- IN: FOLLOW-UP found — Form-16 extractor captures `professional_tax` but the engine reads the manual
+  user_answer `professional_tax_paid` (key mismatch from #61): a form-uploaded professional tax is not
+  deducted, only manual entry. Genuine wiring gap, ~₹2,500, next-cycle candidate.
+
+Suite 995 -> 996. NOT converged: IN professional_tax key-bridge + US early_withdrawal_penalty remain.
