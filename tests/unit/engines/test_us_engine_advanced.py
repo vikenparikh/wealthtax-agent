@@ -201,36 +201,73 @@ def test_social_security_mfj_higher_thresholds():
 
 def test_qbi_limited_by_taxable_income_minus_capital_gain():
     """SCH-C $50k QBI + $100k LTCG, single. Taxable income before QBI =
-    150,000 - 14,600 std = 135,400; minus the $100k net capital gain leaves a
-    $35,400 limit base -> QBI = 20% * min(50,000, 35,400) = $7,080.
+    150,000 - 3,532.39 (½ SE-tax deduction) - 14,600 std = 131,867.61; minus the
+    $100k net capital gain leaves a $31,867.61 limit base -> QBI = 20% *
+    min(50,000, 31,867.61) = $6,373.52.
 
-    FAILS before the fix (capped at 20% of full taxable income -> $10,000)."""
+    Net-capital-gain exclusion from the §199A limit still binds; the value also
+    reflects the ½ SE-tax above-the-line deduction reducing taxable income."""
     extracts = [
         FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 50000.0}),
         FormExtract(form_code="SCH-D", jurisdiction="US", fields={"net_long_term_capital_gain": 100000.0}),
     ]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
-    assert draft.line_items["qbi_deduction"] == 7080.0
+    assert draft.line_items["qbi_deduction"] == 6373.52
 
 
 def test_qbi_limit_uses_qualified_dividends_too():
     """Qualified dividends are also 'net capital gain' for the §199A limit.
     SCH-C $20k + $50k qualified dividends, single: taxable income before QBI =
-    70,000 - 14,600 = 55,400; minus $50k -> $5,400 base -> QBI = 20% * 5,400 =
-    $1,080 (was $4,000 = 20% of the $20k QBI)."""
+    70,000 - 1,412.96 (½ SE-tax deduction) - 14,600 = 53,987.04; minus $50k ->
+    $3,987.04 base -> QBI = 20% * 3,987.04 = $797.41."""
     extracts = [
         FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 20000.0}),
         FormExtract(form_code="1099-DIV", jurisdiction="US",
                     fields={"ordinary_dividends": 50000.0, "qualified_dividends": 50000.0}),
     ]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
-    assert draft.line_items["qbi_deduction"] == 1080.0
+    assert draft.line_items["qbi_deduction"] == 797.41
 
 
 def test_qbi_without_capital_gain_unchanged_guard():
-    """Guard: with no preferential income, the limit is unchanged. SCH-C $50k,
-    single -> 20% * min(50,000, 35,400) = $7,080 (the fix does not disturb the
-    common no-capital-gain case)."""
+    """Guard: with no preferential income, the QBI limit is the full taxable
+    income. SCH-C $50k, single -> taxable before QBI = 50,000 - 3,532.39 (½ SE
+    tax) - 14,600 = 31,867.61 -> 20% * min(50,000, 31,867.61) = $6,373.52."""
     extracts = [FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 50000.0})]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
-    assert draft.line_items["qbi_deduction"] == 7080.0
+    assert draft.line_items["qbi_deduction"] == 6373.52
+
+
+# --- One-half self-employment tax deduction (§164(f)) ---
+
+def test_half_se_tax_deduction_reduces_agi():
+    """A self-employed filer deducts one-half of SE tax above the line (§164(f)),
+    reducing AGI. SCH-C $50k net: SE earnings = 46,175; SS = 5,725.70; Medicare =
+    1,339.08; half of (SS+Medicare) = $3,532.39 deduction -> AGI = $46,467.61.
+
+    FAILS before the fix: no se_tax_deduction line item and AGI = $50,000."""
+    draft = compute_us_return(
+        [FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 50000.0})],
+        year=2024, user_answers={"filing_status": "single"},
+    )
+    assert draft.line_items["se_tax_deduction"] == 3532.39
+    assert draft.line_items["agi"] == 46467.61
+    # The 0.9% additional Medicare is NOT part of the deductible half: here it is
+    # zero, but the deduction equals exactly half of (SS + Medicare) SE tax.
+
+
+def test_half_se_tax_deduction_excludes_additional_medicare():
+    """The deductible half excludes the 0.9% additional Medicare surtax. High SE
+    income ($300k) incurs additional Medicare, but se_tax_deduction is still
+    exactly half of the SS+Medicare portion only — strictly less than half of the
+    total SE tax (which includes the surtax)."""
+    draft = compute_us_return(
+        [FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 300000.0})],
+        year=2024, user_answers={"filing_status": "single"},
+    )
+    se_tax = draft.line_items["self_employment_tax"]
+    deduction = draft.line_items["se_tax_deduction"]
+    assert deduction > 0
+    # additional Medicare applies above $200k, so half of total SE tax would
+    # exceed the (correct) deduction that excludes the surtax.
+    assert deduction < round(0.5 * se_tax, 2)
