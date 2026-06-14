@@ -135,3 +135,33 @@ def test_recommend_residency_includes_threshold_proximity_warning():
     """Within ±10 of 183-day threshold → warning surfaces."""
     result = recommend_residency({"US": 180})
     assert any("threshold" in note.lower() for note in result["notes"])
+
+
+# --- §6(6) ROR requires BOTH 730-days-in-7 AND resident in 2 of last 10 years ---
+
+def test_india_ror_requires_two_of_ten_resident_years():
+    """A returning NRI present >= 730 days in the last 7 years but resident in
+    only 1 of the last 10 years is RNOR, not ROR (§6(6) needs both conditions).
+    Misclassifying them as ROR would wrongly tax their foreign income."""
+    assert india_residency(200, 400, days_prior_7_resident_years=800,
+                           resident_years_in_last_10=1) == "RNOR"
+    # both conditions satisfied -> ROR
+    assert india_residency(200, 400, days_prior_7_resident_years=800,
+                           resident_years_in_last_10=5) == "ROR"
+
+
+def test_india_ror_default_preserves_730_day_behaviour():
+    """Default resident_years_in_last_10=2 keeps the prior behaviour when the
+    caller supplies no count."""
+    assert india_residency(200, 400, days_prior_7_resident_years=800) == "ROR"
+
+
+def test_recommend_residency_returning_nri_classified_rnor():
+    """End-to-end through the orchestrator: a returning NRI (lots of recent days
+    but resident in only 1 of last 10 years) is RNOR."""
+    result = recommend_residency(
+        {"IN": 200},
+        prior_year_days={"IN": {"prior_4_total": 400, "prior_7_days": 800}},
+        user_answers={"india_resident_years_in_last_10": "1"},
+    )
+    assert result["status"]["IN"] == "RNOR"
