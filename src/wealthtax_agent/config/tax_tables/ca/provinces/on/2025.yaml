@@ -7,6 +7,10 @@ brackets:
   - {up_to: 220000, rate: 0.1216}
   - {up_to: null,   rate: 0.1316}
 basic_personal_amount: 12747
+# Ontario charitable-donation credit excess rate (donations over $200); the
+# first $200 uses the lowest bracket rate. Drives the provincial donation
+# credit at provincial rates instead of the federal amount.
+donation_credit_high_rate: 0.1116
 dividend:
   eligible: 0.10
   non_eligible: 0.029863
