@@ -863,3 +863,22 @@ no-data no-risk fix. Suite 997 -> 998.
 
 Convergence likely again next cycle unless a new surface/audit angle or external data/input appears —
 but per the repeated lessons (cycles 16/20/25), I will sweep a FRESH angle before any no-op.
+
+---
+
+## Cycle 29 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | deduct declared 80D health-insurance total (not only granular self/parents) | 80C reads section_80c_declared but 80D ignored section_80d_declared (captured by Form-16 + wizard) -> common declared health-insurance deduction dropped -> over-taxed | fail: section_80d ₹0 / taxable ₹10L — pass: ₹25,000 / ₹9,75,000 | gated? N | PR #69
+
+**MAINTAIN:** #68 merged green (HEAD a4bb468); main green at 998. Test suite crossed 1000.
+
+**Fresh-angle audit (intake/extractor -> engine field-consumption for the manual-DEDUCTION path):**
+compared declared-total keys vs granular keys. 80C handles its declared total (line 327); 80D did
+NOT (asymmetry) -> FIXED. Verified consistent: 80C declared read; 80D declared now read; 80CCD1B/80E/
+80G/80TTA-TTB are single-key (no declared/granular split). This is a DISTINCT contract from the
+form-field audit (#65-#68): the same field can be captured by BOTH a form and the wizard, and the
+engine must read the declared-total variant, not only the itemized sub-keys.
+
+Suite 998 -> 1000. NOT yet converged on this angle until I confirm no other declared-vs-granular gaps;
+80C/80D were the only two with that split, both now correct. Next cycle: sweep another fresh angle
+(e.g., senior-citizen / age-conditional deduction caps actually applied) before any no-op.
