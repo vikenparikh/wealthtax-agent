@@ -554,7 +554,23 @@ def compute_us_return(
         }
 
     total_tax = round(federal_tax + state_tax + se_tax, 2)
-    balance = round(total_tax - fed_withheld, 2)
+
+    # Excess Social Security tax: a filer with 2+ employers whose combined SS
+    # wages exceed the wage base over-withholds SS tax; the excess is a
+    # refundable credit (treated as an additional payment). Single-employer
+    # over-withholding is the employer's to correct, so this requires 2+ W-2s.
+    _fica = fed_tables.get("fica", {})
+    _max_ss_tax = float(_fica.get("social_security_rate", 0.062)) * float(_fica.get("social_security_wage_base", 168600))
+    ss_tax_withheld = _sum_field(extracts, "W-2", "social_security_tax_withheld")
+    w2_count = sum(1 for e in extracts if e.form_code == "W-2" and e.jurisdiction == "US")
+    excess_ss_tax = round(max(0.0, ss_tax_withheld - _max_ss_tax), 2) if w2_count >= 2 else 0.0
+    if excess_ss_tax > 0:
+        notes.append(
+            f"Excess Social Security tax of ${excess_ss_tax:,.2f} from multiple employers "
+            "is credited as an additional payment (Schedule 3, line 11)."
+        )
+
+    balance = round(total_tax - fed_withheld - excess_ss_tax, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -616,6 +632,7 @@ def compute_us_return(
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
+        "excess_social_security_tax": excess_ss_tax,
         **state_breakdown,
     }
 
