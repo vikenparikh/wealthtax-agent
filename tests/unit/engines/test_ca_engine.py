@@ -93,3 +93,20 @@ def test_ca_provincial_cpp_ei_contributions_are_credited():
 
     assert round(d1.line_items["provincial_cpp_ei_credit"], 2) == 196.95
     assert round(d0.line_items["provincial_tax"] - d1.line_items["provincial_tax"], 2) == 196.95
+
+
+def test_ca_provincial_medical_credit_uses_provincial_rate():
+    """The provincial medical-expense credit must use the province's lowest rate
+    (ON 5.05%), not the federal 15% amount. T4 net income $60k, $5,000 medical:
+    creditable = 5000 - min(3% * 60000, 2759) = 5000 - 1800 = 3200, so the
+    provincial credit is 3200 * 5.05% = $161.60 (was federal 3200 * 15% = $480).
+
+    FAILS before the fix: no provincial_medical_credit line item; provincial tax
+    over-credited at the federal rate."""
+    extracts = [FormExtract(form_code="T4", jurisdiction="CA",
+                            fields={"employment_income": 60000.0})]
+    d = compute_ca_return(extracts, year=2024, province="ON",
+                          user_answers={"medical_expenses": "5000"})
+    assert round(d.line_items["provincial_medical_credit"], 2) == round(3200.0 * 0.0505, 2)  # 161.60
+    # Federal medical credit is unchanged at the federal lowest rate.
+    assert round(d.line_items["medical_credit"], 2) == round(3200.0 * 0.15, 2)  # 480.00

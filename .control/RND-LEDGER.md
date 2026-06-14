@@ -502,3 +502,40 @@ over-crediting provincially for donors. Genuine bug; candidate for a future cycl
 so the repo is clearly NOT converged — the earlier US-centric audit missed the CA credit surface.
 Still-open future items: provincial donations/medical rate; CA age amount + pension income amount
 (retiree credits); IN surcharge marginal relief (risky — do NOT force); CA BPA phase-out; AMT cap-gain.
+
+---
+
+## Cycle 12 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #56 merged green
+#56 (provincial CPP/EI) merged (HEAD 21f5519); all PRs #43–#56 landed; zero open PRs; main green at 977.
+
+### DEVELOP: provincial medical credit uses provincial rate → PR #57
+
+**Why (clean, correct, high-value subset):** the prov_non_refundable block reused the FEDERAL
+medical credit amount (creditable * 15%) provincially. Medical is a lowest-rate credit, so
+provincially it should be creditable * prov_lowest_rate (ON 5.05%). Reusing 15% over-credited
+provincially for anyone with medical expenses. Exact for ALL provinces (medical is always
+lowest-rate), zero table change, zero risk.
+
+**Verify-plan (fails-before / passes-after):**
+- T4 $60k net + $5,000 medical (ON): creditable $3,200 -> provincial credit $161.60 (5.05%),
+  federal $480 (15%, unchanged). Before: provincial $480 at federal rate / KeyError.
+- Proven by reverting the engine hunk: KeyError provincial_medical_credit; 6 existing CA tests pass.
+
+**Before/after delta:**
+| Scenario (ON) | Before | After |
+|---|---|---|
+| T4 $60k + $5k medical (creditable $3,200) | provincial credit $480 @15% | $161.60 @5.05%; federal $480 unchanged |
+| Test count | 977 passing | **978 passing** (+1) |
+
+**Deliberately deferred (no guessing):** provincial DONATIONS credit still reuses federal rates;
+provincial donation excess rates (ON 11.16%, BC/AB/QC differ) are province-specific and not in the
+tables — would require per-province table additions; left as a tracked backlog item rather than
+approximated (avoid shipping wrong tax). Other open items: CA age amount + pension income amount
+(retiree credits, need provincial caps); IN surcharge marginal relief (risky — do NOT force);
+CA BPA phase-out.
+
+**Convergence note:** the CA credit surface (federal CPP/EI, provincial CPP/EI, provincial medical)
+has yielded 3 genuine fixes in a row — the engine was materially under-crediting CA returns. Likely
+nearing the end of clean CA credit gaps; the remaining ones need table/per-province data.
