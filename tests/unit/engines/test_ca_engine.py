@@ -127,3 +127,25 @@ def test_ca_provincial_donations_credit_uses_provincial_rate_ontario():
     assert round(d.line_items["provincial_donations_credit"], 2) == expected
     # Federal donation credit unchanged (15%/29%).
     assert round(d.line_items["donations_credit"], 2) == round(200 * 0.15 + 800 * 0.29, 2)  # 262.00
+
+
+def test_ca_pension_income_amount_credited():
+    """The pension income amount (federal line 31400) credits the first $2,000
+    of eligible pension income (T4A superannuation, eligible at any age) at the
+    lowest rate. The engine collected the income but never credited it.
+
+    FAILS before the fix: no pension_income_credit line item and federal tax
+    unchanged by pension income."""
+    # $5,000 T4A pension -> capped at $2,000 -> 15% credit = $300.
+    extracts = [FormExtract(form_code="T4A", jurisdiction="CA",
+                            fields={"pension_or_superannuation": 5000.0})]
+    d = compute_ca_return(extracts, year=2024, province="ON")
+    assert round(d.line_items["pension_income_credit"], 2) == round(2000.0 * 0.15, 2)  # 300.00
+
+
+def test_ca_pension_income_amount_below_cap_uses_full_amount():
+    """Below the $2,000 cap the credit is on the full pension income."""
+    extracts = [FormExtract(form_code="T4A", jurisdiction="CA",
+                            fields={"pension_or_superannuation": 1200.0})]
+    d = compute_ca_return(extracts, year=2024, province="ON")
+    assert round(d.line_items["pension_income_credit"], 2) == round(1200.0 * 0.15, 2)  # 180.00

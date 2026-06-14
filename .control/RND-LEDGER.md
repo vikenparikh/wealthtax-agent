@@ -575,3 +575,39 @@ rrsp_deduction_limit key nothing populates. Left unfixed rather than ship a wron
 income amount (provincial caps); CA BPA phase-out. Risky-do-not-force: IN surcharge marginal relief.
 The clean, no-data, no-risk vein is now largely exhausted — expect upcoming cycles to need confirmed
 per-province/table data or to be honest NOTHING-HIGH-VALUE no-ops.
+
+---
+
+## Cycle 14 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #58 merged green
+#58 (ON provincial donation rate) merged (HEAD f017907); all PRs #43–#58 landed; zero open PRs; main green at 979.
+
+### DEVELOP: credit the pension income amount (federal line 31400) → PR #59
+
+**Why (clean, correct, no data needed):** T4A pension/superannuation income was collected but the
+pension income amount credit (federal line 31400) was never applied — a lowest-rate credit on the
+first $2,000 of eligible pension income. Retirees with employer pension/annuity overstated federal
+tax by up to $300. T4A superannuation qualifies at ANY age (no age gate), and the $2,000 cap is
+statutory (hardcodable like the $200 donation / $2,759 medical thresholds already in the engine).
+RRIF (65+-only) conservatively excluded. No table change, no risk.
+
+**Verify-plan (fails-before / passes-after):**
+- $5,000 T4A pension -> capped at $2,000 -> credit $300.00; $1,200 -> $180.00.
+- Proven by reverting the engine hunk: KeyError pension_income_credit; 8 existing CA tests pass.
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| $5,000 T4A pension | no credit | $300.00 |
+| $1,200 T4A pension | no credit | $180.00 |
+| Test count | 979 passing | **981 passing** (+2) |
+
+**Process note:** committed on detached HEAD by mistake (forgot to branch first); recovered by
+creating the branch from the commit (`git branch <name> HEAD`) — no work lost, nothing pushed to main.
+
+**Convergence:** federal CA credit gaps (CPP/EI, medical, donations-ON, pension income amount) are now
+substantially closed. CLEARLY-remaining items all need confirmed per-province/table DATA (provincial
+pension cap, BC/AB/QC donation rates, CA age amount base+phaseout, CA BPA phase-out) or carry risk
+(IN surcharge). The clean, no-data, no-risk vein is now ~exhausted — next cycle is likely an HONEST
+NOTHING-HIGH-VALUE no-op unless a clean item surfaces on re-scan.
