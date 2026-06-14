@@ -149,3 +149,17 @@ def test_ca_pension_income_amount_below_cap_uses_full_amount():
                             fields={"pension_or_superannuation": 1200.0})]
     d = compute_ca_return(extracts, year=2024, province="ON")
     assert round(d.line_items["pension_income_credit"], 2) == round(1200.0 * 0.15, 2)  # 180.00
+
+
+def test_ca_provincial_donations_credit_alberta_rate():
+    """Alberta provincial donation credit: first $200 at 10% (lowest rate), excess
+    at 21% (Alberta's legislated donation rate, above its top tax rate) — not the
+    federal 15%/29% amount. A $1,000 donation -> 200*10% + 800*21% = $188.00.
+
+    FAILS before the AB table gains donation_credit_high_rate (falls back to the
+    federal-rate amount, $262)."""
+    extracts = [FormExtract(form_code="T4", jurisdiction="CA",
+                            fields={"employment_income": 80000.0})]
+    d = compute_ca_return(extracts, year=2024, province="AB",
+                          user_answers={"charitable_donations": "1000"})
+    assert round(d.line_items["provincial_donations_credit"], 2) == round(200 * 0.10 + 800 * 0.21, 2)  # 188.00
