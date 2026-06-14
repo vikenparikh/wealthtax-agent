@@ -936,3 +936,22 @@ Self-caught a test-field bug (BPA is in DraftReturn.credits, not line_items) —
 Suite 1002 -> 1004. NEW audit angle: table-value currency + missing statutory phase-outs/floors. NOT
 converged — sweep US/CA other-year table values + any other missing phase-outs (e.g. US CTC/PTC FPL
 thresholds, OAS clawback indexation) next cycle; BC/QC/other-year CA BPA floors need confirmed values.
+
+---
+
+## Cycle 33 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | include W-2 box 17 state income tax in SALT | SALT read only SCH-A.state_local_taxes; W-2 box 17 (captured, usually the LARGEST SALT component) was dropped -> itemizers in high-tax states over-taxed | fail: salt_deduction_capped $0 — pass: $9,000 (W-2 box 17) | gated? N | PR #73
+
+**MAINTAIN:** #71 merged green; #72 rebased onto main + MERGEABLE after merge-train conflict (ledger
+union, lease-pushed); main green at 1003 (#72's +2 makes its branch 1005).
+
+**Re-examination angle (revisit under-rated audit findings):** in cycle-26 I marked W-2 box 17
+state_income_tax "niche" — wrong. For ITEMIZERS state income tax is the biggest SALT component, and
+the engine read only the Sch A field. Fixed with form-then-fallback (Sch A total preferred, else W-2
+box 17) to avoid double-counting. LESSON: revisit items previously dismissed as niche — value depends
+on the sub-population (here, itemizers in high-tax states).
+
+Suite (branch) 1005. NOT converged — re-audit other "niche"-tagged captured-but-unused fields
+(dependent_care_benefits, excess SS/medicare withholding -> multi-employer refund, allocated/SS tips)
+for any with a non-trivial sub-population next cycle.
