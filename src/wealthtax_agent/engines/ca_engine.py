@@ -115,6 +115,10 @@ def compute_ca_return(
     cpp_contributions = _sum_field(extracts, "T4", "cpp_contributions")
     ei_premiums = _sum_field(extracts, "T4", "ei_premiums")
     fed_tax_withheld = _sum_field(extracts, "T4", "income_tax_deducted")
+    # Registered Pension Plan contributions (T4 box 20, line 20700) and union /
+    # professional dues (T4 box 44, line 21200) are deductions from total income.
+    rpp_contributions = _sum_field(extracts, "T4", "rpp_contributions")
+    union_dues = _sum_field(extracts, "T4", "union_dues")
 
     interest_income = _sum_field(extracts, "T5", "interest_income")
     eligible_div_taxable = _sum_field(extracts, "T5", "taxable_eligible_dividends")
@@ -237,8 +241,10 @@ def compute_ca_return(
         2,
     )
 
-    # Northern Residents Deduction reduces net income (line 25500).
-    net_income = max(0.0, total_income - rrsp_deduction - nrd)
+    # Northern Residents Deduction reduces net income (line 25500). RPP
+    # contributions (20700) and union/professional dues (21200) likewise reduce
+    # income on the way to net income.
+    net_income = max(0.0, total_income - rrsp_deduction - rpp_contributions - union_dues - nrd)
     if nrd > 0:
         notes.append(f"Applied ${nrd:,.0f} Northern Residents Deduction (T2222 / line 25500).")
     taxable_income = net_income
@@ -398,6 +404,8 @@ def compute_ca_return(
         "other_self_employment": self_emp_t4a,
         "trust_other_income": t3_other_income,
         "rrsp_deduction": rrsp_deduction,
+        "rpp_deduction": rpp_contributions,
+        "union_dues_deduction": union_dues,
         "northern_residents_deduction": nrd,
         "foreign_property_income": foreign_property_income,
         "t1135_foreign_property_cost": t1135_cost,

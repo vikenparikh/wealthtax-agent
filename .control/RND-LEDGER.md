@@ -787,3 +787,21 @@ over-taxes); genuinely entangled, not forced.
 legislated rates (tracked). Remaining backlog unchanged: surcharge entangled; age/std-deduction need
 input; QC out of scope; full §70 cap-gain ORDERING + carry-forward deferred. Clean vein narrowing —
 mostly per-province-data extensions and risky/entangled items left.
+
+---
+
+## Cycle 25 — FULL LIFECYCLE (2026-06-14) — convergence claim corrected AGAIN
+
+MATRIX | deduct RPP contributions + union dues (T4 boxes 20/44, lines 20700/21200) | every CA employee with an employer pension plan or union membership was over-taxed (a major, very common deduction silently dropped) | fail: KeyError rpp_deduction / taxable income unreduced — pass: T4 $80k + RPP $5k + dues $1.2k -> taxable -$6,200 | gated? N | PR #65
+
+**RESEARCH method that found it:** cross-checked that EVERY field the T4 extractor captures is consumed
+by the engine. The extractor populated rpp_contributions (box 20) and union_dues (box 44) but the
+engine read only employment_income/cpp/ei/withheld — RPP + union dues were collected and discarded.
+
+**LESSON (3rd convergence correction):** my prior "all surfaces swept" claims audited the engine's
+own income/credit code but NOT the extractor→engine field-consumption contract. New permanent check:
+for each form, diff the fields the EXTRACTOR captures against the fields the ENGINE reads; any captured-
+but-unused field is a candidate bug. This is a distinct surface from the engine-internal sweep.
+
+Suite 994 -> 995. Convergence is NOT confirmed — re-run the extractor-vs-engine field audit for ALL
+forms (US/CA/IN) next cycle before any further no-op.
