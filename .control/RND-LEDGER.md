@@ -611,3 +611,38 @@ substantially closed. CLEARLY-remaining items all need confirmed per-province/ta
 pension cap, BC/AB/QC donation rates, CA age amount base+phaseout, CA BPA phase-out) or carry risk
 (IN surcharge). The clean, no-data, no-risk vein is now ~exhausted — next cycle is likely an HONEST
 NOTHING-HIGH-VALUE no-op unless a clean item surfaces on re-scan.
+
+---
+
+## Cycle 16 — DEVELOP (2026-06-14) — CONVERGENCE CALL WAS PREMATURE
+
+### MAINTAIN: main green at 981, zero open PRs (all #43–#59 merged).
+
+### DEVELOP: India house-property loss set-off (§71(3A)) → PR #60
+
+**Correction to cycle-15's no-op:** I declared convergence after auditing the CREDIT paths, but had
+NOT audited the INCOME-COMPUTATION paths. A genuine re-scan of income heads found a major bug:
+`slab_income` added `max(0.0, income_house_property)`, DISCARDING any net house-property loss. The
+most common case — self-occupied home-loan interest (§24(b), up to ₹2,00,000) — is exactly such a
+loss, so every OLD-regime homeowner silently lost their entire home-loan-interest deduction. This is
+one of India's most-claimed deductions. HIGH-value, large population, clean fix, no data needed.
+
+**Fix:** house-property loss sets off against other income up to ₹2,00,000 (§71(3A)), old regime
+only (new regime: no inter-head set-off, and it already disallows self-occupied §24(b)). Cap at ₹2L,
+note carry-forward of the excess.
+
+**Verify-plan (fails-before / passes-after):**
+- Old regime, ₹10.5L salary + ₹2L self-occupied interest -> taxable ₹8L (was ₹10L, discarded).
+- Loss >₹2L (₹3L let-out interest) -> set-off capped at ₹2L -> ₹8L + carry-forward note.
+- GUARD: new regime -> no §24(b), no set-off, ₹10L. Proven by reverting hunk (both fail 1000000==800000).
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| Old regime ₹10.5L salary + ₹2L self-occupied interest | taxable ₹10L | ₹8L |
+| Loss >₹2L | taxable ₹10L | ₹8L (capped) + carry-forward |
+| Test count | 981 passing | **984 passing** (+3) |
+
+**LESSON:** "converged" was wrong — I had only audited credits. Income heads (salary, house property,
+CG, business, other sources) are a separate surface. Audit BOTH income computation AND credits before
+ever claiming convergence. Not-modelled edge noted: house-property loss spilling onto capital gains.
