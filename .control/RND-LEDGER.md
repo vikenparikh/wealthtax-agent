@@ -882,3 +882,23 @@ engine must read the declared-total variant, not only the itemized sub-keys.
 Suite 998 -> 1000. NOT yet converged on this angle until I confirm no other declared-vs-granular gaps;
 80C/80D were the only two with that split, both now correct. Next cycle: sweep another fresh angle
 (e.g., senior-citizen / age-conditional deduction caps actually applied) before any no-op.
+
+---
+
+## Cycle 30 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | implement 80CCD(2) employer NPS deduction (both regimes) | comments said Chapter VI-A is "old regime only, except 80CCD(2)" but 80CCD(2) was never coded -> new-regime (default) filers with employer NPS lost a ~10%-of-salary deduction | fail: KeyError section_80ccd_2 / taxable ₹10L — pass: ₹60k deducted -> ₹9,40,000 | gated? N | PR #70
+
+**MAINTAIN:** #69 merged green (HEAD 9cca363); main green at 1000.
+
+**Fresh-angle audit (regime-gating):** checked which deductions the comments/law allow in the NEW
+regime vs what the engine actually applies. The standard deduction (₹50k) is applied in new regime;
+HRA/§16(iii)/chapter-VI-A correctly old-only — EXCEPT 80CCD(2), which the comments explicitly named
+as the exception but was missing. Implemented in both regimes (subtracted outside the old-regime
+gate). Also audited senior/age-conditional (80TTA savings-only vs 80TTB all-deposit = correct;
+senior slab brackets + 80D senior caps wired correctly) — clean.
+
+Suite 1000 -> 1002. Audit angles that paid off this run of cycles: extractor->engine field consumption
+(#65-68), declared-vs-granular deduction keys (#69), regime-gating exceptions (#70). NOT converged —
+next cycle sweep another fresh angle (e.g., NR/RNOR foreign-source filtering completeness across ALL
+income heads, not just other_income).

@@ -351,3 +351,29 @@ def test_in_80d_declared_capped_at_combined_ceiling():
         [_f("FORM-16", "IN", gross_salary=1050000, section_80d_declared=90000)],
         2024, regime="old", user_answers={"age": "30"})
     assert d.line_items["section_80d"] == 50000.0
+
+
+def test_in_80ccd2_employer_nps_deducted_new_regime():
+    """80CCD(2) — the employer's NPS contribution — is deductible under the NEW
+    regime (it is the one Chapter VI-A item not disallowed there). It was never
+    implemented, so new-regime filers with employer NPS were over-taxed.
+
+    FAILS before the fix: no section_80ccd_2 line item; taxable income unreduced."""
+    # basic_salary 800k -> 10% cap = 80k; employer NPS 60k is under the cap.
+    d = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000, basic_salary=800000)],
+        2024, regime="new",
+        user_answers={"age": "30", "section_80ccd_2_employer_nps": "60000"})
+    assert d.line_items["section_80ccd_2_employer_nps"] == 60000.0
+    # new regime: salary 1,050,000 - 50,000 std = 1,000,000; minus 60,000 80CCD(2)
+    assert d.totals["taxable_income"] == 940000.0
+
+
+def test_in_80ccd2_capped_at_10pct_of_basic_salary():
+    """80CCD(2) is capped at 10% of salary; an employer contribution above that
+    is limited."""
+    d = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000, basic_salary=600000)],
+        2024, regime="new",
+        user_answers={"age": "30", "section_80ccd_2_employer_nps": "200000"})
+    assert d.line_items["section_80ccd_2_employer_nps"] == 60000.0  # 10% of 600k

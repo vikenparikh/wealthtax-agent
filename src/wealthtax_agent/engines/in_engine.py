@@ -388,8 +388,18 @@ def _compute_one_regime(
 
     chapter_via_total = sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80tta_ttb
 
+    # 80CCD(2): the employer's NPS contribution is deductible under BOTH regimes
+    # (the one Chapter VI-A item not disallowed in the new regime), up to 10% of
+    # salary (basic + DA; modelled as a configurable percentage of basic salary,
+    # falling back to gross). Previously never implemented despite being flagged
+    # as the exception, so new-regime (default) filers with employer NPS lost it.
+    employer_nps = _to_float(user_answers.get("section_80ccd_2_employer_nps", 0))
+    ccd2_pct = float(deductions.get("section_80ccd_2_salary_pct", 0.10))
+    salary_base_for_ccd2 = basic_salary if basic_salary > 0 else gross_salary
+    sec_80ccd_2 = min(employer_nps, ccd2_pct * salary_base_for_ccd2) if employer_nps > 0 else 0.0
+
     gross_total_income = slab_income
-    total_income = max(0.0, gross_total_income - chapter_via_total)
+    total_income = max(0.0, gross_total_income - chapter_via_total - sec_80ccd_2)
 
     # ---- Tax computation ----
     brackets = cfg.get("brackets", []) if regime == "new" else _old_regime_brackets(age, tables)
@@ -458,6 +468,7 @@ def _compute_one_regime(
         "tax_ltcg_other": cg["tax_ltcg_other"],
         "section_80c": sec_80c,
         "section_80ccd_1b": sec_80ccd_1b,
+        "section_80ccd_2_employer_nps": sec_80ccd_2,
         "section_80d": sec_80d,
         "section_80e": sec_80e,
         "section_80g": sec_80g,
