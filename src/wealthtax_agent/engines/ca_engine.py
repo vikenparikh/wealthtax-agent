@@ -252,6 +252,21 @@ def compute_ca_return(
     # ---- Tax + credits ----
     federal_tax_before_credits = compute_progressive_tax(taxable_income, fed_tables.get("brackets", []))
     bpa = float(fed_tables.get("basic_personal_amount", 0))
+    # Federal BPA is reduced for high earners, phasing linearly from the full
+    # amount to a floor as net income rises from the bottom of the 29% bracket to
+    # the bottom of the top (33%) bracket (CRA rule since 2020). Only applied when
+    # the table supplies the floor (basic_personal_amount_min); otherwise the flat
+    # BPA is used (no regression for years without the value).
+    bpa_min = float(fed_tables.get("basic_personal_amount_min", 0))
+    _fed_brackets = fed_tables.get("brackets", [])
+    if bpa_min and bpa_min < bpa and len(_fed_brackets) >= 3:
+        phase_start = float(_fed_brackets[-3].get("up_to") or 0)
+        phase_end = float(_fed_brackets[-2].get("up_to") or 0)
+        if phase_end > phase_start:
+            if net_income >= phase_end:
+                bpa = bpa_min
+            elif net_income > phase_start:
+                bpa -= (bpa - bpa_min) * (net_income - phase_start) / (phase_end - phase_start)
     employment_amount = float(fed_tables.get("canada_employment_amount", 0)) if employment_income > 0 else 0.0
     lowest_rate = (fed_tables.get("brackets") or [{"rate": 0.15}])[0].get("rate", 0.15)
 

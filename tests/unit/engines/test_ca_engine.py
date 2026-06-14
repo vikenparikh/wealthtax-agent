@@ -188,3 +188,23 @@ def test_ca_rpp_and_union_dues_are_deducted():
     assert d1.taxable_income == d0.taxable_income - 6200.0
     # and that lowers tax
     assert d1.estimated_tax < d0.estimated_tax
+
+
+def test_ca_federal_bpa_phases_out_for_high_income():
+    """The federal basic personal amount phases from $15,705 down to $14,156 as
+    net income rises from $173,205 (bottom of the 29% bracket) to $246,752
+    (bottom of the 33% bracket). A high earner above $246,752 gets the floor.
+
+    FAILS before the fix: flat $15,705 BPA at all incomes."""
+    high = [FormExtract(form_code="T4", jurisdiction="CA",
+                        fields={"employment_income": 300000.0})]
+    d = compute_ca_return(high, year=2024, province="ON")
+    assert d.credits["basic_personal_amount"] == 14156.0  # fully phased to the floor
+
+
+def test_ca_federal_bpa_unreduced_below_phaseout():
+    """Below $173,205 net income the BPA is the full amount (no reduction)."""
+    low = [FormExtract(form_code="T4", jurisdiction="CA",
+                       fields={"employment_income": 90000.0})]
+    d = compute_ca_return(low, year=2024, province="ON")
+    assert d.credits["basic_personal_amount"] == 15705.0
