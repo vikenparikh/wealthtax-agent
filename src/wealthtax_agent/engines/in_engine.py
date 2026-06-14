@@ -295,7 +295,10 @@ def _compute_one_regime(
         + house_property_for_slab
         + business_income
         + other_income
-        + cg["stcg_other_taxed_at_slab"]
+        # Short-term capital gains on non-equity assets are taxed at slab rates,
+        # but a net loss there is a capital loss and must not offset salary/other
+        # income (floor at zero; the loss carries forward, not modelled).
+        + max(0.0, cg["stcg_other_taxed_at_slab"])
     )
 
     # ---- Chapter VI-A deductions (old regime only, except 80CCD(2)) ----
@@ -377,7 +380,12 @@ def _compute_one_regime(
     # ---- Tax computation ----
     brackets = cfg.get("brackets", []) if regime == "new" else _old_regime_brackets(age, tables)
     slab_tax = compute_progressive_tax(total_income, brackets)
-    cg_tax = cg["tax_ltcg_equity"] + cg["tax_stcg_equity"] + cg["tax_ltcg_other"]
+    # Net the special-rate capital-gains tax across categories (a loss in one
+    # offsets a gain in another), but floor the TOTAL at zero: a net capital
+    # loss carries forward (not modelled) and must NOT reduce tax on salary or
+    # other income (§70/§71 bar capital losses from offsetting non-capital
+    # income). Without the floor a negative cg_tax illegally cut total tax.
+    cg_tax = max(0.0, cg["tax_ltcg_equity"] + cg["tax_stcg_equity"] + cg["tax_ltcg_other"])
     tax_before_rebate = slab_tax + cg_tax
 
     # 87A rebate (with new-regime marginal relief)
