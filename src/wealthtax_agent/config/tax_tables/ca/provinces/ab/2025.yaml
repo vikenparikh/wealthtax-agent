@@ -8,6 +8,9 @@ brackets:
   - {up_to: 362961, rate: 0.14}
   - {up_to: null,   rate: 0.15}
 basic_personal_amount: 22323
+# Alberta charitable-donation credit excess rate (donations over $200): 21%,
+# deliberately above the top tax rate. First $200 uses the lowest bracket rate.
+donation_credit_high_rate: 0.21
 dividend:
   eligible: 0.0812
   non_eligible: 0.0218
