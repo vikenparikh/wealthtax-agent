@@ -787,3 +787,19 @@ over-taxes); genuinely entangled, not forced.
 legislated rates (tracked). Remaining backlog unchanged: surcharge entangled; age/std-deduction need
 input; QC out of scope; full §70 cap-gain ORDERING + carry-forward deferred. Clean vein narrowing —
 mostly per-province-data extensions and risky/entangled items left.
+
+---
+
+## Cycle 24 — MAINTAIN + HONEST NO-OP (2026-06-14) — STEADY STATE
+
+main HEAD 9dfc034 (#64) unchanged; zero open PRs; green at 994. No new forms/data/inputs since
+cycles 22–23. Third consecutive no-op with NO state change = confirmed STEADY-STATE convergence.
+
+The full decomposition stands in cycle-22; not repeated. All clean/confident/no-risk tax-calc work
+is shipped (#43–#64, 22 fixes). Remaining items are strictly blocked on EXTERNAL inputs:
+  (1) confirmed BC/QC provincial donation rates or per-province pension-amount caps (DATA);
+  (2) age / blind / resident-years fields added to intake (INPUT);
+  (3) an owner decision to take on the complex IN-surcharge bifurcation (CG-15%-cap + threshold) with review.
+
+Until one of those lands, every R&D cycle will correctly be an HONEST NO-OP. Further identical no-op
+cycles need no new ledger entry beyond this steady-state marker — the convergence is documented.
