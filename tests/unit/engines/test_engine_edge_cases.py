@@ -315,3 +315,16 @@ def test_in_stcg_other_loss_does_not_reduce_salary():
         [_f("FORM-16", "IN", gross_salary=1050000), _f("STOCK-GAIN", "IN", stcg_other=-80000)],
         2024, regime="old", user_answers={"age": "30"})
     assert with_loss.totals["total_tax"] == base.totals["total_tax"]
+
+
+def test_in_professional_tax_read_from_form16_extract():
+    """Professional tax reported ON Form 16 (the primary upload path) must be
+    deducted, not only a manual user answer. §16(iii), old regime.
+
+    FAILS before the fix: the engine read only user_answers['professional_tax_paid'],
+    so a form-uploaded amount was ignored -> ₹10L taxable."""
+    d = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000, professional_tax=2500)],
+        2024, regime="old", user_answers={"age": "30"})
+    assert d.line_items["professional_tax_deduction"] == 2500.0
+    assert d.totals["taxable_income"] == 997500.0

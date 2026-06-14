@@ -216,8 +216,13 @@ def _compute_one_regime(
         hra_exempt = _hra_exemption(hra_received, basic_salary, rent_paid, metro, tables)
         # Professional tax actually paid is deductible from salary under §16(iii)
         # (disallowed in the new regime). Capped at ₹2,500 — the constitutional
-        # ceiling (Art. 276) on the state levy itself.
-        professional_tax = min(_to_float(user_answers.get("professional_tax_paid", 0)), 2500.0)
+        # ceiling (Art. 276) on the state levy itself. Prefer the amount reported
+        # on Form 16, fall back to a manual user answer (the form is the primary
+        # path; reading only the manual key dropped form-uploaded amounts).
+        professional_tax = _sum_field(extracts, "FORM-16", "professional_tax")
+        if professional_tax == 0.0:
+            professional_tax = _to_float(user_answers.get("professional_tax_paid", 0))
+        professional_tax = min(professional_tax, 2500.0)
 
     income_salary = max(0.0, gross_salary - std_deduction_salary - hra_exempt - professional_tax)
 
