@@ -844,3 +844,22 @@ above-the-line deduction; captured-but-unused) — next-cycle candidate (niche-i
 extractor-vs-engine contract is substantially clean; the other captured-but-unused US fields are
 special-rate/complex (collectibles 28%, unrecaptured 1250, §1202, dependent-care benefits, excess
 SS/Medicare withholding) or documented simplifications (tax-exempt interest -> SS provisional income).
+
+---
+
+## Cycle 28 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | deduct 1099-INT box 2 early-withdrawal penalty (above the line) | a Schedule-1 above-the-line deduction was captured but omitted from above_line, overstating AGI | fail: KeyError early_withdrawal_penalty / AGI unreduced — pass: $500 penalty -> AGI $92,500 | gated? N | PR #68
+
+**MAINTAIN:** #67 merged green (HEAD 188fcba); main green at 997.
+
+Last clean item from the extractor-vs-engine field-consumption audit. The audit produced 4 fixes:
+#65 (CA RPP/union dues), #66 (US 1099-DIV box 2a LTCG), #67 (IN Form-16 professional tax), #68 (US
+early-withdrawal penalty). The extractor-vs-engine contract is now substantially clean — the
+remaining captured-but-unused fields are special-rate/complex (collectibles 28%, unrecaptured §1250,
+§1202 small-business stock, dependent-care benefits, excess SS/Medicare withholding -> multi-employer
+refund) or documented simplifications (tax-exempt interest -> SS provisional income), none a clean
+no-data no-risk fix. Suite 997 -> 998.
+
+Convergence likely again next cycle unless a new surface/audit angle or external data/input appears —
+but per the repeated lessons (cycles 16/20/25), I will sweep a FRESH angle before any no-op.
