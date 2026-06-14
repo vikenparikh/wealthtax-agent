@@ -271,3 +271,39 @@ def test_half_se_tax_deduction_excludes_additional_medicare():
     # additional Medicare applies above $200k, so half of total SE tax would
     # exceed the (correct) deduction that excludes the surtax.
     assert deduction < round(0.5 * se_tax, 2)
+
+
+# --- NIIT uses MAGI: foreign earned income exclusion is added back (§1411(d)) ---
+
+def test_niit_magi_adds_back_feie_for_threshold():
+    """A FEIE filer (Form 2555) excludes $150k foreign wages, so AGI = $80k from
+    US interest — below the $200k NIIT threshold. But MAGI adds the exclusion
+    back ($230k), so $30k of the investment income is over the threshold and the
+    3.8% tax applies: $1,140.
+
+    FAILS before the fix (AGI $80k < threshold -> niit $0)."""
+    extracts = [
+        FormExtract(form_code="2555", jurisdiction="US", fields={
+            "foreign_earned_income": 150000.0,
+            "foreign_earned_income_excluded": 150000.0,
+        }),
+        FormExtract(form_code="1099-INT", jurisdiction="US", fields={"interest_income": 80000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["agi"] == 80000.0          # AGI excludes foreign wages
+    assert draft.line_items["niit"] == round(0.038 * 30000.0, 2)  # 1140.00 via MAGI
+
+
+def test_niit_magi_feie_filer_below_threshold_guard():
+    """Guard: a FEIE filer whose MAGI is still below the threshold owes no NIIT —
+    the add-back does not over-apply. $50k excluded + $40k interest -> MAGI $90k
+    < $200k -> niit $0."""
+    extracts = [
+        FormExtract(form_code="2555", jurisdiction="US", fields={
+            "foreign_earned_income": 50000.0,
+            "foreign_earned_income_excluded": 50000.0,
+        }),
+        FormExtract(form_code="1099-INT", jurisdiction="US", fields={"interest_income": 40000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["niit"] == 0.0

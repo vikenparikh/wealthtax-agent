@@ -511,7 +511,12 @@ def compute_us_return(
         + max(0.0, long_gain) + max(0.0, short_gain)
         + misc_royalties + misc_rents + sch_e_supplemental
     )
-    niit = round(min(investment_income, max(0.0, agi - niit_threshold)) * 0.038, 2)
+    # NIIT is keyed off MAGI, which adds the foreign earned income exclusion back
+    # to AGI (§1411(d)(1)). Using AGI alone would let FEIE filers (Form 2555)
+    # wrongly slip under the threshold even when their worldwide income is over
+    # it — a real case for this cross-border tool.
+    niit_magi = agi + feie_excluded
+    niit = round(min(investment_income, max(0.0, niit_magi - niit_threshold)) * 0.038, 2)
     federal_tax += niit
 
     # se_tax + se_tax_deduction already computed above (the deduction feeds AGI).
