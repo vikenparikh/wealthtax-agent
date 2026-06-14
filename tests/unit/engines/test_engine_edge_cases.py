@@ -185,3 +185,22 @@ def test_in_87a_marginal_relief_self_limits_for_higher_income():
                           regime="new", user_answers={"age": "30"})
     assert d.totals["taxable_income"] == 850000.0
     assert d.line_items["rebate_87a"] == 0.0
+# --- US CTC phase-out rounds the excess UP (§24(b)(2) "or fraction thereof") ---
+
+def test_us_ctc_phaseout_rounds_partial_thousand_up():
+    """AGI $200,500 (single, 1 child) is $500 over the $200,000 threshold. Under
+    §24(b)(2) a partial $1,000 counts as a full step → $50 reduction → CTC $1,950.
+
+    FAILS before the fix: floor((500)/1000)=0 → no reduction → CTC $2,000."""
+    d = compute_us_return([_f("W-2", "US", wages=200500)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1"})
+    assert d.line_items["child_tax_credit"] == 1950.0
+
+
+def test_us_ctc_phaseout_exact_thousand_unchanged_guard():
+    """Guard: an exact $1,000 multiple over the threshold is unaffected by the
+    rounding change. AGI $205,000 → $5,000 over → 5 steps → $250 reduction →
+    CTC $1,750 (same before and after)."""
+    d = compute_us_return([_f("W-2", "US", wages=205000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1"})
+    assert d.line_items["child_tax_credit"] == 1750.0

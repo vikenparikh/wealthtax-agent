@@ -19,6 +19,7 @@ QBI deduction, state-specific credits, multistate apportionment.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, Iterable, List, Optional
 
 from wealthtax_agent.config.tax_tables import (
@@ -111,7 +112,9 @@ def _compute_ctc(num_dependents: int, agi: float, status: str, fed_tables: Dict[
     base = num_dependents * per_child
     if agi <= phaseout_start:
         return base
-    excess = ((agi - phaseout_start) // 1000) * 50
+    # §24(b)(2): reduce by $50 for each $1,000 "or fraction thereof" above the
+    # threshold — round the excess UP to the next $1,000, not down.
+    excess = math.ceil((agi - phaseout_start) / 1000.0) * 50
     return max(0.0, base - float(excess))
 
 
