@@ -787,3 +787,24 @@ over-taxes); genuinely entangled, not forced.
 legislated rates (tracked). Remaining backlog unchanged: surcharge entangled; age/std-deduction need
 input; QC out of scope; full §70 cap-gain ORDERING + carry-forward deferred. Clean vein narrowing —
 mostly per-province-data extensions and risky/entangled items left.
+
+---
+
+## Cycle 23 — MAINTAIN + HONEST NO-OP (2026-06-14)
+
+### MAINTAIN: nothing changed since cycle-22. main HEAD 9dfc034 (#64); all #43–#64 merged; zero open PRs; main green at 994.
+
+### NOTHING-HIGH-VALUE — no PR opened.
+
+No new forms / per-province data / intake inputs have landed since cycle-22, so the comprehensive
+decomposition recorded there still holds verbatim:
+- BC/QC provincial donation rates — BC excess rate not confidently known (refuse to guess); QC out of scope.
+- Provincial pension-income-amount caps — per-province values not confidently known.
+- IN surcharge — threshold-excl-CG (under) vs missing CG-15%-cap (over) coupled to equity-vs-other CG
+  category; complex/risky bifurcation, narrow population; deferred.
+- Age/blind credits (CA age amount, US additional std deduction) — blocked on uncollected inputs.
+
+22 fixes shipped (#43–#64); all tax-calc surfaces swept; confident clean no-risk vein exhausted.
+Two consecutive no-ops (cycle-22, cycle-23) with no intervening state change = genuine convergence
+under current inputs/data. Unblock conditions unchanged (confirmed per-province data, new intake
+inputs, or a reviewed decision to take on the complex IN surcharge bifurcation).
