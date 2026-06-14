@@ -539,3 +539,39 @@ CA BPA phase-out.
 **Convergence note:** the CA credit surface (federal CPP/EI, provincial CPP/EI, provincial medical)
 has yielded 3 genuine fixes in a row — the engine was materially under-crediting CA returns. Likely
 nearing the end of clean CA credit gaps; the remaining ones need table/per-province data.
+
+---
+
+## Cycle 13 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #57 merged green
+#57 (provincial medical rate) merged (HEAD 5d20281); all PRs #43–#57 landed; zero open PRs; main green at 978.
+
+### DEVELOP: provincial donation credit at provincial rates (Ontario) → PR #58
+
+**Why (safe, table-driven, high-value for ON):** the donations half of the same bug class as #57 —
+prov_non_refundable reused the FEDERAL donation amount (15%/29%) provincially. ON donation credit is
+5.05% on the first $200, 11.16% on the excess. Fixed for ON (rate I am confident in) via a new
+table field donation_credit_high_rate + a fallback that leaves BC/AB/QC at current behaviour (no
+rate-guessing, no regression). ON is ~40% of Canada; donations are common.
+
+**Considered + rejected this cycle:** RRSP deduction cap — the deduction is uncapped (line 170), but
+the only available room key (rrsp_room from prior_year) means "remaining room" not "deduction limit",
+so capping against it would UNDER-deduct (wrong direction); a correct cap needs a new
+rrsp_deduction_limit key nothing populates. Left unfixed rather than ship a wrong-direction change.
+
+**Verify-plan (fails-before / passes-after):**
+- $1,000 donation (ON): provincial credit $99.38 (200*5.05% + 800*11.16%), federal $262.00 unchanged.
+- Proven by reverting the engine hunk: KeyError provincial_donations_credit; 7 existing CA tests pass; BC/AB/QC fallback unchanged.
+
+**Before/after delta:**
+| Scenario (ON) | Before | After |
+|---|---|---|
+| $1,000 donation | provincial credit $262 @federal | $99.38 @ON; federal $262 unchanged |
+| Test count | 978 passing | **979 passing** (+1) |
+
+**Convergence note:** the CA provincial-credit-rate bug is now fixed for medical (#57) + ON donations
+(#58). Remaining genuinely-needs-data items: BC/AB/QC donation excess rates; CA age amount + pension
+income amount (provincial caps); CA BPA phase-out. Risky-do-not-force: IN surcharge marginal relief.
+The clean, no-data, no-risk vein is now largely exhausted — expect upcoming cycles to need confirmed
+per-province/table data or to be honest NOTHING-HIGH-VALUE no-ops.

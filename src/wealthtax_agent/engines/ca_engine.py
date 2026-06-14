@@ -319,14 +319,22 @@ def compute_ca_return(
     # so the provincial credit is the creditable amount at the PROVINCIAL lowest
     # rate — not the federal-rate amount, which over-credited provincially.
     medical_credit_prov = medical_creditable * float(prov_lowest_rate)
-    # NOTE: donations_credit is still the federal-rate amount here. The
-    # provincial donation credit uses province-specific rates (e.g. ON
-    # 5.05%/11.16%) that are not yet in the tables — tracked as backlog rather
-    # than approximated.
+    # Provincial donation credit at provincial rates when the table supplies the
+    # excess rate (first $200 at the lowest rate, excess at donation_credit_high_rate).
+    # Provinces without that rate fall back to the federal-rate amount (legacy
+    # behaviour) rather than approximating an unknown provincial rate.
+    prov_donation_high = prov_tables.get("donation_credit_high_rate")
+    if prov_donation_high is not None and donations > 0:
+        donations_credit_prov = (
+            donations * float(prov_lowest_rate) if donations <= 200
+            else 200 * float(prov_lowest_rate) + (donations - 200) * float(prov_donation_high)
+        )
+    else:
+        donations_credit_prov = donations_credit
     prov_non_refundable = (
         prov_bpa * float(prov_lowest_rate)
         + cpp_ei_credit_prov
-        + donations_credit
+        + donations_credit_prov
         + medical_credit_prov
     )
     prov_dtc = _province_dtc(taxable_eligible, taxable_non_eligible, prov_tables)
@@ -395,6 +403,7 @@ def compute_ca_return(
         "provincial_non_refundable_credits": prov_non_refundable,
         "provincial_cpp_ei_credit": cpp_ei_credit_prov,
         "provincial_medical_credit": medical_credit_prov,
+        "provincial_donations_credit": donations_credit_prov,
         "provincial_dividend_tax_credit": prov_dtc,
         "provincial_tax": provincial_tax,
         "tax_withheld": fed_tax_withheld,

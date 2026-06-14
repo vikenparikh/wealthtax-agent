@@ -110,3 +110,20 @@ def test_ca_provincial_medical_credit_uses_provincial_rate():
     assert round(d.line_items["provincial_medical_credit"], 2) == round(3200.0 * 0.0505, 2)  # 161.60
     # Federal medical credit is unchanged at the federal lowest rate.
     assert round(d.line_items["medical_credit"], 2) == round(3200.0 * 0.15, 2)  # 480.00
+
+
+def test_ca_provincial_donations_credit_uses_provincial_rate_ontario():
+    """Ontario provincial donation credit: first $200 at 5.05%, excess at 11.16%
+    (from the table) — not the federal 15%/29% amount. A $1,000 donation gives a
+    provincial credit of 200*5.05% + 800*11.16% = $99.38 (was federal $262.00).
+
+    FAILS before the fix: no provincial_donations_credit line item; provincial
+    tax over-credited at federal donation rates."""
+    extracts = [FormExtract(form_code="T4", jurisdiction="CA",
+                            fields={"employment_income": 80000.0})]
+    d = compute_ca_return(extracts, year=2024, province="ON",
+                          user_answers={"charitable_donations": "1000"})
+    expected = round(200 * 0.0505 + 800 * 0.1116, 2)  # 99.38
+    assert round(d.line_items["provincial_donations_credit"], 2) == expected
+    # Federal donation credit unchanged (15%/29%).
+    assert round(d.line_items["donations_credit"], 2) == round(200 * 0.15 + 800 * 0.29, 2)  # 262.00
