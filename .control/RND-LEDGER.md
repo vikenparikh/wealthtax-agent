@@ -921,3 +921,18 @@ over-taxed, but this needs NEW per-head foreign-source inputs -> tracked, not a 
 Suite 1002 -> 1003. NEW audit angle that paid off: INTERNAL CONSISTENCY between sibling code paths
 (base vs marginal-relief rebate). NOT converged — next cycle sweep for other sibling-path
 inconsistencies or the NR/RNOR per-head foreign-source completeness if inputs are added.
+## Cycle 32 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | phase out federal BPA for high earners ($15,705 -> $14,156 over $173,205-$246,752 net income) | BPA was flat, over-crediting all high-income Canadians (~$232) — a CRA rule since 2020 | fail: BPA $15,705 at $300k net income — pass: $14,156 (floor) | gated? N | PR #72
+
+**MAINTAIN:** #70 merged green (HEAD d04f10a); #71 open/mergeable; main green at 1002.
+
+**Fresh-angle audit (tax-table VALUE/coverage correctness):** checked whether table values are current
+and whether known statutory phase-outs/floors are present. IN 2025 table verified correct (₹75k std
+deduction + widened slabs + 87A). CA federal table had a FLAT BPA — missing the 2020+ high-income
+phase-out. Implemented (table-driven floor, 2024 confirmed; other years flat fallback = no regression).
+Self-caught a test-field bug (BPA is in DraftReturn.credits, not line_items) — corrected.
+
+Suite 1002 -> 1004. NEW audit angle: table-value currency + missing statutory phase-outs/floors. NOT
+converged — sweep US/CA other-year table values + any other missing phase-outs (e.g. US CTC/PTC FPL
+thresholds, OAS clawback indexation) next cycle; BC/QC/other-year CA BPA floors need confirmed values.
