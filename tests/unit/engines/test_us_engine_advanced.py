@@ -307,3 +307,25 @@ def test_niit_magi_feie_filer_below_threshold_guard():
     ]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
     assert draft.line_items["niit"] == 0.0
+
+
+# --- 1099-DIV box 2a capital gain distributions are taxable LTCG ---
+
+def test_1099div_capital_gain_distributions_taxed_as_ltcg():
+    """1099-DIV box 2a (capital gain distributions from mutual funds/ETFs) is a
+    long-term capital gain. It was captured by the extractor but never read by
+    the engine, under-reporting income for fund holders.
+
+    FAILS before the fix: long_term_capital_gain = 0."""
+    extracts = [
+        _w2(90000.0),
+        FormExtract(form_code="1099-DIV", jurisdiction="US", fields={
+            "ordinary_dividends": 2000.0,
+            "qualified_dividends": 1500.0,
+            "capital_gain_distributions": 8000.0,
+        }),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["long_term_capital_gain"] == 8000.0
+    # and it is included in total income
+    assert draft.line_items["ordinary_dividends"] == 2000.0

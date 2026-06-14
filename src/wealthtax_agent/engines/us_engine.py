@@ -355,6 +355,10 @@ def compute_us_return(
     qualified_dividends += k1_qdiv
     short_gain += k1_st_gain
     long_gain += k1_lt_gain
+    # 1099-DIV box 2a: total capital gain distributions from mutual funds / ETFs
+    # are long-term capital gains and were previously dropped (captured by the
+    # extractor but never read), under-reporting income for fund holders.
+    long_gain += _sum_field(extracts, "1099-DIV", "capital_gain_distributions")
 
     # 1099-K gross payments are reported by payment networks; treat as
     # self-employment income unless explicitly assigned elsewhere by the user.
