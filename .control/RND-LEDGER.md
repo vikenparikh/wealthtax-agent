@@ -968,3 +968,13 @@ wage base) is real, amount material. Gated on 2+ W-2s (single-employer over-with
 employer's to fix). Suite -> 1007. Remaining niche captured-but-unused: dependent_care_benefits
 (needs the dependent-care credit, complex), allocated/SS tips (extraction nuance). NOT converged but
 the captured-but-unused vein is nearly exhausted of clean items.
+## Cycle 35 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | add tax-exempt interest to SS provisional income (§86) | worksheet adds tax-exempt interest back but engine omitted it (documented #48 gap); 1099-INT box 8 captured-but-unused -> retirees with muni bonds + SS under-reported taxable benefits | fail: taxable SS $0 — pass: $9,600 (provisional $40k -> 85% tier) | gated? N | PR #75
+
+**MAINTAIN:** #73, #74 open/mergeable (pending merge); main green at 1005. Rebase-before-push held —
+this PR pushed conflict-free.
+
+Correctness item (per directive's §70/71/AB pattern): closes the §86 provisional-income gap I
+documented as a simplification in #48 — tax-exempt interest is added to provisional income (NOT to
+taxable income; the interest stays exempt). Under-taxing fix for muni-bond retirees. Suite -> 1006.
