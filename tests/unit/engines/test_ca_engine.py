@@ -163,3 +163,28 @@ def test_ca_provincial_donations_credit_alberta_rate():
     d = compute_ca_return(extracts, year=2024, province="AB",
                           user_answers={"charitable_donations": "1000"})
     assert round(d.line_items["provincial_donations_credit"], 2) == round(200 * 0.10 + 800 * 0.21, 2)  # 188.00
+
+
+def test_ca_rpp_and_union_dues_are_deducted():
+    """RPP contributions (T4 box 20, line 20700) and union/professional dues
+    (box 44, line 21200) reduce income. The extractor captured them but the
+    engine ignored them, overstating taxable income for employees with a
+    pension plan or union membership.
+
+    FAILS before the fix: no rpp/union line items; taxable income unreduced."""
+    base = [FormExtract(form_code="T4", jurisdiction="CA",
+                        fields={"employment_income": 80000.0})]
+    with_ded = [FormExtract(form_code="T4", jurisdiction="CA", fields={
+        "employment_income": 80000.0,
+        "rpp_contributions": 5000.0,
+        "union_dues": 1200.0,
+    })]
+    d0 = compute_ca_return(base, year=2024, province="ON")
+    d1 = compute_ca_return(with_ded, year=2024, province="ON")
+
+    assert d1.line_items["rpp_deduction"] == 5000.0
+    assert d1.line_items["union_dues_deduction"] == 1200.0
+    # both reduce taxable income by their full amount (6200 total)
+    assert d1.taxable_income == d0.taxable_income - 6200.0
+    # and that lowers tax
+    assert d1.estimated_tax < d0.estimated_tax
