@@ -681,3 +681,38 @@ smaller population; not forced, same caution as IN surcharge). Income paths now 
 (house property #60, professional tax #61). Remaining genuine items need new inputs (inert) or carry
 implementation risk. Convergence likely near again — but cycle-15's premature call means I keep
 sweeping a fresh surface each cycle before declaring no-op.
+
+---
+
+## Cycle 18 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #61 merged green
+#61 (IN professional tax) merged (HEAD a0e5a10); all PRs #43–#61 landed; zero open PRs; main green at 987.
+
+### DEVELOP: India ROR requires resident in 2 of last 10 years (§6(6)) → PR #62
+
+**Why (fresh surface = residency; audience-relevant):** audited engines/residency.py (US SPT, CA
+183, IN §6) — SPT weighting (31d + 1/3 + 1/6 ≥183), CA 183, IN basic §6 all correct. GAP: the
+ROR-vs-RNOR test (line 113) checked only the 730-days-in-7-years condition, omitting §6(6)'s second
+condition — resident in ≥2 of the last 10 years. Misses the common RETURNING-NRI case (lots of
+recent days but resident ≤1 of last 10) -> wrongly ROR (worldwide income taxed) instead of RNOR
+(foreign income exempt). Core cross-border audience, high $ impact (foreign income).
+
+**Why clean (not inert):** recommend_residency already reads user_answers flags and threads them to
+india_residency; added resident_years_in_last_10 the same way (user_answers["india_resident_years_in_last_10"]),
+default 2 preserves all prior behaviour (23 existing residency tests pass unchanged).
+
+**Verify-plan (fails-before / passes-after):**
+- 730+ days but resident 1 of 10 -> RNOR (was ROR). Both met -> ROR. Default -> ROR (preserved).
+- Orchestrator end-to-end: returning NRI -> RNOR. Proven by reverting hunk ('ROR'=='RNOR').
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| 730+ days, resident 1 of 10 years | ROR | RNOR |
+| Test count | 987 passing | **990 passing** (+3) |
+
+**Audited-clean this cycle:** US SPT formula, CA 183-day, IN §6 day-count all correct; treaty hints
+advisory. DEFERRED-risky still: IN intra-capital-gains loss netting (§70 matrix). Surfaces now swept:
+credits, income heads, residency. Remaining items need per-province DATA or carry risk. Cross-border
+audience-relevance (FEIE→NIIT-MAGI, returning-NRI→ROR) keeps surfacing genuine fixes — keep that lens.

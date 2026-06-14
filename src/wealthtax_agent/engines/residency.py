@@ -82,6 +82,7 @@ def india_residency(
     days_prior_4_total: int = 0,
     *,
     days_prior_7_resident_years: int = 0,
+    resident_years_in_last_10: int = 2,
     indian_income_above_15l: bool = False,
     is_indian_citizen: bool = False,
 ) -> str:
@@ -109,8 +110,12 @@ def india_residency(
             return "RNOR"  # Section 6(1A) deemed residency is always RNOR
         return "NR"
 
-    # Ordinary vs not ordinary
-    is_ror = days_prior_7_resident_years >= 730
+    # Ordinary vs not ordinary (§6(6)): ROR requires BOTH being present >= 730
+    # days in the last 7 years AND being resident in at least 2 of the last 10
+    # years. Failing EITHER makes the person RNOR. (resident_years_in_last_10
+    # defaults to 2, which preserves the prior 730-day-only behaviour when the
+    # caller does not supply the count.)
+    is_ror = days_prior_7_resident_years >= 730 and resident_years_in_last_10 >= 2
     return "ROR" if is_ror else "RNOR"
 
 
@@ -193,10 +198,15 @@ def recommend_residency(
     if "IN" in days_by_country:
         days = int(days_by_country.get("IN", 0))
         prior_in = prior.get("IN", {})
+        try:
+            ror_years = int(ua.get("india_resident_years_in_last_10", "2") or "2")
+        except ValueError:
+            ror_years = 2
         statuses["IN"] = india_residency(
             days,
             int(prior_in.get("prior_4_total", 0)),
             days_prior_7_resident_years=int(prior_in.get("prior_7_days", 0)),
+            resident_years_in_last_10=ror_years,
             indian_income_above_15l=_yes("indian_income_above_15l"),
             is_indian_citizen=_yes("is_indian_citizen"),
         )
