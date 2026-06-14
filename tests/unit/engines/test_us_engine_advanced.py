@@ -195,3 +195,42 @@ def test_social_security_mfj_higher_thresholds():
     draft = compute_us_return([_pension(10000.0), _ssa(30000.0)], year=2024,
                               user_answers={"filing_status": "married_filing_jointly"})
     assert draft.line_items["taxable_social_security"] == 0.0
+
+
+# --- QBI §199A overall limit must exclude net capital gain (LTCG + qual divs) ---
+
+def test_qbi_limited_by_taxable_income_minus_capital_gain():
+    """SCH-C $50k QBI + $100k LTCG, single. Taxable income before QBI =
+    150,000 - 14,600 std = 135,400; minus the $100k net capital gain leaves a
+    $35,400 limit base -> QBI = 20% * min(50,000, 35,400) = $7,080.
+
+    FAILS before the fix (capped at 20% of full taxable income -> $10,000)."""
+    extracts = [
+        FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 50000.0}),
+        FormExtract(form_code="SCH-D", jurisdiction="US", fields={"net_long_term_capital_gain": 100000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["qbi_deduction"] == 7080.0
+
+
+def test_qbi_limit_uses_qualified_dividends_too():
+    """Qualified dividends are also 'net capital gain' for the §199A limit.
+    SCH-C $20k + $50k qualified dividends, single: taxable income before QBI =
+    70,000 - 14,600 = 55,400; minus $50k -> $5,400 base -> QBI = 20% * 5,400 =
+    $1,080 (was $4,000 = 20% of the $20k QBI)."""
+    extracts = [
+        FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 20000.0}),
+        FormExtract(form_code="1099-DIV", jurisdiction="US",
+                    fields={"ordinary_dividends": 50000.0, "qualified_dividends": 50000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["qbi_deduction"] == 1080.0
+
+
+def test_qbi_without_capital_gain_unchanged_guard():
+    """Guard: with no preferential income, the limit is unchanged. SCH-C $50k,
+    single -> 20% * min(50,000, 35,400) = $7,080 (the fix does not disturb the
+    common no-capital-gain case)."""
+    extracts = [FormExtract(form_code="SCH-C", jurisdiction="US", fields={"net_profit": 50000.0})]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["qbi_deduction"] == 7080.0
