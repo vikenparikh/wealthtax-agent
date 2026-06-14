@@ -357,11 +357,22 @@ def _compute_one_regime(
     cg_tax = cg["tax_ltcg_equity"] + cg["tax_stcg_equity"] + cg["tax_ltcg_other"]
     tax_before_rebate = slab_tax + cg_tax
 
-    # 87A rebate
+    # 87A rebate (with new-regime marginal relief)
     rebate_cfg = cfg.get("rebate_87a", {})
+    threshold = float(rebate_cfg.get("income_threshold", 0))
+    max_credit = float(rebate_cfg.get("max_credit", 0))
     rebate = 0.0
-    if total_income <= float(rebate_cfg.get("income_threshold", 0)):
-        rebate = min(tax_before_rebate, float(rebate_cfg.get("max_credit", 0)))
+    if total_income <= threshold:
+        rebate = min(tax_before_rebate, max_credit)
+    elif regime == "new" and threshold > 0:
+        # Marginal relief: just above the threshold the normal tax (no rebate)
+        # would exceed the income earned above the threshold — the cliff. Cap
+        # the slab tax payable at that excess by rebating the difference.
+        # Based on slab_tax only: §87A never rebates tax on capital gains taxed
+        # at special rates. Self-limiting — relief reaches 0 once the slab tax
+        # no longer exceeds the excess, so higher incomes are unaffected.
+        excess = total_income - threshold
+        rebate = max(0.0, slab_tax - excess)
     tax_after_rebate = max(0.0, tax_before_rebate - rebate)
 
     # Surcharge on income tax
