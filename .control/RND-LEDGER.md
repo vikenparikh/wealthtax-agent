@@ -611,3 +611,34 @@ substantially closed. CLEARLY-remaining items all need confirmed per-province/ta
 pension cap, BC/AB/QC donation rates, CA age amount base+phaseout, CA BPA phase-out) or carry risk
 (IN surcharge). The clean, no-data, no-risk vein is now ~exhausted — next cycle is likely an HONEST
 NOTHING-HIGH-VALUE no-op unless a clean item surfaces on re-scan.
+
+---
+
+## Cycle 15 — MAINTAIN + HONEST NO-OP (2026-06-14)
+
+### MAINTAIN: #59 merged green
+#59 (pension income amount) merged (HEAD 48016e4); all PRs #43–#59 landed; zero open PRs; main green at 981.
+
+### NOTHING-HIGH-VALUE this cycle — no PR opened (correct outcome, not padding)
+
+Ran a genuine final re-scan. Every remaining tax-calculation gap is BLOCKED on one of:
+- **Missing input collection** — CA age amount (65+) and US additional standard deduction (65+/blind)
+  both require an age/blind input the engines do not collect. Adding it is a multi-component
+  state/intake feature, not a clean fail-before/pass-after tax-calc fix.
+- **Per-province / per-year table DATA I will not guess** — provincial pension income amount cap
+  (ON ₹… e.g. $1,641), BC/AB/QC donation excess rates, CA age-amount base + phase-out, CA BPA
+  phase-out. Shipping guessed rates would risk WRONG tax — worse than the gap.
+- **Implementation risk** — IN surcharge marginal relief has genuine capital-gains-surcharge
+  entanglement (CG surcharge capped at 15%; tax-at-threshold interaction) that could ship a
+  wrong-DIRECTION (under-tax) error. Deliberately not forced.
+- **Acknowledged simplifications, not bugs** — AMT (heavily simplified by design), 80G 50% default,
+  FTC advisory-hint-only.
+
+Verified clean this scan: IN 80C/80CCD1B/80D/80G all min()-capped; IN §24(b) capped; CA dividends/
+DTC correct; CA capital-gains 50% inclusion correct.
+
+**Conclusion:** the clean, no-data, no-risk, high-value tax-calculation vein is EXHAUSTED. 17 fixes
+shipped across US/IN/CA (cycles 1–14) + 3 infra (consumer idle, lots migration, wash-sale capacity).
+No new dev this cycle. Future cycles will remain HONEST NO-OPs unless: (a) a new requirement/form
+lands, (b) confirmed per-province table data is provided (would unblock several items), or (c) an
+age/blind input is added to the engines (would unblock age-amount / additional-std-deduction).
