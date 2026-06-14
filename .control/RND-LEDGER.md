@@ -902,3 +902,22 @@ Suite 1000 -> 1002. Audit angles that paid off this run of cycles: extractor->en
 (#65-68), declared-vs-granular deduction keys (#69), regime-gating exceptions (#70). NOT converged —
 next cycle sweep another fresh angle (e.g., NR/RNOR foreign-source filtering completeness across ALL
 income heads, not just other_income).
+
+---
+
+## Cycle 31 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | §87A base rebate excludes special-rate capital-gains tax | the at/under-threshold rebate used tax_before_rebate (slab+CG) so it zeroed out equity-LTCG tax for low-income filers with CG; #51 fixed the marginal-relief branch but left the base case inconsistent (under-taxing) | fail: rebate ₹25,000 / total tax ₹0 — pass: rebate ₹15,000 / ₹10,400 (LTCG tax survives) | gated? N | PR #71
+
+**MAINTAIN:** #70 merged green (HEAD d04f10a); main green at 1002.
+
+**Fresh-angle audit (internal consistency between related code paths):** the #51 marginal-relief fix
+used slab_tax to exclude special-rate CG from the §87A rebate, but the BASE rebate branch still used
+tax_before_rebate — same statutory principle, inconsistent implementation. Fixed the base branch to
+match. (Also examined NR/RNOR foreign-source filtering: only other_income + salary are flagged;
+capital gains / house property lack foreign-source flags -> an NR/RNOR with foreign CG/rental is
+over-taxed, but this needs NEW per-head foreign-source inputs -> tracked, not a clean no-input fix.)
+
+Suite 1002 -> 1003. NEW audit angle that paid off: INTERNAL CONSISTENCY between sibling code paths
+(base vs marginal-relief rebate). NOT converged — next cycle sweep for other sibling-path
+inconsistencies or the NR/RNOR per-head foreign-source completeness if inputs are added.

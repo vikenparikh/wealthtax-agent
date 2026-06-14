@@ -377,3 +377,18 @@ def test_in_80ccd2_capped_at_10pct_of_basic_salary():
         2024, regime="new",
         user_answers={"age": "30", "section_80ccd_2_employer_nps": "200000"})
     assert d.line_items["section_80ccd_2_employer_nps"] == 60000.0  # 10% of 600k
+
+
+def test_in_87a_base_rebate_does_not_offset_ltcg_tax():
+    """§87A rebate (income at/under the threshold) must not zero out tax on
+    equity LTCG (u/s 112A) — it applies to normal/slab tax only. New regime,
+    salary-based total income ₹6L (under ₹7L) + ₹2L equity LTCG: slab tax
+    ₹15,000 is rebated, but the ₹10,000 LTCG tax (₹1L taxable @ 10%) survives.
+
+    FAILS before the fix: rebate = min(slab+LTCG tax, 25,000) zeroed total tax."""
+    d = compute_in_return([
+        _f("FORM-16", "IN", gross_salary=650000),
+        _f("STOCK-GAIN", "IN", ltcg_equity=200000),
+    ], 2024, regime="new", user_answers={"age": "30"})
+    assert d.line_items["rebate_87a"] == 15000.0          # slab tax only (was 25,000)
+    assert d.totals["total_tax"] == round(10000 * 1.04, 2)  # LTCG ₹10k + 4% cess = ₹10,400

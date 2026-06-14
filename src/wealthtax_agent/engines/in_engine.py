@@ -418,7 +418,12 @@ def _compute_one_regime(
     max_credit = float(rebate_cfg.get("max_credit", 0))
     rebate = 0.0
     if total_income <= threshold:
-        rebate = min(tax_before_rebate, max_credit)
+        # §87A rebates tax on normal income only — it never offsets tax on
+        # capital gains taxed at special rates (e.g. equity LTCG u/s 112A). Base
+        # it on slab_tax, consistent with the marginal-relief branch below; using
+        # tax_before_rebate let the rebate wrongly zero out LTCG tax for
+        # low-income filers with capital gains.
+        rebate = min(slab_tax, max_credit)
     elif regime == "new" and threshold > 0:
         # Marginal relief: just above the threshold the normal tax (no rebate)
         # would exceed the income earned above the threshold — the cliff. Cap
