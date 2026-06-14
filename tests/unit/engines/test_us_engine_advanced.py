@@ -329,3 +329,25 @@ def test_1099div_capital_gain_distributions_taxed_as_ltcg():
     assert draft.line_items["long_term_capital_gain"] == 8000.0
     # and it is included in total income
     assert draft.line_items["ordinary_dividends"] == 2000.0
+
+
+def test_early_withdrawal_penalty_is_above_line_deduction():
+    """1099-INT box 2 (penalty on early withdrawal of savings, e.g. cashing a CD
+    early) is an above-the-line deduction (Schedule 1 line 18). It was captured
+    but never deducted, overstating AGI.
+
+    FAILS before the fix: no early_withdrawal_penalty line item; AGI unreduced."""
+    base = [_w2(90000.0)]
+    with_pen = [
+        _w2(90000.0),
+        FormExtract(form_code="1099-INT", jurisdiction="US", fields={
+            "interest_income": 3000.0,
+            "early_withdrawal_penalty": 500.0,
+        }),
+    ]
+    d0 = compute_us_return(base, year=2024, user_answers={"filing_status": "single"})
+    d1 = compute_us_return(with_pen, year=2024, user_answers={"filing_status": "single"})
+
+    assert d1.line_items["early_withdrawal_penalty"] == 500.0
+    # AGI = wages 90k + interest 3k - 500 penalty = 92,500 (vs 90k baseline)
+    assert d1.line_items["agi"] == 90000.0 + 3000.0 - 500.0

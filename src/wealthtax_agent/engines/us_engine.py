@@ -428,7 +428,14 @@ def compute_us_return(
     # computed here so the deduction reduces AGI (and everything keyed off it).
     se_tax, se_tax_deduction = _compute_fica(wages, self_employment_income, status, fed_tables)
 
-    above_line = student_loan_interest + hsa_deduction + ira_deduction + se_tax_deduction
+    # 1099-INT box 2: penalty on early withdrawal of savings is an above-the-line
+    # deduction (Schedule 1, line 18). It was captured but never deducted.
+    early_withdrawal_penalty = _sum_field(extracts, "1099-INT", "early_withdrawal_penalty")
+
+    above_line = (
+        student_loan_interest + hsa_deduction + ira_deduction + se_tax_deduction
+        + early_withdrawal_penalty
+    )
 
     # Social Security taxability — IRS provisional-income worksheet (Pub 915),
     # replacing the prior flat-85% inclusion which over-taxed low/middle-income
@@ -585,6 +592,7 @@ def compute_us_return(
         "hsa_deduction": hsa_deduction,
         "ira_401k_adjustment": ira_deduction,
         "se_tax_deduction": se_tax_deduction,
+        "early_withdrawal_penalty": early_withdrawal_penalty,
         "standard_deduction": std_deduction,
         "itemized_deduction_sch_a": sch_a_total,
         "state_local_property_tax": raw_property_tax_us,
