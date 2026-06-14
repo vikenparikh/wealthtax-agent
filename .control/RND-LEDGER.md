@@ -467,3 +467,38 @@ multi-employer over-contribution refund are documented simplifications. The CONV
 shifted: the CA engine had an un-audited high-value gap, so the repo is NOT as converged as cycle-8
 implied — worth continuing to audit CA/cross-border surfaces. Remaining flagged-risky/low items
 unchanged (IN surcharge marginal relief — do NOT force; CA BPA phase-out; AMT cap-gain carve-out).
+
+---
+
+## Cycle 11 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #55 merged green
+#55 (federal CPP/EI credit) merged (HEAD a36c96a); all PRs #43–#55 landed; zero open PRs; main green at 976.
+
+### DEVELOP: credit CPP/EI provincially too → PR #56
+
+**Why HIGH-value (and it caught #55 being incomplete):** continuing the CA audit, found that the
+PROVINCIAL non-refundable block (prov_non_refundable, line 314) omitted CPP/EI entirely. #55 added
+the credit federally only, so every employed Canadian's PROVINCIAL tax was still overstated. CPP/EI
+is credited provincially at the province's lowest rate (ON 5.05%), ~$197/return. Same large
+population as #55; completes the federal+provincial CPP/EI credit. Clean, zero-risk.
+
+**Verify-plan (fails-before / passes-after):**
+- T4 $60k + CPP $3,000 + EI $900 vs without (ON): provincial_cpp_ei_credit $196.95, provincial tax $196.95 lower.
+- Proven by reverting only the engine hunk: KeyError provincial_cpp_ei_credit; 5 existing CA tests pass.
+- (Self-caught a float-precision assertion bug in the first test draft; corrected with round().)
+
+**Before/after delta:**
+| Scenario (ON) | Before | After |
+|---|---|---|
+| T4 $60k + CPP $3k + EI $900 | no provincial CPP/EI credit | $196.95 credit, provincial tax −$196.95 |
+| Test count | 976 passing | **977 passing** (+1) |
+
+**NEW backlog item spotted (logged, not fixed — keeps PR focused):** provincial donations/medical
+credits reuse FEDERAL-rate credit amounts (15%/29%) instead of provincial rates (ON 5.05%/11.16%),
+over-crediting provincially for donors. Genuine bug; candidate for a future cycle.
+
+**Convergence note:** the CA engine keeps yielding genuine high-value gaps (federal+provincial CPP/EI),
+so the repo is clearly NOT converged — the earlier US-centric audit missed the CA credit surface.
+Still-open future items: provincial donations/medical rate; CA age amount + pension income amount
+(retiree credits); IN surcharge marginal relief (risky — do NOT force); CA BPA phase-out; AMT cap-gain.
