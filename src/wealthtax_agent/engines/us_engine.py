@@ -452,9 +452,15 @@ def compute_us_return(
     taxable_income = max(0.0, agi - effective_deduction)
 
     # QBI deduction (Section 199A) — 20% of qualified business income from
-    # Sch C / 1099-NEC / K-1, capped at 20% of taxable income (simplified).
+    # Sch C / 1099-NEC / K-1. The overall limitation caps it at 20% of
+    # (taxable income before QBI MINUS net capital gain), where net capital gain
+    # = net long-term capital gain + qualified dividends. Omitting that
+    # subtraction overstates the deduction for taxpayers with preferential
+    # income. (Wage/UBIA limits and the SSTB phase-out are not modelled.)
     qbi_eligible = max(0.0, sch_c_profit + nec + k1_business)
-    qbi_deduction = round(min(qbi_eligible, taxable_income) * 0.20, 2) if qbi_eligible > 0 else 0.0
+    net_capital_gain = max(0.0, long_gain) + qualified_dividends
+    qbi_income_limit = max(0.0, taxable_income - net_capital_gain)
+    qbi_deduction = round(min(qbi_eligible, qbi_income_limit) * 0.20, 2) if qbi_eligible > 0 else 0.0
     taxable_income = max(0.0, taxable_income - qbi_deduction)
 
     # Ordinary taxable income excludes qualified divs + LTCG
