@@ -752,3 +752,38 @@ Carry-forward of excess loss not modelled.
 is risky, but the floor-at-0 anti-illegal-offset is clean and safe. Cycle-19's no-op was premature on
 this specific item (though the surface sweep was otherwise sound). Full §70 multi-category set-off
 ordering + cross-year carry-forward remain genuinely deferred (intricate).
+
+---
+
+## Cycle 21 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #63 merged green
+#63 (IN capital-loss anti-offset) merged (HEAD 0fd1534); all PRs #43–#63 landed; zero open PRs; main green at 993.
+
+### DEVELOP: Alberta provincial donation credit at AB rates → PR #64
+
+**Why (clean extension, confident rate):** the provincial donation-rate bug (federal 15%/29% applied
+provincially) was fixed for ON in #58 via a table-driven mechanism with a safe fallback. Alberta's
+donation credit is a well-documented 10%/21% (the 21% excess rate is famously above AB's top tax
+rate). Extended #58 to AB by adding donation_credit_high_rate: 0.21 to the AB tables (2023-25) — the
+engine logic already handles it. BC/QC stay on the federal fallback (rates not yet confirmed; no
+guessing, no regression).
+
+**Considered + still-deferred (decomposition didn't yield a clean sub-fix):** IN surcharge — including
+CG in the surcharge THRESHOLD is coupled to the CG-surcharge-15%-cap (doing one without the other
+over-taxes); genuinely entangled, not forced.
+
+**Verify-plan (fails-before / passes-after):**
+- $1,000 donation (AB) -> provincial credit $188.00 (200*10% + 800*21%) vs federal-rate $262.00.
+- Proven by reverting only the AB table change (262==188).
+
+**Before/after delta:**
+| Scenario (AB) | Before | After |
+|---|---|---|
+| $1,000 donation | provincial credit $262 @federal | $188.00 @ AB 10%/21% |
+| Test count | 993 passing | **994 passing** (+1) |
+
+**Status:** provincial donation rates now correct for ON (#58) + AB (#64). BC/QC need confirmed
+legislated rates (tracked). Remaining backlog unchanged: surcharge entangled; age/std-deduction need
+input; QC out of scope; full §70 cap-gain ORDERING + carry-forward deferred. Clean vein narrowing —
+mostly per-province-data extensions and risky/entangled items left.
