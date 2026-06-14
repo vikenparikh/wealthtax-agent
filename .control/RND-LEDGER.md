@@ -288,3 +288,40 @@ preferential income is present, with impact up to 20% of the capital-gain amount
 **Scope honesty:** paper tax-CALC only; no filing/live touched. §199A wage/UBIA limits and SSTB
 phase-out remain unmodelled. Future-cycle items: CTC fraction-thereof rounding; NIIT MAGI-vs-AGI
 (FEIE add-back); AMT capital-gains preferential carve-out.
+## Cycle 6 — RESEARCH + DEVELOP (2026-06-14)
+
+### Improvement: India §87A new-regime rebate marginal relief → PR #51
+
+**Research method:** surveyed CA + IN engines (avoided US to not collide with pending #50's QBI
+test expectations — the highest-value US item, the ½ SE-tax §164(f) deduction, changes AGI and
+would create a merge-order landmine with #50; deferred to after #50 lands). CA dividend gross-up/DTC
+(rates 0.150198/0.090301) and capital-gains inclusion are correct; CA's max(0,gains) is right for
+Canada. The IN engine's `_surcharge` and §87A rebate both LACK marginal relief. Picked 87A
+(fixed ₹7L threshold, cleaner than surcharge's capital-gains entanglement).
+
+**Why highest-value (isolated):** affects every new-regime filer with income just above ₹7,00,000 —
+a hard cliff where ₹10,000 of extra income triggered ~₹26,000 of tax. Marginal relief is statutory.
+Isolated to the IN engine → no interaction with the pending US PR stack.
+
+**Why measurable / verify-plan (fails-before / passes-after):**
+- ₹7.6L salary → ₹7.1L taxable, new regime: rebate ₹16,000, total tax ₹10,400 (was ₹0 / ₹27,040).
+- GUARD: ₹9L → ₹8.5L: relief self-limits to ₹0.
+- Proven by reverting only the engine hunk: just-above test fails (rebate 0==16000); guard passes.
+
+**MAINTAIN finding (full-suite gate earned its keep):** first attempt based relief on
+`tax_before_rebate` (incl. capital-gains tax) and broke `test_in_cess_applied_over_slab_plus_capital_gains`
+(₹7.5L salary + ₹5L LTCG over-rebated). Corrected to base relief on `slab_tax` only — §87A never
+rebates special-rate CG tax. The existing CG case now passes unchanged (slab ₹30k < excess ₹50k →
+relief ₹0 → total tax ₹135,200).
+
+**Before/after delta:**
+| Scenario (new regime) | Before | After |
+|---|---|---|
+| ₹7.6L salary → ₹7.1L taxable | rebate ₹0, tax ₹27,040 | rebate ₹16,000, tax ₹10,400 |
+| ₹9L → ₹8.5L (guard) | rebate ₹0 | ₹0 (self-limits) |
+| ₹7.5L + ₹5L LTCG (existing) | ₹135,200 | ₹135,200 (unchanged) |
+| Test count | 964 passing | **966 passing** (+2) |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. Old-regime 87A (no statutory
+marginal relief) unchanged. Open future items: surcharge marginal relief (IN), ½ SE-tax deduction
+(US, do after #50), CTC fraction-thereof rounding, NIIT MAGI-vs-AGI, AMT cap-gain carve-out.

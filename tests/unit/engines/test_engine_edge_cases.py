@@ -158,3 +158,30 @@ def test_us_both_gains_positive_unchanged_guard():
     assert d.line_items["long_term_capital_gain"] == 8000.0
     assert d.line_items["capital_loss_ordinary_offset"] == 0.0
     assert d.line_items["capital_loss_carryover"] == 0.0
+
+
+# --- India §87A rebate marginal relief (new regime) ---
+
+def test_in_87a_marginal_relief_just_above_threshold():
+    """New regime, gross salary ₹760k → taxable ₹710k (just over the ₹700k 87A
+    threshold). Normal tax = ₹26,000 but only ₹10,000 of income is above the
+    threshold, so marginal relief caps tax at ₹10,000 (rebate ₹16,000).
+
+    FAILS before the fix: income > threshold → no rebate → ₹26,000 tax (the
+    cliff)."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=760000)], 2024,
+                          regime="new", user_answers={"age": "30"})
+    assert d.totals["taxable_income"] == 710000.0
+    assert d.line_items["rebate_87a"] == 16000.0
+    # tax after rebate ₹10,000 + 4% cess = ₹10,400 (no surcharge at this income)
+    assert d.totals["total_tax"] == 10400.0
+
+
+def test_in_87a_marginal_relief_self_limits_for_higher_income():
+    """Guard: well above the relief band the relief is 0 — income above the
+    threshold (₹150k) exceeds the normal tax (₹40k), so no rebate applies and
+    higher incomes are unchanged by the fix."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=900000)], 2024,
+                          regime="new", user_answers={"age": "30"})
+    assert d.totals["taxable_income"] == 850000.0
+    assert d.line_items["rebate_87a"] == 0.0
