@@ -241,3 +241,34 @@ def test_in_new_regime_no_house_property_loss_setoff_guard():
                           user_answers={"age": "30", "home_loan_interest_self_occupied": "200000"})
     assert d.line_items["income_house_property"] == 0.0
     assert d.totals["taxable_income"] == 1000000.0
+
+
+# --- India: professional tax deduction from salary (§16(iii), old regime) ---
+
+def test_in_professional_tax_deducted_old_regime():
+    """Professional tax paid is deductible from salary under §16(iii), old regime.
+    Salary ₹10.5L - ₹50k std - ₹2,500 PT = ₹9,97,500 taxable.
+
+    FAILS before the fix: no professional tax deduction -> ₹10L taxable."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                          regime="old",
+                          user_answers={"age": "30", "professional_tax_paid": "2500"})
+    assert d.line_items["professional_tax_deduction"] == 2500.0
+    assert d.totals["taxable_income"] == 997500.0
+
+
+def test_in_professional_tax_capped_at_2500():
+    """The deduction is capped at ₹2,500 (constitutional ceiling on the levy)."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                          regime="old",
+                          user_answers={"age": "30", "professional_tax_paid": "9000"})
+    assert d.line_items["professional_tax_deduction"] == 2500.0
+
+
+def test_in_professional_tax_disallowed_new_regime_guard():
+    """Guard: §16(iii) professional tax is not allowed in the new regime."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                          regime="new",
+                          user_answers={"age": "30", "professional_tax_paid": "2500"})
+    assert d.line_items["professional_tax_deduction"] == 0.0
+    assert d.totals["taxable_income"] == 1000000.0

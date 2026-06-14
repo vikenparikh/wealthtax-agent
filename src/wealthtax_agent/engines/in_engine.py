@@ -209,12 +209,17 @@ def _compute_one_regime(
     cfg = tables.get(f"{regime}_regime", {})
     std_deduction_salary = float(cfg.get("standard_deduction_salary", 50000)) if gross_salary > 0 else 0.0
 
-    # HRA exemption only under old regime.
+    # HRA exemption and professional tax are only allowed under the old regime.
     hra_exempt = 0.0
+    professional_tax = 0.0
     if regime == "old":
         hra_exempt = _hra_exemption(hra_received, basic_salary, rent_paid, metro, tables)
+        # Professional tax actually paid is deductible from salary under §16(iii)
+        # (disallowed in the new regime). Capped at ₹2,500 — the constitutional
+        # ceiling (Art. 276) on the state levy itself.
+        professional_tax = min(_to_float(user_answers.get("professional_tax_paid", 0)), 2500.0)
 
-    income_salary = max(0.0, gross_salary - std_deduction_salary - hra_exempt)
+    income_salary = max(0.0, gross_salary - std_deduction_salary - hra_exempt - professional_tax)
 
     # ---- House Property head (24(b) home-loan interest) ----
     rental_income = _to_float(user_answers.get("annual_rental_income", 0))
@@ -411,6 +416,7 @@ def _compute_one_regime(
         "gross_salary": gross_salary,
         "standard_deduction_salary": std_deduction_salary,
         "hra_exemption": hra_exempt,
+        "professional_tax_deduction": professional_tax,
         "income_salary": income_salary,
         "income_house_property": income_house_property,
         "rental_income": rental_income,
