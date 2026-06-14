@@ -204,3 +204,40 @@ def test_us_ctc_phaseout_exact_thousand_unchanged_guard():
     d = compute_us_return([_f("W-2", "US", wages=205000)], 2024,
                           user_answers={"filing_status": "single", "num_dependents": "1"})
     assert d.line_items["child_tax_credit"] == 1750.0
+
+
+# --- India: house-property loss set-off against other income (§71(3A), old regime) ---
+
+def test_in_self_occupied_home_loan_loss_sets_off_old_regime():
+    """Old regime: ₹2L self-occupied home-loan interest (§24(b)) creates a ₹2L
+    house-property loss that sets off against salary (§71(3A)). Salary ₹10.5L -
+    ₹50k std = ₹10L; minus the ₹2L loss -> ₹8L taxable.
+
+    FAILS before the fix: max(0, loss) discarded the loss -> ₹10L taxable."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                          regime="old",
+                          user_answers={"age": "30", "home_loan_interest_self_occupied": "200000"})
+    assert d.line_items["income_house_property"] == -200000.0
+    assert d.totals["taxable_income"] == 800000.0
+
+
+def test_in_house_property_loss_setoff_capped_at_2lakh_old_regime():
+    """A house-property loss above ₹2,00,000 (here a ₹3L let-out interest loss)
+    is set off only up to ₹2,00,000; the rest carries forward. Salary ₹10L
+    taxable -> ₹8L (not ₹7L)."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                          regime="old",
+                          user_answers={"age": "30", "home_loan_interest_let_out": "300000"})
+    assert d.line_items["income_house_property"] == -300000.0
+    assert d.totals["taxable_income"] == 800000.0  # set-off capped at 2L
+    assert any("carries forward" in n for n in d.notes)
+
+
+def test_in_new_regime_no_house_property_loss_setoff_guard():
+    """Guard: the new regime disallows self-occupied §24(b) entirely, so no loss
+    arises and none is set off — salary is taxed in full."""
+    d = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                          regime="new",
+                          user_answers={"age": "30", "home_loan_interest_self_occupied": "200000"})
+    assert d.line_items["income_house_property"] == 0.0
+    assert d.totals["taxable_income"] == 1000000.0

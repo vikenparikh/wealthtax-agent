@@ -266,10 +266,28 @@ def _compute_one_regime(
         if foreign_other > 0:
             notes.append(f"{residency_status}: excluded ₹{foreign_other:,.0f} of foreign-source income.")
 
+    # A net loss from house property (commonly the self-occupied home-loan
+    # interest under §24(b)) can be set off against other income only up to
+    # ₹2,00,000 (§71(3A)), and only under the OLD regime — the new regime allows
+    # no inter-head set-off of a house-property loss (carry-forward only, which
+    # this prototype does not model). Previously max(0, ...) discarded the loss
+    # entirely, dropping the very common ₹2L home-loan-interest deduction.
+    house_property_loss_setoff_cap = 200000.0
+    if regime == "old":
+        house_property_for_slab = max(-house_property_loss_setoff_cap, income_house_property)
+        if income_house_property < -house_property_loss_setoff_cap:
+            notes.append(
+                f"House-property loss ₹{-income_house_property:,.0f} exceeds the ₹2,00,000 "
+                "inter-head set-off limit; ₹"
+                f"{(-income_house_property - house_property_loss_setoff_cap):,.0f} carries forward."
+            )
+    else:
+        house_property_for_slab = max(0.0, income_house_property)
+
     # STCG-other is taxed at slab rates (per Sec 111A).
     slab_income = (
         income_salary
-        + max(0.0, income_house_property)
+        + house_property_for_slab
         + business_income
         + other_income
         + cg["stcg_other_taxed_at_slab"]
