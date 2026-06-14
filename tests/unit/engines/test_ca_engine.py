@@ -72,3 +72,24 @@ def test_ca_cpp_ei_contributions_are_credited():
     # The credit reduces federal tax relative to the same income without it.
     assert d1.line_items["federal_tax"] < d0.line_items["federal_tax"]
     assert round(d0.line_items["federal_tax"] - d1.line_items["federal_tax"], 2) == 585.0
+
+
+def test_ca_provincial_cpp_ei_contributions_are_credited():
+    """CPP/EI contributions are credited provincially too, at the province's
+    lowest rate (ON 5.05%). The provincial credit block omitted them, so every
+    ON T4 filer's provincial tax was overstated (~$197 for this case).
+
+    FAILS before the fix: no provincial_cpp_ei_credit line item and provincial
+    tax unchanged by the contributions."""
+    base = [FormExtract(form_code="T4", jurisdiction="CA",
+                        fields={"employment_income": 60000.0})]
+    with_contrib = [FormExtract(form_code="T4", jurisdiction="CA", fields={
+        "employment_income": 60000.0,
+        "cpp_contributions": 3000.0,
+        "ei_premiums": 900.0,
+    })]
+    d0 = compute_ca_return(base, year=2024, province="ON")
+    d1 = compute_ca_return(with_contrib, year=2024, province="ON")
+
+    assert round(d1.line_items["provincial_cpp_ei_credit"], 2) == 196.95
+    assert round(d0.line_items["provincial_tax"] - d1.line_items["provincial_tax"], 2) == 196.95

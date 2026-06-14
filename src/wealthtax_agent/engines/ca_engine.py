@@ -311,7 +311,16 @@ def compute_ca_return(
     provincial_tax_before_credits = compute_progressive_tax(taxable_income, prov_tables.get("brackets", []))
     prov_bpa = float(prov_tables.get("basic_personal_amount", 0))
     prov_lowest_rate = (prov_tables.get("brackets") or [{"rate": 0.0505}])[0].get("rate", 0.0505)
-    prov_non_refundable = prov_bpa * float(prov_lowest_rate) + donations_credit + medical_credit
+    # CPP/EI contributions are also credited provincially, at the province's
+    # lowest rate (the federal credit was added separately). Without this every
+    # employed Canadian's provincial tax was overstated.
+    cpp_ei_credit_prov = (cpp_contributions + ei_premiums) * float(prov_lowest_rate)
+    prov_non_refundable = (
+        prov_bpa * float(prov_lowest_rate)
+        + cpp_ei_credit_prov
+        + donations_credit
+        + medical_credit
+    )
     prov_dtc = _province_dtc(taxable_eligible, taxable_non_eligible, prov_tables)
     provincial_tax = max(0.0, provincial_tax_before_credits - prov_non_refundable - prov_dtc)
 
@@ -376,6 +385,7 @@ def compute_ca_return(
         "federal_tax": federal_tax,
         "provincial_tax_before_credits": provincial_tax_before_credits,
         "provincial_non_refundable_credits": prov_non_refundable,
+        "provincial_cpp_ei_credit": cpp_ei_credit_prov,
         "provincial_dividend_tax_credit": prov_dtc,
         "provincial_tax": provincial_tax,
         "tax_withheld": fed_tax_withheld,
