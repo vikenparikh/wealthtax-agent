@@ -286,9 +286,17 @@ def compute_ca_return(
     # refunded rather than credited — not modelled.
     cpp_ei_credit = (cpp_contributions + ei_premiums) * float(lowest_rate)
 
+    # Pension income amount (federal line 31400): a lowest-rate credit on the
+    # first $2,000 of eligible pension income. T4A superannuation/pension annuity
+    # qualifies at any age, so no age gate is needed. (RRIF income, which only
+    # qualifies at 65+, is conservatively excluded here.)
+    pension_income_amount = min(pension_income, 2000.0)
+    pension_income_credit = pension_income_amount * float(lowest_rate)
+
     fed_non_refundable = (
         (bpa + employment_amount) * float(lowest_rate)
         + cpp_ei_credit
+        + pension_income_credit
         + donations_credit
         + medical_credit
         + student_loan_credit
@@ -386,6 +394,7 @@ def compute_ca_return(
         "rrsp_withdrawals": rrsp_withdrawals,
         "rrif_income": rrif_income,
         "pension_income": pension_income,
+        "pension_income_credit": pension_income_credit,
         "other_self_employment": self_emp_t4a,
         "trust_other_income": t3_other_income,
         "rrsp_deduction": rrsp_deduction,
