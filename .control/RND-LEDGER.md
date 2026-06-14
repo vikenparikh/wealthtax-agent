@@ -253,3 +253,38 @@ income. Both have clear, often-large dollar impact and are unambiguous statute.
 **Scope honesty:** paper tax-CALC only; no filing/live touched. MFS $1,500 limit not modelled
 (status unsupported). Future-cycle items still open: CTC fraction-thereof rounding; NIIT
 MAGI-vs-AGI (FEIE add-back); AMT capital-gains preferential carve-out.
+
+---
+
+## Cycle 5 — RESEARCH + DEVELOP (2026-06-14)
+
+### Improvement: QBI §199A overall limit excludes net capital gain → PR #50
+
+**Research method:** scanned US std-vs-itemized selection (correct — picks max), QBI, and the CA
+capital-gains inclusion rate. CA inclusion is correct (50% from table) and CA's `max(0, gains)` is
+actually right for Canada (capital losses can't offset ordinary income there). The US QBI line
+(`us_engine.py:457`) capped at `min(qbi_eligible, taxable_income) * 0.20` — missing the §199A
+subtraction of net capital gain from the taxable-income limit.
+
+**Why highest-value:** affects every pass-through owner (Schedule C / 1099-NEC / K-1) who also has
+LTCG or qualified dividends — a common combination. The deduction was overstated whenever
+preferential income is present, with impact up to 20% of the capital-gain amount.
+
+**Why measurable / verify-plan (fails-before / passes-after):**
+- $50k SCH-C + $100k LTCG → QBI $7,080 (was $10,000).
+- $20k SCH-C + $50k qualified dividends → $1,080 (was $4,000).
+- GUARD: $50k SCH-C, no capital gain → $7,080 (unchanged).
+- Proven by reverting only the engine hunk: the two cap-gain assertions fail (10000==7080,
+  4000==1080); guard + existing QBI test pass both ways.
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| $50k SCH-C + $100k LTCG | $10,000 | $7,080 |
+| $20k SCH-C + $50k qualified divs | $4,000 | $1,080 |
+| $50k SCH-C, no cap gain (guard) | $7,080 | $7,080 (unchanged) |
+| Test count | 964 passing | **967 passing** (+3) |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. §199A wage/UBIA limits and SSTB
+phase-out remain unmodelled. Future-cycle items: CTC fraction-thereof rounding; NIIT MAGI-vs-AGI
+(FEIE add-back); AMT capital-gains preferential carve-out.
