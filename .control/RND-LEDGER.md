@@ -325,3 +325,41 @@ relief ₹0 → total tax ₹135,200).
 **Scope honesty:** paper tax-CALC only; no filing/live touched. Old-regime 87A (no statutory
 marginal relief) unchanged. Open future items: surcharge marginal relief (IN), ½ SE-tax deduction
 (US, do after #50), CTC fraction-thereof rounding, NIIT MAGI-vs-AGI, AMT cap-gain carve-out.
+
+---
+
+## Cycle 7 — RESEARCH + DEVELOP (2026-06-14)
+
+### Improvement: One-half self-employment tax deduction (§164(f)) → PR #52
+
+**MAINTAIN-first:** confirmed cycle-5 QBI (#50) merged to main, full suite green (967). #42 + #51
+still pending merge.
+
+**Why now / why highest-value:** this was explicitly DEFERRED in cycle-6 because it changes AGI and
+would have collided with the then-pending QBI tests (#50). #50 is now merged, clearing the landmine.
+It is the highest-value remaining item: EVERY self-employed filer was over-taxed because half their
+SE tax was never deducted above the line (§164(f)). Real, common, unambiguous.
+
+**Fix:** compute SE tax + its deductible half before AGI; add the half (½ of SS+Medicare SE tax,
+EXCLUDING the 0.9% additional-Medicare surtax) to above-the-line deductions. Refactored
+_compute_fica → (total_se_tax, half_deduction).
+
+**Cascade (correct):** lower AGI → lower §199A QBI limit base → 3 QBI tests updated to recomputed
+values ($50k SCH-C: $7,080 → $6,373.52; $20k+$50k qual-div: $1,080 → $797.41). No other tests moved
+(full-suite verified). These updates are correct consequences, not goalpost-moving.
+
+**Verify-plan (fails-before / passes-after):**
+- $50k SCH-C → se_tax_deduction $3,532.39, AGI $46,467.61 (was no deduction, AGI $50,000).
+- $300k SCH-C → deductible half strictly < ½ total SE tax (excludes additional-Medicare surtax).
+- Proven by reverting only the engine hunk: new tests fail (KeyError se_tax_deduction), then pass.
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| $50k SCH-C: AGI | $50,000 | $46,467.61 (−$3,532.39) |
+| $50k SCH-C: QBI | $7,080 | $6,373.52 |
+| Test count | 967 passing | **969 passing** (+2) |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. Secondary §199A nuance (reduce QBI
+itself by ½ SE tax) intentionally out of scope. Remaining future items: IN surcharge marginal relief;
+CTC fraction-thereof rounding; NIIT MAGI-vs-AGI (FEIE add-back); AMT cap-gain preferential carve-out.

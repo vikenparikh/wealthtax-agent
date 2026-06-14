@@ -167,7 +167,7 @@ def _compute_ptc(annual_premiums: float, slcsp: float, aptc: float, agi: float, 
     return round(ptc - aptc, 2), 0.0
 
 
-def _compute_fica(w2_wages: float, se_net: float, status: str, fed_tables: Dict[str, Any]) -> float:
+def _compute_fica(w2_wages: float, se_net: float, status: str, fed_tables: Dict[str, Any]) -> tuple[float, float]:
     fica = fed_tables.get("fica", {})
     ss_rate = float(fica.get("social_security_rate", 0.062))
     ss_base = float(fica.get("social_security_wage_base", 168600))
@@ -186,7 +186,12 @@ def _compute_fica(w2_wages: float, se_net: float, status: str, fed_tables: Dict[
     total_wages = w2_wages + se_earnings
     additional_medicare = max(0.0, total_wages - addl_threshold) * additional_rate
 
-    return round(se_ss_tax + se_medicare_tax + additional_medicare, 2)
+    total_se_tax = round(se_ss_tax + se_medicare_tax + additional_medicare, 2)
+    # One-half of SE tax is an above-the-line deduction (§164(f)). Only the SS +
+    # Medicare components count — the 0.9% additional Medicare is not SE tax and
+    # is not deductible.
+    half_deduction = round(0.5 * (se_ss_tax + se_medicare_tax), 2)
+    return total_se_tax, half_deduction
 
 
 def _net_capital_gains(net_short: float, net_long: float, prior_carryover: float,
@@ -412,7 +417,11 @@ def compute_us_return(
         2,
     )
 
-    above_line = student_loan_interest + hsa_deduction + ira_deduction
+    # Self-employment tax and its one-half above-the-line deduction (§164(f)),
+    # computed here so the deduction reduces AGI (and everything keyed off it).
+    se_tax, se_tax_deduction = _compute_fica(wages, self_employment_income, status, fed_tables)
+
+    above_line = student_loan_interest + hsa_deduction + ira_deduction + se_tax_deduction
 
     # Social Security taxability — IRS provisional-income worksheet (Pub 915),
     # replacing the prior flat-85% inclusion which over-taxed low/middle-income
@@ -502,7 +511,7 @@ def compute_us_return(
     niit = round(min(investment_income, max(0.0, agi - niit_threshold)) * 0.038, 2)
     federal_tax += niit
 
-    se_tax = _compute_fica(wages, self_employment_income, status, fed_tables)
+    # se_tax + se_tax_deduction already computed above (the deduction feeds AGI).
 
     # State tax
     state_tax = 0.0
@@ -563,6 +572,7 @@ def compute_us_return(
         "student_loan_interest_deduction": student_loan_interest,
         "hsa_deduction": hsa_deduction,
         "ira_401k_adjustment": ira_deduction,
+        "se_tax_deduction": se_tax_deduction,
         "standard_deduction": std_deduction,
         "itemized_deduction_sch_a": sch_a_total,
         "state_local_property_tax": raw_property_tax_us,
