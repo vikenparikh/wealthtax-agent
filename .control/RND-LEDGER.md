@@ -787,3 +787,35 @@ over-taxes); genuinely entangled, not forced.
 legislated rates (tracked). Remaining backlog unchanged: surcharge entangled; age/std-deduction need
 input; QC out of scope; full §70 cap-gain ORDERING + carry-forward deferred. Clean vein narrowing —
 mostly per-province-data extensions and risky/entangled items left.
+
+---
+
+## Cycle 22 — MAINTAIN + HONEST NO-OP (2026-06-14)
+
+### MAINTAIN: #64 merged green; all #43–#64 landed; zero open PRs; main green at 994.
+
+### NOTHING-HIGH-VALUE this cycle — no PR opened (correct outcome, not padding)
+
+Applied the decomposition lens (cycle-20 lesson) to every deferred item; none yields a clean,
+confident, no-risk sub-fix this cycle:
+
+- **BC/QC provincial donation rates** — I am NOT confident in BC's legislated donation excess rate
+  (ON 11.16% and AB 21% were shipped because I was confident; BC I am not). QC uses a separate system
+  and is out of scope. Guessing would risk shipping WRONG tax — refused.
+- **Provincial pension-income-amount caps** (ON ~$1,641 etc.) — not confident in the exact per-province
+  values; same refusal to guess.
+- **IN surcharge** (re-decomposed): the threshold-excludes-special-CG issue (under-taxes) and the
+  missing CG-surcharge-15%-cap (over-taxes) pull in OPPOSITE directions and are coupled to WHICH CG
+  category gets the cap (equity 111A/112A only, not LTCG-other). A correct bifurcated surcharge +
+  marginal relief is genuinely complex/risk-prone for a narrow population (>₹50L earners with equity
+  CG). No clean confident sub-fix — stays deferred.
+- **Age/blind-dependent credits** (CA age amount, US additional standard deduction 65+/blind) — blocked
+  on age/blind inputs the intake does not collect.
+
+**Status:** 22 fixes shipped (#43–#64) across US/CA/IN engines + residency + cross-border. All
+tax-calc surfaces swept (income heads, credits, residency, cross-border, estimated tax, capital-loss
+offsets). Provincial donation rates correct for ON+AB. The clean, confident, no-risk vein is exhausted.
+
+**Genuine unblock conditions:** confirmed BC/QC donation rates or provincial pension caps (data);
+age/blind/resident-year intake inputs; or a decision to take on the complex-but-correct IN surcharge
+bifurcation (would need careful per-category CG handling + review). Until then -> HONEST NO-OPs.
