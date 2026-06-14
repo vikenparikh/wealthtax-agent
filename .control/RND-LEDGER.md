@@ -716,3 +716,39 @@ default 2 preserves all prior behaviour (23 existing residency tests pass unchan
 advisory. DEFERRED-risky still: IN intra-capital-gains loss netting (§70 matrix). Surfaces now swept:
 credits, income heads, residency. Remaining items need per-province DATA or carry risk. Cross-border
 audience-relevance (FEIE→NIIT-MAGI, returning-NRI→ROR) keeps surfacing genuine fixes — keep that lens.
+
+---
+
+## Cycle 20 — MAINTAIN + DEVELOP (2026-06-14) — corrects cycle-19's no-op too
+
+### MAINTAIN: #62 merged green
+#62 (IN ROR §6(6)) merged (HEAD 04e0d8e); all PRs #43–#62 landed; zero open PRs; main green at 990.
+
+### DEVELOP: India capital losses must not offset salary/other income (§70/§71) → PR #63
+
+**Correction to cycle-19's no-op:** I'd flagged "IN capital-gains loss netting" as risky/deferred and
+declared a no-op. But the RISKY part is only the full multi-category §70 set-off ORDERING. The
+under-taxing bug — a capital loss illegally reducing SALARY tax — has a CLEAN, SAFE fix I missed:
+floor the TOTAL cg_tax at 0. PROBED and confirmed reachable: ₹1L STCG-equity loss cut total tax
+₹117,000 -> ₹101,400 (negative cg_tax -₹15,000 spilling onto slab). This is UNDER-taxing (penalty-risk
+direction) — high-value to fix.
+
+**Fix:** `cg_tax = max(0, sum of category taxes)` (preserves LEGAL intra-CG netting — a loss in one
+category offsets a gain in another — but a NET loss can't reduce slab tax) + floor STCG-other-slab at 0.
+Carry-forward of excess loss not modelled.
+
+**Verify-plan (fails-before / passes-after):**
+- ₹10.5L salary + ₹1L STCG-equity loss -> tax unchanged ₹117,000 (was ₹101,400).
+- Intra-CG netting preserved: ₹50k STCG loss still offsets ₹2L LTCG gain.
+- STCG-other loss doesn't reduce salary. Proven by reverting hunk (101400==117000).
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| ₹10.5L salary + ₹1L STCG loss | tax ₹101,400 (illegal cut) | ₹117,000 |
+| Test count | 990 passing | **993 passing** (+3) |
+
+**LESSON (again):** don't lump a whole area into "risky/deferred" — decompose it. The full §70 ORDERING
+is risky, but the floor-at-0 anti-illegal-offset is clean and safe. Cycle-19's no-op was premature on
+this specific item (though the surface sweep was otherwise sound). Full §70 multi-category set-off
+ordering + cross-year carry-forward remain genuinely deferred (intricate).

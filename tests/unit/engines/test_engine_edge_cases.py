@@ -272,3 +272,46 @@ def test_in_professional_tax_disallowed_new_regime_guard():
                           user_answers={"age": "30", "professional_tax_paid": "2500"})
     assert d.line_items["professional_tax_deduction"] == 0.0
     assert d.totals["taxable_income"] == 1000000.0
+
+
+# --- India: a capital loss must not offset salary/other income (§70/§71) ---
+
+def test_in_capital_loss_does_not_reduce_slab_tax():
+    """A short-term capital LOSS (entered negative) must not reduce tax on
+    salary — capital losses can only offset capital gains and carry forward.
+    Salary ₹10.5L with a ₹1L STCG-equity loss pays the SAME tax as salary alone.
+
+    FAILS before the fix: cg_tax went negative (-₹15,000) and cut total tax."""
+    base = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                             regime="old", user_answers={"age": "30"})
+    with_loss = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000), _f("STOCK-GAIN", "IN", stcg_equity=-100000)],
+        2024, regime="old", user_answers={"age": "30"})
+    assert with_loss.line_items["tax_stcg_equity"] <= 0.0      # the raw component is still a loss
+    assert with_loss.totals["total_tax"] == base.totals["total_tax"]  # but tax is unchanged
+
+
+def test_in_capital_loss_still_nets_against_capital_gain():
+    """Legal intra-capital-gains netting is preserved: a ₹50k STCG-equity loss
+    offsets a ₹2L LTCG-equity gain within the capital-gains tax (the total floor
+    only prevents a NET loss from spilling onto salary)."""
+    only_gain = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=600000), _f("STOCK-GAIN", "IN", ltcg_equity=200000)],
+        2024, regime="old", user_answers={"age": "30"})
+    gain_and_loss = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=600000),
+         _f("STOCK-GAIN", "IN", ltcg_equity=200000, stcg_equity=-50000)],
+        2024, regime="old", user_answers={"age": "30"})
+    # the STCG loss reduces the capital-gains tax (legal netting), so total tax
+    # is lower than gain-only but still strictly positive cg contribution.
+    assert gain_and_loss.totals["total_tax"] < only_gain.totals["total_tax"]
+
+
+def test_in_stcg_other_loss_does_not_reduce_salary():
+    """A non-equity STCG loss (slab-rate category) must not reduce salary income."""
+    base = compute_in_return([_f("FORM-16", "IN", gross_salary=1050000)], 2024,
+                             regime="old", user_answers={"age": "30"})
+    with_loss = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000), _f("STOCK-GAIN", "IN", stcg_other=-80000)],
+        2024, regime="old", user_answers={"age": "30"})
+    assert with_loss.totals["total_tax"] == base.totals["total_tax"]
