@@ -354,7 +354,16 @@ def _compute_one_regime(
             + _sum_field(extracts, "MEDICAL-80D", "parents_premium"),
             parents_cap,
         )
-        sec_80d = sec_80d_self + sec_80d_parents
+        # A single declared 80D total (Form 16 / wizard) is used when no granular
+        # self/parents breakdown is given. It was captured but never read — only
+        # the granular keys were — so a declared health-insurance deduction was
+        # dropped. Cap the combined 80D at the self+parents ceiling (mirrors the
+        # 80C declared handling).
+        sec_80d_declared = (
+            _sum_field(extracts, "FORM-16", "section_80d_declared")
+            + _to_float(user_answers.get("section_80d_declared", 0))
+        )
+        sec_80d = min(sec_80d_self + sec_80d_parents + sec_80d_declared, self_cap + parents_cap)
 
         # 80E — student loan interest (uncapped, only for first 8 years).
         # Cross-border guardrail handles double-claim with US/CA.

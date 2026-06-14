@@ -328,3 +328,26 @@ def test_in_professional_tax_read_from_form16_extract():
         2024, regime="old", user_answers={"age": "30"})
     assert d.line_items["professional_tax_deduction"] == 2500.0
     assert d.totals["taxable_income"] == 997500.0
+
+
+def test_in_80d_declared_total_is_deducted():
+    """A single declared 80D total (health insurance) on Form 16 / wizard must be
+    deducted — the engine read only the granular self/parents premiums, dropping
+    a declared amount (inconsistent with 80C, which reads its declared total).
+
+    FAILS before the fix: section_80d = 0 -> ₹10L taxable."""
+    d = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000, section_80d_declared=25000)],
+        2024, regime="old", user_answers={"age": "30"})
+    assert d.line_items["section_80d"] == 25000.0
+    # 1,000,000 salary-after-std - 25,000 (80D) = 975,000
+    assert d.totals["taxable_income"] == 975000.0
+
+
+def test_in_80d_declared_capped_at_combined_ceiling():
+    """The declared 80D is capped at the combined self+parents ceiling
+    (25,000 + 25,000 = 50,000 for non-seniors)."""
+    d = compute_in_return(
+        [_f("FORM-16", "IN", gross_salary=1050000, section_80d_declared=90000)],
+        2024, regime="old", user_answers={"age": "30"})
+    assert d.line_items["section_80d"] == 50000.0
