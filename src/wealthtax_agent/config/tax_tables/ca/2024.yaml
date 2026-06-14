@@ -10,6 +10,9 @@ brackets:
   - {up_to: null,   rate: 0.33}
 
 basic_personal_amount: 15705
+# Federal BPA phases down to this floor for high net income (between the
+# bottom of the 29% bracket and the bottom of the 33% bracket).
+basic_personal_amount_min: 14156
 
 # CPP/EI 2024 employee maximums (simplified)
 cpp:
