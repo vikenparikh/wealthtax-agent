@@ -646,3 +646,38 @@ note carry-forward of the excess.
 **LESSON:** "converged" was wrong — I had only audited credits. Income heads (salary, house property,
 CG, business, other sources) are a separate surface. Audit BOTH income computation AND credits before
 ever claiming convergence. Not-modelled edge noted: house-property loss spilling onto capital gains.
+
+---
+
+## Cycle 17 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #60 merged green
+#60 (IN house-property loss set-off) merged (HEAD 803e958); all PRs #43–#60 landed; zero open PRs; main green at 984.
+
+### DEVELOP: India professional tax deduction (§16(iii), old regime) → PR #61
+
+**Why (continuing the income-path audit):** swept all three engines' max(0,...) for loss-discards and
+income heads for collected-but-unused fields. Findings: CA income comprehensive (self_emp_t4a +
+foreign_property_income both in total_income); US capital losses handled (#49). Genuine gap: the IN
+salary head allowed standard deduction + HRA but NEVER §16(iii) professional tax — a real, common
+deduction (₹2,500) for salaried filers in PT states (Maharashtra/Karnataka/WB/etc., large population).
+Read from user_answers like HRA/home-loan interest, so not inert. Clean, regime-aware, ₹2,500
+statutory cap, no rate-guessing.
+
+**Verify-plan (fails-before / passes-after):**
+- Old regime, ₹10.5L salary, ₹2,500 PT -> taxable ₹9,97,500 (was ₹10L).
+- ₹9,000 input -> capped at ₹2,500. GUARD: new regime -> 0 (disallowed). Proven by reverting hunk (KeyError).
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| Old regime ₹10.5L salary + ₹2,500 PT | taxable ₹10L | ₹9,97,500 |
+| Test count | 984 passing | **987 passing** (+3) |
+
+**Audited-clean this cycle (no bug):** CA income composition complete; US/CA loss floors correct
+(CA capital loss floored = correct for Canada). DEFERRED-risky: IN intra-capital-gains loss netting
+(§70 STCG-vs-LTCG set-off across equity/other × pre/post-change matrix — intricate, error-prone,
+smaller population; not forced, same caution as IN surcharge). Income paths now substantially swept
+(house property #60, professional tax #61). Remaining genuine items need new inputs (inert) or carry
+implementation risk. Convergence likely near again — but cycle-15's premature call means I keep
+sweeping a fresh surface each cycle before declaring no-op.
