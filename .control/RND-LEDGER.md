@@ -400,3 +400,37 @@ Expect future cycles to trend toward HONEST NOTHING-HIGH-VALUE no-ops unless new
 land. That is the correct outcome, not a prompt to manufacture work.
 
 **Delta:** test count 967 → **969** (+2). Full suite green.
+
+---
+
+## Cycle 9 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: full PR stack merged green
+All prior PRs (#43–#53) are now merged to main; zero open PRs at cycle start; main green at 973 tests.
+
+### DEVELOP: NIIT threshold uses MAGI (FEIE add-back, §1411(d)) → PR #54
+
+**Why (audience-relevant, not padding):** re-examined the convergence call. NIIT compared net
+investment income against the threshold using AGI (us_engine.py:514), but §1411(d)(1) keys NIIT off
+MAGI = AGI + the foreign earned income exclusion. A FEIE filer (Form 2555) whose foreign wages are
+excluded can sit below the threshold on AGI while worldwide income is over it, wrongly escaping the
+3.8% tax. For a CROSS-BORDER (CA/US/IN) tool, FEIE filers are a core audience — this elevates an
+otherwise "niche" US item to genuinely relevant. Clean, correct, zero-risk (no entanglement like
+the surcharge item).
+
+**Verify-plan (fails-before / passes-after):**
+- $150k foreign wages excluded + $80k US interest, single: AGI $80k, MAGI $230k -> NIIT $1,140 (was $0).
+- GUARD: $50k excluded + $40k interest -> MAGI $90k < threshold -> $0 (add-back does not over-apply).
+- Proven by reverting only the engine hunk: MAGI test fails (0.0==1140.0); guard + 4 existing NIIT tests pass.
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| FEIE $150k + $80k interest (single) | NIIT $0 | NIIT $1,140 |
+| Non-FEIE returns | unchanged | unchanged (feie_excluded=0 -> MAGI=AGI) |
+| Test count | 973 passing | **975 passing** (+2) |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. Remaining backlog still genuinely
+lower-value or risky: IN surcharge marginal relief (CG-surcharge entanglement — do NOT force);
+CA BPA phase-out (~$232, multi-year table change); AMT cap-gain carve-out (AMT too simplified);
+§199A reduce-QBI-by-½SE (minor). Expect future cycles to trend toward honest NOTHING-HIGH-VALUE.
