@@ -278,8 +278,17 @@ def compute_ca_return(
             "credit computed on the first $12,000."
         )
 
+    # CPP/QPP and EI contributions (T4 boxes 16/18) are non-refundable credits
+    # at the lowest rate (federal lines 30800 / 31200). The enhanced-CPP portion
+    # is technically a deduction rather than a credit; crediting the full amount
+    # here is a simplification that is conservative for taxpayers above the
+    # lowest bracket. Excess over the annual maxima (multiple employers) would be
+    # refunded rather than credited — not modelled.
+    cpp_ei_credit = (cpp_contributions + ei_premiums) * float(lowest_rate)
+
     fed_non_refundable = (
         (bpa + employment_amount) * float(lowest_rate)
+        + cpp_ei_credit
         + donations_credit
         + medical_credit
         + student_loan_credit
@@ -372,6 +381,7 @@ def compute_ca_return(
         "tax_withheld": fed_tax_withheld,
         "cpp_contributions": cpp_contributions,
         "ei_premiums": ei_premiums,
+        "cpp_ei_credit": cpp_ei_credit,
     }
 
     totals = {

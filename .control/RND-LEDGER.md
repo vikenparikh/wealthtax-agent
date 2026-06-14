@@ -434,3 +434,36 @@ the surcharge item).
 lower-value or risky: IN surcharge marginal relief (CG-surcharge entanglement — do NOT force);
 CA BPA phase-out (~$232, multi-year table change); AMT cap-gain carve-out (AMT too simplified);
 §199A reduce-QBI-by-½SE (minor). Expect future cycles to trend toward honest NOTHING-HIGH-VALUE.
+
+---
+
+## Cycle 10 — MAINTAIN + DEVELOP (2026-06-14)
+
+### MAINTAIN: #54 merged, all green
+#54 (NIIT MAGI) merged to main (HEAD 6d22f14); all PRs #43–#54 landed; zero open PRs; main green at 975.
+
+### DEVELOP: credit CPP/EI contributions in the CA engine → PR #55
+
+**Why HIGH-value (not padding):** fresh scan of the CA engine credits found that `cpp_contributions`
+and `ei_premiums` (T4 boxes 16/18) were collected and echoed in line_items but NEVER credited —
+`fed_non_refundable` omitted them. Every employed Canadian pays CPP+EI and is entitled to a 15%
+non-refundable credit (lines 30800/31200), so federal tax was overstated for the ENTIRE
+employed-Canadian population (~$500–750/return). Large population × material amount × clean fix
+(directly analogous to the existing canada_employment_amount credit) = genuinely high-value, and
+directly relevant to this cross-border tool's CA users.
+
+**Verify-plan (fails-before / passes-after):**
+- T4 $60k + CPP $3,000 + EI $900 vs without: cpp_ei_credit $585.00, federal tax $585 lower.
+- Proven by reverting only the engine hunk: new test fails (KeyError cpp_ei_credit); 4 existing CA tests pass.
+
+**Before/after delta:**
+| Scenario | Before | After |
+|---|---|---|
+| T4 $60k + CPP $3k + EI $900 | no CPP/EI credit | $585 credit, federal tax −$585 |
+| Test count | 975 passing | **976 passing** (+1) |
+
+**Scope honesty:** paper tax-CALC only; no filing/live touched. Enhanced-CPP-deduction nuance +
+multi-employer over-contribution refund are documented simplifications. The CONVERGENCE picture has
+shifted: the CA engine had an un-audited high-value gap, so the repo is NOT as converged as cycle-8
+implied — worth continuing to audit CA/cross-border surfaces. Remaining flagged-risky/low items
+unchanged (IN surcharge marginal relief — do NOT force; CA BPA phase-out; AMT cap-gain carve-out).

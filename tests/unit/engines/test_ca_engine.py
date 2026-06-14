@@ -49,3 +49,26 @@ def test_ca_engine_missing_year_records_note():
     ]
     draft = compute_ca_return(extracts, year=1999)
     assert any("missing" in n.lower() for n in draft.notes)
+
+
+def test_ca_cpp_ei_contributions_are_credited():
+    """CPP and EI contributions (T4 boxes 16/18) are non-refundable credits at
+    the lowest rate (lines 30800/31200). The engine collected them but never
+    applied the credit, overstating federal tax for every employed Canadian.
+
+    FAILS before the fix: no cpp_ei_credit line item and federal tax unchanged
+    by the contributions."""
+    base = [FormExtract(form_code="T4", jurisdiction="CA",
+                        fields={"employment_income": 60000.0})]
+    with_contrib = [FormExtract(form_code="T4", jurisdiction="CA", fields={
+        "employment_income": 60000.0,
+        "cpp_contributions": 3000.0,
+        "ei_premiums": 900.0,
+    })]
+    d0 = compute_ca_return(base, year=2024, province="ON")
+    d1 = compute_ca_return(with_contrib, year=2024, province="ON")
+
+    assert d1.line_items["cpp_ei_credit"] == round((3000.0 + 900.0) * 0.15, 2)  # 585.00
+    # The credit reduces federal tax relative to the same income without it.
+    assert d1.line_items["federal_tax"] < d0.line_items["federal_tax"]
+    assert round(d0.line_items["federal_tax"] - d1.line_items["federal_tax"], 2) == 585.0
