@@ -166,17 +166,25 @@ def _compute_amt(taxable_income: float, deduction_used: float, status: str, fed_
     return round(threshold * 0.26 + (amt_base - threshold) * 0.28, 2)
 
 
-def _compute_ptc(annual_premiums: float, slcsp: float, aptc: float, agi: float, dependents: int, status: str) -> tuple[float, float]:
+def _compute_ptc(annual_premiums: float, slcsp: float, aptc: float, agi: float, dependents: int,
+                 status: str, fed_tables: Dict[str, Any]) -> tuple[float, float]:
     """Simplified Premium Tax Credit calculation (Form 8962).
 
     Returns (refundable_credit, repayment_owed). Real PTC depends on FPL %,
     which we approximate using a single-number threshold.
+
+    The federal poverty line is indexed annually and a coverage year uses the
+    prior calendar year's HHS guidelines, so the base/increment come from the
+    year table; the hardcoded fallbacks are the figures for the 2024 tax year.
+    (The applicable-percentage step table below is still approximate, not
+    year-accurate — only the FPL base is made year-specific here.)
     """
     if annual_premiums <= 0 or slcsp <= 0:
         return 0.0, 0.0
     # Affordable Care Act expected contribution: very simplified
     household_size = max(1, dependents + (2 if status == "married_filing_jointly" else 1))
-    fpl_base = 14580 + 5140 * (household_size - 1)  # 2024 FPL
+    fpl_tbl = fed_tables.get("fpl", {})
+    fpl_base = float(fpl_tbl.get("one_person", 14580)) + float(fpl_tbl.get("additional_person", 5140)) * (household_size - 1)
     fpl_pct = agi / fpl_base if fpl_base > 0 else 0
     if fpl_pct < 1.5:
         applicable_pct = 0.0
@@ -560,7 +568,7 @@ def compute_us_return(
     aptc = _sum_field(extracts, "1095-A", "advance_ptc")
     annual_premiums = _sum_field(extracts, "1095-A", "annual_premiums")
     slcsp = _sum_field(extracts, "1095-A", "annual_slcsp")
-    ptc_credit, ptc_repayment = _compute_ptc(annual_premiums, slcsp, aptc, agi, num_deps, status)
+    ptc_credit, ptc_repayment = _compute_ptc(annual_premiums, slcsp, aptc, agi, num_deps, status, fed_tables)
 
     federal_tax = max(0.0, federal_tax_before_credits - ctc - ptc_credit) + ptc_repayment
 

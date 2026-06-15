@@ -1122,3 +1122,27 @@ Suite 1029 -> 1032.
 expense fixed threshold `2759` (line ~294) — indexed (2023 $2,635 / 2025 $2,834). Both are genuine
 table-currency bugs for next cycles. NOT statutory-fixed: confirmed SS §86 base ($25k/$32k), $3,000
 cap-loss limit, IN §16 prof-tax $2,500, IN §71(3A) $2L are fixed-by-statute (correctly hardcoded).
+
+## Cycle 44 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | make US PTC federal-poverty-line base year-specific (was hardcoded 2024) | _compute_ptc hardcoded the FPL base 14580 + 5140*(hh-1) for every year and did not even receive year/fed_tables; the FPL is indexed annually (a coverage year uses prior-year HHS guidelines: 1-person 2023 $13,590 / 2024 $14,580 / 2025 $15,060) -> ACA marketplace filers mis-placed across applicable-% buckets for 2023 AND 2025 | fail: _compute_ptc ignores year tables, 2023 single $35k AGI returns $10,600 (uses 2024 base) — pass: 2023 -> $9,900 (FPL% 2.575 -> 6%); 2025 $37k -> $10,520 (FPL% 2.457 -> 4%); 2024 $35k guard -> $10,600 | gated? N | PR #84
+
+**MAINTAIN:** #83 merged to main (HEAD da2d75c); baseline suite green at 1032. Rebase-before-push held.
+
+**5-primitive method:** (1) RESEARCH subagent validated both logged table-currency candidates (US PTC
+FPL vs CA medical threshold), surfaced the correct indexed values, and recommended PTC as higher-value
+(unbounded per-return $ impact via the applicable-% the FPL drives, wrong for 2 of 3 years) despite
+needing a signature change; CA medical was bounded to ~$11-19/return. (2) DEVELOP in a git worktree
+(/tmp/wt-ptc). (3) PR. Threaded fed_tables into _compute_ptc (mirrors the adjacent _compute_ctc(...,
+fed_tables) call) + `fpl` block in us/{2023,2024,2025}.yaml (one_person/additional_person), 2024 values
+as fallback (no regression). Suite 1032 -> 1035.
+
+**Explicit follow-up (do NOT oversell this fix):** the applicable-% STEP TABLE inside _compute_ptc
+(lines ~183-194: 5 hardcoded buckets) is still approximate and NOT year-accurate — only the FPL base is
+fixed. Real Form 8962 uses a smooth annually-indexed applicable-figure table + the post-IRA 400%-cliff
+removal (year-dependent through 2025). Tracked, not done.
+
+**Remaining table-currency item:** CA medical-expense threshold $2,759 (2023 $2,635 / 2025 $2,834) —
+clean (year+fed_tables already in scope, no signature change), but bounded ~$11-19/return: a genuine
+but LOW-value fix. After it, this hardcoded-constant class is converged; expect NOTHING-HIGH-VALUE next
+unless a fresh angle surfaces.
