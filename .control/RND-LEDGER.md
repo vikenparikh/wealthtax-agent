@@ -1103,3 +1103,22 @@ plans (niche); NR/RNOR per-head foreign flags (needs inputs); IN surcharge margi
 Worth a dedicated next-cycle sweep: OTHER hardcoded constants across all three engines (US/CA/IN) — e.g.
 US NIIT/additional-medicare thresholds, IN OAS-equivalent, CA CPP/EI maxima — same table-currency angle
 may have more instances. If that sweep finds nothing clean, next cycle is honest NOTHING-HIGH-VALUE.
+
+## Cycle 43 — FULL LIFECYCLE (2026-06-15)
+
+MATRIX | make US AMT exemption/phaseout/rate-breakpoint year-specific (were hardcoded 2024) | _compute_amt took fed_tables but ignored it — exemption ($85,700/$133,300), phaseout ($609,350/$1,218,700) and the 26%/28% breakpoint ($232,600) were all hardcoded 2024 values applied to every year -> AMT mis-computed for all 2023/2025 returns (2023 exemption overstated $4,400 -> AMT understated $1,144) | fail: _compute_amt(300k, single) returns identical value for 2023 and 2024 (diff $0) — pass: 2023 single AMT exceeds 2024 by $1,144; MFJ by $1,768; 2024 single guard = $55,718 | gated? N | PR #TBD
+
+**MAINTAIN:** #82 merged to main (HEAD cb29499); baseline suite green at 1029. Rebase-before-push held.
+
+**Angle (continued hardcoded-constant sweep from #82):** swept US/CA/IN engines for year-indexed
+constants applied across years. AMT was the highest-value instance — four constants, large per-return
+dollar impact, all wrong for non-2024 years. Moved to an `amt` block (exemption/phaseout per status +
+single-valued rate_breakpoint) in us/{2023,2024,2025}.yaml; `_compute_amt` now reads fed_tables with
+the 2024 values as fallback (no regression). Tested directly against the real loaded year tables.
+Suite 1029 -> 1032.
+
+**Still-open instances of THIS class (logged, NOT bundled — keep PRs focused):** (1) US PTC FPL base
+`14580 + 5140*(hh-1)` hardcoded in `_compute_ptc` (line ~173) — indexed annually; (2) CA medical-
+expense fixed threshold `2759` (line ~294) — indexed (2023 $2,635 / 2025 $2,834). Both are genuine
+table-currency bugs for next cycles. NOT statutory-fixed: confirmed SS §86 base ($25k/$32k), $3,000
+cap-loss limit, IN §16 prof-tax $2,500, IN §71(3A) $2L are fixed-by-statute (correctly hardcoded).

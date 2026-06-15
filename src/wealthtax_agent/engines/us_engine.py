@@ -146,15 +146,21 @@ def _compute_amt(taxable_income: float, deduction_used: float, status: str, fed_
     itemized) - AMT exemption. Apply 26% / 28% bracket. The result is the
     tentative minimum tax; engine compares against regular tax.
     """
-    # 2024 AMT exemption + phaseout thresholds
-    exemption = 85700.0 if status != "married_filing_jointly" else 133300.0
-    phaseout_start = 609350.0 if status != "married_filing_jointly" else 1218700.0
+    # AMT exemption, phaseout, and rate breakpoint are indexed annually, so they
+    # come from the year table. The hardcoded fallbacks are the 2024 values, used
+    # only if the table omits the block (no regression for already-loaded years).
+    amt_tbl = fed_tables.get("amt", {})
+    _default_non_mfj = status != "married_filing_jointly"
+    exemption_tbl = amt_tbl.get("exemption", {})
+    exemption = float(exemption_tbl.get(status, 85700.0 if _default_non_mfj else 133300.0))
+    phaseout_tbl = amt_tbl.get("phaseout_start", {})
+    phaseout_start = float(phaseout_tbl.get(status, 609350.0 if _default_non_mfj else 1218700.0))
     amti = max(0.0, taxable_income + deduction_used)
     if amti > phaseout_start:
         exemption = max(0.0, exemption - 0.25 * (amti - phaseout_start))
     amt_base = max(0.0, amti - exemption)
-    # 26% on first $232,600 (2024), 28% above
-    threshold = 232600.0
+    # 26% on the first <breakpoint> of AMT base, 28% above.
+    threshold = float(amt_tbl.get("rate_breakpoint", 232600.0))
     if amt_base <= threshold:
         return round(amt_base * 0.26, 2)
     return round(threshold * 0.26 + (amt_base - threshold) * 0.28, 2)
