@@ -1125,7 +1125,7 @@ cap-loss limit, IN §16 prof-tax $2,500, IN §71(3A) $2L are fixed-by-statute (c
 
 ## Cycle 44 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | make US PTC federal-poverty-line base year-specific (was hardcoded 2024) | _compute_ptc hardcoded the FPL base 14580 + 5140*(hh-1) for every year and did not even receive year/fed_tables; the FPL is indexed annually (a coverage year uses prior-year HHS guidelines: 1-person 2023 $13,590 / 2024 $14,580 / 2025 $15,060) -> ACA marketplace filers mis-placed across applicable-% buckets for 2023 AND 2025 | fail: _compute_ptc ignores year tables, 2023 single $35k AGI returns $10,600 (uses 2024 base) — pass: 2023 -> $9,900 (FPL% 2.575 -> 6%); 2025 $37k -> $10,520 (FPL% 2.457 -> 4%); 2024 $35k guard -> $10,600 | gated? N | PR #TBD
+MATRIX | make US PTC federal-poverty-line base year-specific (was hardcoded 2024) | _compute_ptc hardcoded the FPL base 14580 + 5140*(hh-1) for every year and did not even receive year/fed_tables; the FPL is indexed annually (a coverage year uses prior-year HHS guidelines: 1-person 2023 $13,590 / 2024 $14,580 / 2025 $15,060) -> ACA marketplace filers mis-placed across applicable-% buckets for 2023 AND 2025 | fail: _compute_ptc ignores year tables, 2023 single $35k AGI returns $10,600 (uses 2024 base) — pass: 2023 -> $9,900 (FPL% 2.575 -> 6%); 2025 $37k -> $10,520 (FPL% 2.457 -> 4%); 2024 $35k guard -> $10,600 | gated? N | PR #84
 
 **MAINTAIN:** #83 merged to main (HEAD da2d75c); baseline suite green at 1032. Rebase-before-push held.
 
