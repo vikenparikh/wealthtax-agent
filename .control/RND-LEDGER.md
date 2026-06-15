@@ -1149,7 +1149,7 @@ unless a fresh angle surfaces.
 
 ## Cycle 46 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | replace US PTC applicable-% step table with the real piecewise-linear Form 8962 ramp | _compute_ptc used a 5-bucket STEP function holding each bucket's UPPER value (flat 8.5% across 300-400% FPL etc.), materially over-charging mid-range ACA filers; the statutory applicable figure is a piecewise-LINEAR ramp through anchors (150%,0)(200%,2%)(250%,4%)(300%,6%)(400%,8.5%), capped 8.5% with no cliff (ARPA/IRA 2021-2025) | fail: at exactly 300% FPL step gave 8.5% -> contribution $3,717.90 -> credit $4,482.10 — pass: ramp gives 6.0% -> $2,624.40 -> credit $5,575.60; 275% interpolates to 5.0% ($5,495.25); 200% boundary 2.0% ($5,916.80); 450% caps 8.5% no-cliff guard ($3,423.15) | gated? N | PR #TBD
+MATRIX | replace US PTC applicable-% step table with the real piecewise-linear Form 8962 ramp | _compute_ptc used a 5-bucket STEP function holding each bucket's UPPER value (flat 8.5% across 300-400% FPL etc.), materially over-charging mid-range ACA filers; the statutory applicable figure is a piecewise-LINEAR ramp through anchors (150%,0)(200%,2%)(250%,4%)(300%,6%)(400%,8.5%), capped 8.5% with no cliff (ARPA/IRA 2021-2025) | fail: at exactly 300% FPL step gave 8.5% -> contribution $3,717.90 -> credit $4,482.10 — pass: ramp gives 6.0% -> $2,624.40 -> credit $5,575.60; 275% interpolates to 5.0% ($5,495.25); 200% boundary 2.0% ($5,916.80); 450% caps 8.5% no-cliff guard ($3,423.15) | gated? N | PR #85
 
 **MAINTAIN:** #84 merged to main (HEAD e0851c7); baseline suite green at 1035. Rebase-before-push held.
 
