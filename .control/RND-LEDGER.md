@@ -996,7 +996,7 @@ across Jul23).
 
 ## Cycle 37 — FULL LIFECYCLE (2026-06-14)
 
-MATRIX | add refundable Additional Child Tax Credit (ACTC, Form 8812) | CTC was applied non-refundable only (max(0, tax - ctc)); families whose tax liability cannot absorb the full CTC lost the refundable portion entirely -> low/modest-income families with children received $0 benefit | fail: additional_child_tax_credit KeyError — pass: single $20k wages + 2 kids -> $2,625 refund (15% x (20000-2500), under the $3,400 per-child cap and the $3,460 unused CTC) | gated? N | PR #<pending>
+MATRIX | add refundable Additional Child Tax Credit (ACTC, Form 8812) | CTC was applied non-refundable only (max(0, tax - ctc)); families whose tax liability cannot absorb the full CTC lost the refundable portion entirely -> low/modest-income families with children received $0 benefit | fail: additional_child_tax_credit KeyError — pass: single $20k wages + 2 kids -> $2,625 refund (15% x (20000-2500), under the $3,400 per-child cap and the $3,460 unused CTC) | gated? N | PR #77
 
 **MAINTAIN:** #76 merged to main (HEAD e524438); baseline suite green at 1012. Rebase-before-push held.
 
