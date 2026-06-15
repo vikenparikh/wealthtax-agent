@@ -981,7 +981,7 @@ taxable income; the interest stays exempt). Under-taxing fix for muni-bond retir
 
 ## Cycle 36 — FULL LIFECYCLE (2026-06-14)
 
-MATRIX | fix §112A LTCG-equity exemption double-counting across the Jul-23-2024 rate change | the ₹1.25L LTCG-equity exemption is a single ANNUAL amount, but the engine applied a fresh exemption to BOTH the pre-change (10%) and post-change (12.5%) slices — double-exempting filers with gains both sides of Jul 23 2024 and under-exempting pre-only filers | fail: ₹80k-pre + ₹2L-post asserted tax_ltcg_equity 9375 (double-exempt) — pass: single ₹1.25L exemption applied to higher-rate post slice first -> 17375 (post 75k@12.5%=9375 + pre 80k@10%=8000) | gated? N | PR #<pending>
+MATRIX | fix §112A LTCG-equity exemption double-counting across the Jul-23-2024 rate change | the ₹1.25L LTCG-equity exemption is a single ANNUAL amount, but the engine applied a fresh exemption to BOTH the pre-change (10%) and post-change (12.5%) slices — double-exempting filers with gains both sides of Jul 23 2024 and under-exempting pre-only filers | fail: ₹80k-pre + ₹2L-post asserted tax_ltcg_equity 9375 (double-exempt) — pass: single ₹1.25L exemption applied to higher-rate post slice first -> 17375 (post 75k@12.5%=9375 + pre 80k@10%=8000) | gated? N | PR #76
 
 **MAINTAIN:** #74 + #75 merged to main; rebased onto latest origin/main (ledger union, Cycle renumbered
 34->kept, mine 35->36); suite green at 1011. Rebase-before-push held.
