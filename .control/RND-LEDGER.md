@@ -1088,7 +1088,7 @@ expect the next cycle to trend toward HONEST NOTHING-HIGH-VALUE unless a fresh a
 
 ## Cycle 42 — FULL LIFECYCLE (2026-06-15)
 
-MATRIX | make CA OAS clawback threshold year-specific (was hardcoded 2024 $90,997) | the OAS recovery-tax threshold is indexed annually (2023 $86,912 / 2024 $90,997 / 2025 $93,454) but the engine hardcoded $90,997 for ALL years -> a 2023 retiree between $86,912-$90,997 got NO clawback (under-tax) and a 2025 retiree between $90,997-$93,454 was over-clawed (over-tax) | fail: 2023 $89k net -> clawback $0 (uses 90997); 2025 $92k net -> clawback $150.45 — pass: 2023 -> $313.20 (over $86,912 x15%); 2025 -> $0 (under $93,454); 2024 $95k guard -> $600.45 | gated? N | PR #TBD
+MATRIX | make CA OAS clawback threshold year-specific (was hardcoded 2024 $90,997) | the OAS recovery-tax threshold is indexed annually (2023 $86,912 / 2024 $90,997 / 2025 $93,454) but the engine hardcoded $90,997 for ALL years -> a 2023 retiree between $86,912-$90,997 got NO clawback (under-tax) and a 2025 retiree between $90,997-$93,454 was over-clawed (over-tax) | fail: 2023 $89k net -> clawback $0 (uses 90997); 2025 $92k net -> clawback $150.45 — pass: 2023 -> $313.20 (over $86,912 x15%); 2025 -> $0 (under $93,454); 2024 $95k guard -> $600.45 | gated? N | PR #82
 
 **MAINTAIN:** #81 merged to main (HEAD 47727d9); baseline suite green at 1026. Rebase-before-push held.
 
