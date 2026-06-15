@@ -28,3 +28,9 @@ rrsp:
   contribution_limit_percent: 0.18
   annual_dollar_limit: 32490
 canada_employment_amount: 1471
+# Age amount (federal line 30100): 65+ credit, reduced by 15% of net income
+# over the threshold and fully phased out above it.
+age_amount:
+  maximum: 9028
+  net_income_threshold: 45522
+  reduction_rate: 0.15
