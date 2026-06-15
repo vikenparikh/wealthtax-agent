@@ -1198,3 +1198,26 @@ build a state artifact + decide federal-only vs combined refund display. Did NOT
 **Convergence:** core engines + §6654 + CA/IN serializers verified correct across two deep audits. After
 this, the remaining items all need a design decision (us_mef refund semantics + state artifact) or new
 inputs (<100% FPL exceptions) — expect HOLD next unless the operator green-lights the state-artifact design.
+
+## Cycle 49 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | complete federal-only 1040 MeF artifact: line28 ACTC + line33 payments + reconciling refund | after #86 made line24 federal-only, line33 still = withholding ONLY (omitted ACTC + excess-SS), there was NO line28, and line34/line37 still pulled the engine's COMBINED federal+state refund -> the federal artifact didn't reconcile (line34 != line33-line24) when state tax present, and refundable ACTC/excess-SS never showed as payments | fail: no line28 key; line33 $300 (withholding only) for a $1.7k-ACTC + $500-excess-SS filer; federal refund showed combined owe — pass: line28 $1,700; line33 $2,500; line34 federal refund $2,500; state filer fed refund $1,000 != combined owe $2,000; PTC-double-count guard | gated? N | PR #TBD
+
+**MAINTAIN:** #86 merged to main (HEAD 55023ef); baseline suite green at 1041. Rebase-before-push held.
+
+**Why not HOLD (the #86-merge unblock):** last cycle I DEFERRED line33/line34 as a design decision
+(federal-only vs combined). #86 merging = operator ENDORSED federal-only federal-1040 semantics, so
+completing the same bug class is sanctioned, not a unilateral call. RESEARCH subagent resolved the crux:
+the engine NETS net-PTC into federal_tax (line24), so line33 must EXCLUDE PTC (proven algebraically:
+PTC-in-line24-reduction === PTC-in-line33-payment for the refund, so adding both double-counts). line33
+= withholding + ACTC + excess-SS; ptc_repayment correctly stays in line24 (it's a Sch-2 tax).
+
+**Fix:** added line28_additional_child_tax_credit; line33 = withholding+ACTC+excess-SS; line34/line37
+computed from line24/line33 (federal-only, reconciling) instead of totals[]. State-free equivalence
+proven (line34==engine refund when state=0) -> existing state-free tests green. Suite 1041 -> 1045 (+4).
+
+**Flagged (cosmetic fidelity, NOT correctness — do NOT "fix" by adding PTC to line33, double-counts):**
+because net-PTC stays in line24, the artifact's line24/line33 each understate the strict-IRS values by
+the PTC amount (refund/owe still exactly correct). A form-faithful refactor would relocate PTC to line31
+(needs federal_tax decomposition) — out of scope. The us_mef federal-1040 bug class is now CLOSED
+(line24 #86 + line28/33/34/37 this cycle). Next: state artifact (so combined view has a home) or HOLD.

@@ -129,6 +129,75 @@ def test_line24_reconciles_with_line22_plus_line23():
     assert f["line24_total_tax"] == f["line22_total_tax_before_other"] + f["line23_other_taxes_self_employment"]
 
 
+def test_line33_includes_actc_and_excess_ss_and_line28_present():
+    """Form 1040 line 33 (total payments) = withholding + ACTC (line 28) + excess
+    Social Security tax (Sch 3 line 11). The serializer previously mapped line 33
+    to withholding only and had no line 28 at all, so a low-income family's
+    refundable ACTC and a multi-employer filer's excess SS never appeared as
+    payments.
+
+    Low-income filer: $0 tax, $300 withheld, $1,700 ACTC, $500 excess SS.
+
+    FAILS before: no line28 key, and line33 = $300 (withholding only)."""
+    draft = _draft(
+        line_items={"federal_tax": 0.0, "self_employment_tax": 0.0, "tax_withheld": 300.0,
+                    "additional_child_tax_credit": 1700.0, "excess_social_security_tax": 500.0},
+        totals={"total_tax": 0.0, "refund": 2500.0, "balance_owing": 0.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line28_additional_child_tax_credit"] == 1700.0
+    assert f["line33_total_payments"] == 2500.0      # 300 + 1700 + 500
+    assert f["line34_overpayment"] == 2500.0          # federal refund picks up ACTC + excess SS
+
+
+def test_federal_refund_excludes_state_tax():
+    """Refund/owe must be federal-only (line 33 − line 24), not the engine's
+    combined federal+state position. Federal $8,000 + SE $2,000 = $10,000 tax,
+    $11,000 withheld → federal refund $1,000 — even though $3,000 of state tax
+    makes the combined engine result a $2,000 balance owing.
+
+    FAILS before: line34/line37 pull the combined totals → owe $2,000, refund $0."""
+    draft = _draft(
+        line_items={"federal_tax": 8000.0, "self_employment_tax": 2000.0, "tax_withheld": 11000.0},
+        totals={"total_tax": 13000.0, "refund": 0.0, "balance_owing": 2000.0},  # combined owes 2000
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line24_total_tax"] == 10000.0
+    assert f["line33_total_payments"] == 11000.0
+    assert f["line34_overpayment"] == 1000.0
+    assert f["line37_amount_you_owe"] == 0.0
+
+
+def test_payments_refund_lines_reconcile():
+    """Invariant: line34 = max(0, line33−line24), line37 = max(0, line24−line33),
+    and the two are never both positive (the artifact internally reconciles)."""
+    draft = _draft(
+        line_items={"federal_tax": 8000.0, "self_employment_tax": 2000.0, "tax_withheld": 11000.0},
+        totals={"total_tax": 13000.0, "refund": 0.0, "balance_owing": 2000.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    l24, l33 = f["line24_total_tax"], f["line33_total_payments"]
+    assert f["line34_overpayment"] == round(max(0.0, l33 - l24), 2)
+    assert f["line37_amount_you_owe"] == round(max(0.0, l24 - l33), 2)
+    assert f["line34_overpayment"] == 0.0 or f["line37_amount_you_owe"] == 0.0
+
+
+def test_net_ptc_not_double_counted_in_payments():
+    """The engine nets the Premium Tax Credit into federal_tax (line 24); it must
+    NOT also be added to line 33 (payments) or the refund would be inflated. Here
+    federal_tax already reflects a $2,000 PTC benefit, $3,000 withheld."""
+    draft = _draft(
+        line_items={"federal_tax": 3000.0, "self_employment_tax": 0.0, "tax_withheld": 3000.0,
+                    "premium_tax_credit": 2000.0},
+        totals={"total_tax": 3000.0, "refund": 0.0, "balance_owing": 0.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    # line33 excludes PTC: 3000 withholding only → refund/owe both 0 (correct).
+    assert f["line33_total_payments"] == 3000.0
+    assert f["line34_overpayment"] == 0.0
+    assert f["line37_amount_you_owe"] == 0.0
+
+
 def test_slips_include_only_us_extracts():
     extracts = [
         FormExtract(form_code="W-2", jurisdiction="US", source_filename="w2.pdf", fields={"wages": 84000.0}),
