@@ -1172,3 +1172,29 @@ immigrant exceptions -> needs an input to handle correctly; left as-is). (2) For
 figure x (MAGI/household income); engine approximates with agi. (3) Post-2025 the 400% cliff returns ->
 a 2026 table would add a cliff anchor (the table-driven design makes this a YAML edit). This class is now
 genuinely converged; expect NOTHING-HIGH-VALUE next unless #85+ merges open something or a new year appears.
+
+## Cycle 47 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | federal 1040 MeF line 24 (Total tax) must exclude state income tax | us_mef.py mapped line24_total_tax to the engine's totals["total_tax"] = federal_tax + STATE_tax + se_tax; lines 22/23 are already federal-only, so line24 contradicted line22+line23 and overstated a federal filer's Total Tax by the entire state income tax (CA/NY filers, commonly $2k-$15k+) | fail: federal $8k + SE $1k + state $3k -> line24 $12,000 — pass: line24 $9,000 (= line22+line23, federal-only); invariant line24==line22+line23 holds | gated? N | PR #86
+
+**MAINTAIN:** #85 merged to main (HEAD fc6ca1f); baseline suite green at 1039. Rebase-before-push held.
+
+**Method:** 5-primitive. RESEARCH subagent audited the PREVIOUSLY-UNAUDITED surfaces (estimated_tax.py
+§6654, filing serializers, optimize.py) — verified §6654 correct (incl. exact $150k 110%/100% boundary),
+CA/IN serializers clean, optimize.py acceptable. It surfaced this us_mef issue but rated HOLD (non-
+transmitted artifact). I VERIFIED directly: federal_tax already folds in AMT (us_engine:601) + NIIT
+(us_engine:620), and line22/23 are federal-only, so line24=line22+line23 is the unambiguous Form-1040
+definition — the state-tax inclusion is a clear bug with a known-correct value, not a design choice.
+Developed in worktree (/tmp/wt-mef). All existing serializer/real-flow tests are state-free so the fix
+changes only state-bearing returns; suite 1039 -> 1041 (+2). Updated one synthetic test that had
+conflated line24 with total_tax (added federal_tax/self_employment_tax to its line_items).
+
+**DELIBERATELY DEFERRED (design decision, NOT forced — flagged for operator):** line33_total_payments
+omits ACTC + excess-SS, and line34/line37 (refund/owing) reflect the engine's COMBINED federal+state
+position. Making the whole federal artifact federal-only-and-reconciling is a real semantics decision
+(it would remove the user's only combined-net view since no STATE artifact is generated yet). Tracked:
+build a state artifact + decide federal-only vs combined refund display. Did NOT unilaterally change it.
+
+**Convergence:** core engines + §6654 + CA/IN serializers verified correct across two deep audits. After
+this, the remaining items all need a design decision (us_mef refund semantics + state artifact) or new
+inputs (<100% FPL exceptions) — expect HOLD next unless the operator green-lights the state-artifact design.

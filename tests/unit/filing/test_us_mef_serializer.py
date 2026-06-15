@@ -83,6 +83,8 @@ def test_core_lines_map_from_line_items_and_totals():
             "student_loan_interest_deduction": 2500.0,
             "standard_deduction": 0.0,
             "tax_withheld": 12000.0,
+            "federal_tax": 11000.0,
+            "self_employment_tax": 0.0,
         },
         totals={"total_income": 85720.0, "taxable_income": 70000.0, "total_tax": 11000.0,
                 "refund": 1000.0, "balance_owing": 0.0},
@@ -96,9 +98,35 @@ def test_core_lines_map_from_line_items_and_totals():
     assert f["line12_standard_deduction"] == 14600.0   # from credits
     assert f["line15_taxable_income"] == 70000.0
     assert f["line19_child_tax_credit"] == 2000.0
-    assert f["line24_total_tax"] == 11000.0
+    assert f["line24_total_tax"] == 11000.0   # federal_tax + se_tax (no state here)
     assert f["line25a_federal_income_tax_withheld"] == 12000.0
     assert f["line34_overpayment"] == 1000.0
+
+
+def test_line24_excludes_state_income_tax():
+    """Form 1040 line 24 (Total tax) is federal-only = line 22 (federal tax, incl.
+    AMT/NIIT) + line 23 (SE tax). The engine's totals['total_tax'] also bundles
+    STATE income tax, which has no place on the federal 1040 — a CA/NY filer's
+    federal Total Tax was overstated by the full state tax.
+
+    Here federal_tax $8,000 + SE $1,000 = $9,000, with $3,000 of state tax making
+    totals['total_tax'] = $12,000.
+
+    FAILS before the fix: line24 = $12,000 (includes state tax)."""
+    draft = _draft(
+        line_items={"federal_tax": 8000.0, "self_employment_tax": 1000.0},
+        totals={"total_tax": 12000.0},   # 8000 fed + 1000 SE + 3000 state
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line24_total_tax"] == 9000.0
+
+
+def test_line24_reconciles_with_line22_plus_line23():
+    """Invariant: line 24 must equal line 22 + line 23 (the federal-form definition)."""
+    draft = _draft(line_items={"federal_tax": 8000.0, "self_employment_tax": 1000.0},
+                   totals={"total_tax": 12000.0})
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line24_total_tax"] == f["line22_total_tax_before_other"] + f["line23_other_taxes_self_employment"]
 
 
 def test_slips_include_only_us_extracts():
