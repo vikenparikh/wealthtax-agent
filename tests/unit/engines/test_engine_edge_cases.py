@@ -207,6 +207,66 @@ def test_us_ctc_phaseout_exact_thousand_unchanged_guard():
     assert d.line_items["child_tax_credit"] == 1750.0
 
 
+# --- US: Earned Income Tax Credit (refundable, Form 1040 line 27) ---
+
+def test_us_eitc_one_child_plateau_max_credit():
+    """1 qualifying child, wages $15,000 (AGI below the $22,720 phase-out start) →
+    the full 2024 max credit of $4,213. The engine omitted the EITC entirely, so
+    low-income workers' refunds were understated by up to ~$7,830.
+
+    FAILS before the fix: no 'earned_income_credit' line item (KeyError)."""
+    d = compute_us_return([_f("W-2", "US", wages=15000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1"})
+    assert d.line_items["earned_income_credit"] == 4213.0
+
+
+def test_us_eitc_one_child_phaseout_single():
+    """1 child, single, wages $40,000 → max $4,213 reduced by 15.98% of the $17,280
+    over the $22,720 start = $2,761.34 → $1,451.66."""
+    d = compute_us_return([_f("W-2", "US", wages=40000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1"})
+    assert d.line_items["earned_income_credit"] == 1451.66
+
+
+def test_us_eitc_mfj_uses_higher_phaseout_start():
+    """1 child, MFJ, wages $40,000 → phase-out from the higher $29,640 MFJ start:
+    $4,213 − 15.98%·$10,360 = $4,213 − $1,655.53 = $2,557.47 (> the single case)."""
+    d = compute_us_return([_f("W-2", "US", wages=40000)], 2024,
+                          user_answers={"filing_status": "married_filing_jointly", "num_dependents": "1"})
+    assert d.line_items["earned_income_credit"] == 2557.47
+
+
+def test_us_eitc_investment_income_cliff_disqualifies():
+    """2 kids, wages $20,000, but $12,000 of interest income exceeds the $11,600
+    investment-income limit → EITC $0 (hard cliff)."""
+    d = compute_us_return([_f("W-2", "US", wages=20000), _f("1099-INT", "US", interest_income=12000)],
+                          2024, user_answers={"filing_status": "single", "num_dependents": "2"})
+    assert d.line_items["earned_income_credit"] == 0.0
+
+
+def test_us_eitc_childless_requires_age_25_to_64():
+    """Childless EITC requires age 25-64. With no taxpayer_age supplied, the 0-child
+    credit is withheld (conservative): wages $9,000, 0 deps → $0."""
+    d = compute_us_return([_f("W-2", "US", wages=9000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "0"})
+    assert d.line_items["earned_income_credit"] == 0.0
+
+
+def test_us_eitc_childless_with_valid_age():
+    """Childless, age 30, wages $9,000 → 0-kid credit: min($9,000·7.65%, $632) =
+    $632 (AGI below the $10,330 start, no phase-out)."""
+    d = compute_us_return([_f("W-2", "US", wages=9000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "0", "taxpayer_age": "30"})
+    assert d.line_items["earned_income_credit"] == 632.0
+
+
+def test_us_eitc_is_refundable():
+    """EITC is refundable: at $15,000 income (≈$0 tax) the credit flows to refund."""
+    d = compute_us_return([_f("W-2", "US", wages=15000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1"})
+    assert d.totals["refund"] >= d.line_items["earned_income_credit"]
+
+
 # --- US: Additional Child Tax Credit (refundable portion, Form 8812) ---
 
 def test_us_actc_refundable_when_tax_too_low_to_absorb_ctc():
@@ -219,7 +279,11 @@ def test_us_actc_refundable_when_tax_too_low_to_absorb_ctc():
     d = compute_us_return([_f("W-2", "US", wages=20000)], 2024,
                           user_answers={"filing_status": "single", "num_dependents": "2"})
     assert d.line_items["additional_child_tax_credit"] == 2625.0
-    assert d.totals["refund"] == 2625.0
+    # The refund now also includes the EITC (a separate refundable credit) for this
+    # low-income family with children; tax is fully absorbed so refund = ACTC + EITC.
+    assert d.line_items["earned_income_credit"] == 6960.0
+    assert d.totals["refund"] == round(
+        d.line_items["additional_child_tax_credit"] + d.line_items["earned_income_credit"], 2)
 
 
 def test_us_actc_limited_by_earned_income_floor():

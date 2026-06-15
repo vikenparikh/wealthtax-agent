@@ -94,11 +94,12 @@ ctc:
   earned_income_floor: 2500
   refundable_rate: 0.15
 eitc:
-  max_credit_no_kids: 632
-  max_credit_one_kid: 4213
-  max_credit_two_kids: 6960
-  max_credit_three_kids: 7830
-  phaseout_start_single_no_kids: 10330
+  investment_income_limit: 11600
+  brackets:
+    "0": {credit_rate: 0.0765, earned_income_amount: 8260, max_credit: 632, phaseout_rate: 0.0765, phaseout_start: 10330, phaseout_start_mfj: 17250}
+    "1": {credit_rate: 0.34, earned_income_amount: 12390, max_credit: 4213, phaseout_rate: 0.1598, phaseout_start: 22720, phaseout_start_mfj: 29640}
+    "2": {credit_rate: 0.4, earned_income_amount: 17400, max_credit: 6960, phaseout_rate: 0.2106, phaseout_start: 22720, phaseout_start_mfj: 29640}
+    "3": {credit_rate: 0.45, earned_income_amount: 17400, max_credit: 7830, phaseout_rate: 0.2106, phaseout_start: 22720, phaseout_start_mfj: 29640}
 ira:
   contribution_limit: 7000
   catchup_50_plus: 1000
