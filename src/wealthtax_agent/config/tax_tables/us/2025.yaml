@@ -29,6 +29,10 @@ standard_deduction:
   single: 15000
   married_filing_jointly: 30000
   head_of_household: 22500
+additional_standard_deduction:   # per box (age 65+ or blind), Form 1040
+  single: 2000
+  married_filing_jointly: 1600
+  head_of_household: 2000
 long_term_capital_gains:
   single:
     - {up_to: 48350,  rate: 0.00}

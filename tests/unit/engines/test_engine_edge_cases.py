@@ -267,6 +267,46 @@ def test_us_social_security_tips_box7_not_double_counted():
     assert with_box7.totals["total_tax"] == base.totals["total_tax"]
 
 
+# --- US: additional standard deduction for age 65+ / blind (Form 1040) ---
+
+def test_us_additional_standard_deduction_age_65_single():
+    """A single filer 65 or older gets an extra standard-deduction box ($1,950 for
+    2024). The engine applied only the base standard deduction, over-taxing every
+    senior who takes the standard deduction.
+
+    FAILS before the fix: senior std deduction stays at $14,600 (no age bump)."""
+    base = compute_us_return([_f("W-2", "US", wages=50000)], 2024,
+                             user_answers={"filing_status": "single"})
+    senior = compute_us_return([_f("W-2", "US", wages=50000)], 2024,
+                               user_answers={"filing_status": "single",
+                                             "taxpayer_age_65_or_older": "true"})
+    assert base.line_items["standard_deduction"] == 14600.0
+    assert senior.line_items["standard_deduction"] == 16550.0  # 14600 + 1950
+    # $1,950 more deduction at the 12% single bracket = $234 less tax.
+    assert round(base.totals["total_tax"] - senior.totals["total_tax"], 2) == 234.0
+
+
+def test_us_additional_standard_deduction_mfj_age_and_blind_boxes():
+    """MFJ, both spouses 65+ and one blind = 3 boxes x $1,550 (2024 married rate)
+    = $4,650 on top of the $29,200 base."""
+    d = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                          user_answers={"filing_status": "mfj",
+                                        "taxpayer_age_65_or_older": "yes",
+                                        "spouse_age_65_or_older": "yes",
+                                        "taxpayer_blind": "yes"})
+    assert d.line_items["standard_deduction"] == 33850.0  # 29200 + 3 * 1550
+
+
+def test_us_additional_std_spouse_boxes_ignored_when_single():
+    """Guard: spouse age/blind boxes only count for MFJ. A single filer who passes
+    spouse flags must NOT receive the spouse's additional deductions."""
+    d = compute_us_return([_f("W-2", "US", wages=50000)], 2024,
+                          user_answers={"filing_status": "single",
+                                        "spouse_age_65_or_older": "yes",
+                                        "spouse_blind": "yes"})
+    assert d.line_items["standard_deduction"] == 14600.0  # spouse boxes ignored
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():

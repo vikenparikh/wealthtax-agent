@@ -1025,3 +1025,26 @@ a separate model the engine does not implement — noted, not silently dropped. 
 **Remaining captured-but-unused W-2 fields:** dependent_care_benefits (box 10, excess-over-$5,000
 add-back needs Form 2441 + care expenses), nonqualified_plans (box 11). Next cycle: DCB box-10 excess
 or sweep a fresh statutory angle.
+
+## Cycle 39 — FULL LIFECYCLE (2026-06-15)
+
+MATRIX | add US additional standard deduction for age 65+/blindness (Form 1040) | engine applied only the BASE standard deduction; every senior/blind filer taking the standard deduction was over-taxed (a near-universal retiree situation). Per-box amounts are table-driven and higher for unmarried filers | fail: single 65+ std stays $14,600 / MFJ 3-box stays $29,200 — pass: single 65+ -> $16,550 (+$1,950 -> -$234 tax at 12%); MFJ both-65+-one-blind -> $33,850 (29,200 + 3x1,550); single ignores spouse boxes (guard) | gated? N | PR #79
+
+**MAINTAIN:** #78 merged to main (HEAD 6d62d02); baseline suite green at 1017. Rebase-before-push held.
+
+**Angle (missing statutory feature, large population):** the US engine had NO age-65/blind additional
+standard deduction. Form 1040 counts boxes (taxpayer 65+, taxpayer blind, + spouse boxes for MFJ);
+each box adds one unit of the year/status amount (2023 1850/1500, 2024 1950/1550, 2025 2000/1600 —
+unmarried/married). Implemented as table-driven `additional_standard_deduction` block in us/{2023,2024,
+2025}.yaml + `_additional_std_boxes` box-counter (spouse boxes gated to MFJ) folded into std_deduction
+BEFORE the itemized comparison (itemizers who beat the boosted standard are unaffected). Years without
+the table key default to 0 -> no regression. Suite 1017 -> 1020.
+
+**Considered-but-rejected this cycle:** W-2 box 10 dependent_care_benefits excess-over-$5,000 add-back
+— REJECTED as a clean fix because the employer already includes the >$5k excess in box 1, and the
+real Form 2441 taxable-benefit computation needs care-expense + spouse-earned-income inputs the engine
+lacks; forcing "excess>$5k is taxable" would double-count. Left as a genuine but input-blocked item.
+
+**Remaining candidates:** box 11 nonqualified_plans (niche); CA age amount + pension income amount
+(retiree credits) — re-verify whether already covered; NR/RNOR per-head foreign-source flags (needs
+new inputs). Next cycle sweep CA retiree credits or a fresh statutory angle.

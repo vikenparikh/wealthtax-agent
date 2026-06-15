@@ -86,6 +86,27 @@ def _num_dependents(user_answers: Dict[str, str]) -> int:
         return 0
 
 
+def _truthy(val: Any) -> bool:
+    return str(val).strip().lower() in {"1", "true", "yes", "y", "t"}
+
+
+def _additional_std_boxes(user_answers: Dict[str, str], status: str) -> int:
+    """Count Form 1040 age-65/blind boxes: taxpayer 65+, taxpayer blind, and —
+    for MFJ only — spouse 65+ and spouse blind. Each box adds one unit of the
+    year/status additional standard deduction."""
+    boxes = 0
+    if _truthy(user_answers.get("taxpayer_age_65_or_older", False)):
+        boxes += 1
+    if _truthy(user_answers.get("taxpayer_blind", False)):
+        boxes += 1
+    if status == "married_filing_jointly":
+        if _truthy(user_answers.get("spouse_age_65_or_older", False)):
+            boxes += 1
+        if _truthy(user_answers.get("spouse_blind", False)):
+            boxes += 1
+    return boxes
+
+
 def _qualified_dividend_tax(qualified_dividends: float, long_term_gain: float, ordinary_taxable_income: float,
                             status: str, fed_tables: Dict[str, Any]) -> float:
     """Tax preferential income (qualified divs + LTCG) using LTCG brackets,
@@ -461,6 +482,19 @@ def compute_us_return(
     total_income = round(other_income + taxable_ssa, 2)
     agi = max(0.0, total_income - above_line)
     std_deduction = float(fed_tables.get("standard_deduction", {}).get(status, 0))
+    # Additional standard deduction for age 65+ / blindness (Form 1040). One unit
+    # per checked box; the per-box amount is higher for unmarried filers. Applies
+    # only to the standard deduction, so it is folded in before the itemized
+    # comparison below (an itemizer who beats the boosted standard is unaffected).
+    add_std_boxes = _additional_std_boxes(user_answers, status)
+    add_std_per_box = float(fed_tables.get("additional_standard_deduction", {}).get(status, 0))
+    additional_std = add_std_boxes * add_std_per_box
+    if additional_std > 0:
+        std_deduction += additional_std
+        notes.append(
+            f"Additional standard deduction of ${additional_std:,.0f} for age 65+/blindness "
+            f"({add_std_boxes} box(es) x ${add_std_per_box:,.0f})."
+        )
 
     # Schedule A itemized deduction comparison. SALT bucket combines state +
     # local income/sales tax (SCH-A.state_local_taxes) with user-supplied
