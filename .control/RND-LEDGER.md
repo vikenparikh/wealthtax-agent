@@ -1244,3 +1244,27 @@ TotalTaxesPaid. No-input case byte-identical -> existing tests green. Suite 1045
 **Flagged (out of scope, noted in-engine):** §234B/§234C interest on advance-tax shortfall (liability-
 side, separate). Remaining tracked: US state artifact (design green-light); CA refundable benefits
 CWB/GST (engine scope); <100% FPL exceptions (new input); IN surcharge marginal relief (narrow+risky).
+
+## Cycle 52 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | add Canada Workers Benefit (CWB, Schedule 6) as a refundable credit | the CA engine modelled only non-refundable credits + TDS-style withholding; the CWB is a REFUNDABLE credit claimed ON the T1 (unlike GST/CCB which CRA pays separately) that increases the return refund -> low-income workers' refund was understated by up to $1,518 (single) / $2,616 (family) | fail: no 'canada_workers_benefit' line_item (KeyError) — pass: $15k working income -> full $1,518; $30k -> $940.35 (partial phaseout); $2,500 below floor -> $0; $40k fully phased out -> $0; family flag -> $2,616; refundable (refund = CWB − residual tax) | gated? N | PR #89
+
+**MAINTAIN:** #88 merged to main (HEAD 1c5539f); baseline suite green at 1049. Rebase-before-push held.
+
+**Re-examination win (same lens as C51):** "CA models no refundable benefits" was logged as scope. But
+CWB specifically is a T1 refundable credit (Schedule 6) -> omitting it understates the RETURN refund =
+correctness bug (distinct from GST/HST credit + CCB, which CRA auto-calcs and pays SEPARATELY, not on
+the T1). RESEARCH subagent confirmed SHIP (clean single-filer federal v1), corrected my threshold values
+(my ~$24,975/$28,494 were 2023; 2024 = $26,149/$29,833), and rated 2025 values MEDIUM confidence.
+
+**Change:** federal CWB basic = min(max, 0.27·(working_income−3000)) − 0.15·(net_income−threshold),
+floored at 0, credited as a payment (balance −= cwb, mirrors US ACTC). Table block in ca/{2023,2024}.yaml
+ONLY — 2025 OMITTED (medium-confidence values; fallback cwb=0 -> no regression; flagged for CRA figures).
+Inputs: taxpayer_age (existing, ≥19 gate, default 19), full_time_student (new, default no),
+has_spouse_or_dependant (new, unlocks family max). Surfaced line_items['canada_workers_benefit'];
+netfile auto-reflects the refund. Suite 1049 -> 1055.
+
+**Excluded + flagged (noted in-engine):** disability supplement (needs DTC); provincial AB/QC/NU
+reconfigurations (note when province in {AB,QC,NU}); true family AFNI (spousal income unmodelled — note);
+secondary-earner exemption; 2025 table (pending official CRA Schedule 6 values). Next: 2025 CWB values,
+or US state artifact (design), or HOLD.

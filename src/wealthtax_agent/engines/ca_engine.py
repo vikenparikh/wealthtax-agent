@@ -408,8 +408,34 @@ def compute_ca_return(
             "may further reduce tax (not modelled in this estimate)."
         )
 
+    # Canada Workers Benefit (Schedule 6): a REFUNDABLE credit for low-income
+    # workers, so it is credited as a payment (reduces balance / increases refund),
+    # mirroring the US ACTC. Federal basic amount only — the disability supplement,
+    # provincial AB/QC/NU reconfigurations, and true family AFNI (spousal income is
+    # not modelled) are out of scope and flagged. Years without a cwb table (e.g.
+    # 2025 pending CRA figures) yield $0 → no regression.
+    cwb = 0.0
+    cwb_tbl = fed_tables.get("cwb", {})
+    if cwb_tbl and residency_status == "resident":
+        working_income = employment_income_after_t2200 + max(0.0, net_business + t5013_business + self_emp_t4a)
+        age = _to_float(user_answers.get("taxpayer_age", 19))
+        is_student = str(user_answers.get("full_time_student", "")).strip().lower() in {"1", "true", "yes", "y", "t"}
+        has_family = str(user_answers.get("has_spouse_or_dependant", "")).strip().lower() in {"1", "true", "yes", "y", "t"}
+        floor = float(cwb_tbl.get("working_income_floor", 3000))
+        if working_income > floor and age >= 19 and not is_student:
+            max_basic = float(cwb_tbl.get("max_family" if has_family else "max_single", 0))
+            threshold = float(cwb_tbl.get("phaseout_threshold_family" if has_family else "phaseout_threshold_single", 0))
+            basic = min(max_basic, float(cwb_tbl.get("phase_in_rate", 0.27)) * (working_income - floor))
+            cwb = round(max(0.0, basic - float(cwb_tbl.get("phaseout_rate", 0.15)) * max(0.0, net_income - threshold)), 2)
+            if cwb > 0:
+                notes.append(f"Canada Workers Benefit (refundable, Schedule 6) of ${cwb:,.2f} credited as a payment.")
+                if has_family:
+                    notes.append("CWB family amount uses the filer's net income only; spousal income is not modelled.")
+                if province.upper() in {"AB", "QC", "NU"}:
+                    notes.append(f"{province.upper()} uses a CWB reconfiguration; the federal estimate may differ.")
+
     total_tax = round(federal_tax + provincial_tax, 2)
-    balance = round(total_tax - fed_tax_withheld, 2)
+    balance = round(total_tax - fed_tax_withheld - cwb, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -427,6 +453,7 @@ def compute_ca_return(
         "employment_income": employment_income,
         "employment_expenses_t2200": employment_expenses,
         "employment_income_net": employment_income_after_t2200,
+        "canada_workers_benefit": cwb,
         "student_loan_interest_ca": student_loan_interest_ca,
         "student_loan_credit": student_loan_credit,
         "property_tax_paid": raw_property_tax,
