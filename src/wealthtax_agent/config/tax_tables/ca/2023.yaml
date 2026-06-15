@@ -30,6 +30,8 @@ rrsp:
 canada_employment_amount: 1368
 # Age amount (federal line 30100): 65+ credit, reduced by 15% of net income
 # over the threshold and fully phased out above it.
+# OAS recovery tax (clawback) threshold — indexed annually.
+oas_recovery_threshold: 86912
 age_amount:
   maximum: 8396
   net_income_threshold: 42335
