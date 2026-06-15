@@ -1067,3 +1067,21 @@ no age input -> 0 (no regression). Suite 1020 -> 1023.
 (US, niche); NR/RNOR per-head foreign-source flags (needs new inputs); IN surcharge marginal relief
 (flagged risky — do NOT force). The clean no-new-input statutory-credit vein is thinning — next cycle
 may trend toward NOTHING-HIGH-VALUE unless a fresh angle surfaces.
+
+## Cycle 41 — FULL LIFECYCLE (2026-06-15)
+
+MATRIX | include RRIF income in CA pension income amount (line 31400) at 65+ | the credit base used only T4A superannuation and excluded RRIF outright (commented "conservatively excluded"); but RRIF (T4RIF) IS eligible pension income at 65+ -> a 65+ retiree on the standard RRSP->RRIF path (often no employer superannuation) was denied up to $300 credit | fail: RRIF-only 65+ -> pension_income_credit $0; super+RRIF -> $180 (super only) — pass: RRIF-only 65+ -> $300 (min(10k,2k)*0.15); super $1,200 + RRIF $5,000 -> $300 (combined base capped at $2k); under-65 RRIF guard -> $0 | gated? N | PR #81
+
+**MAINTAIN:** #80 merged to main (HEAD 77cbcd2); baseline suite green at 1023. Rebase-before-push held.
+
+**Angle (correctness unlocked by NEW infra — the #80 age gate):** cycle-40 added `_is_65_or_older`;
+that gate makes the previously-"conservatively excluded" RRIF income correctly includable in the
+pension income amount base at 65+. RRIF/RRSP->RRIF is the standard Canadian decumulation path, so this
+is a large, well-defined population (65+ retirees with little/no registered-pension-plan superannuation).
+Base now = pension_income (+ rrif_income iff 65+), capped at $2,000, credited at lowest rate. No new
+inputs (rrif_income already extracted at T4RIF; age gate already present). Suite 1023 -> 1026.
+
+**Remaining candidates:** provincial age amount + provincial pension amount (per-province data); US box
+11 nonqualified_plans (niche); NR/RNOR per-head foreign-source flags (needs new inputs); IN surcharge
+marginal relief (risky — do NOT force). The clean no-new-input statutory vein is now genuinely thin —
+expect the next cycle to trend toward HONEST NOTHING-HIGH-VALUE unless a fresh audit angle surfaces.
