@@ -337,6 +337,36 @@ def test_ca_age_amount_zero_when_under_65():
     assert d.line_items["age_amount_credit"] == 0.0
 
 
+# --- CA: pension income amount (line 31400) includes RRIF income only at 65+ ---
+
+def test_ca_pension_income_amount_includes_rrif_at_65():
+    """RRIF income (T4RIF) is eligible pension income for the line 31400 amount
+    only once the taxpayer is 65+. A 65+ retiree whose income comes from a RRIF
+    (the standard RRSP→RRIF path, often with no employer superannuation) was
+    denied the credit because RRIF was excluded outright.
+
+    FAILS before the fix: RRIF excluded → pension_income_credit = $0."""
+    d = compute_ca_return([_f("T4RIF", "CA", taxable_amount=10000)], 2024, province="ON",
+                          user_answers={"taxpayer_age_65_or_older": "true"})
+    assert d.line_items["pension_income_credit"] == 300.0  # min(10000, 2000) * 0.15
+
+
+def test_ca_pension_income_amount_excludes_rrif_under_65():
+    """Guard: under 65, RRIF income does NOT qualify for the pension income amount
+    (only superannuation/periodic RPP does), so no credit on RRIF-only income."""
+    d = compute_ca_return([_f("T4RIF", "CA", taxable_amount=10000)], 2024, province="ON")
+    assert d.line_items["pension_income_credit"] == 0.0
+
+
+def test_ca_pension_income_amount_caps_combined_super_and_rrif_at_65():
+    """At 65+, superannuation and RRIF income share the single $2,000 base (not
+    double-counted): $1,200 T4A + $5,000 RRIF → min($6,200, $2,000)·15% = $300."""
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=1200),
+                           _f("T4RIF", "CA", taxable_amount=5000)], 2024, province="ON",
+                          user_answers={"taxpayer_age_65_or_older": "true"})
+    assert d.line_items["pension_income_credit"] == 300.0  # min(6200, 2000) * 0.15
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():

@@ -319,9 +319,12 @@ def compute_ca_return(
 
     # Pension income amount (federal line 31400): a lowest-rate credit on the
     # first $2,000 of eligible pension income. T4A superannuation/pension annuity
-    # qualifies at any age, so no age gate is needed. (RRIF income, which only
-    # qualifies at 65+, is conservatively excluded here.)
-    pension_income_amount = min(pension_income, 2000.0)
+    # qualifies at any age; RRIF income (T4RIF) is eligible pension income only
+    # once the taxpayer is 65+, so it is added to the base under the age gate.
+    eligible_pension = pension_income
+    if _is_65_or_older(user_answers):
+        eligible_pension += rrif_income
+    pension_income_amount = min(eligible_pension, 2000.0)
     pension_income_credit = pension_income_amount * float(lowest_rate)
 
     # Age amount (federal line 30100): a lowest-rate credit for taxpayers 65+ at
