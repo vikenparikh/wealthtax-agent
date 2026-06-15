@@ -1028,7 +1028,7 @@ or sweep a fresh statutory angle.
 
 ## Cycle 39 — FULL LIFECYCLE (2026-06-15)
 
-MATRIX | add US additional standard deduction for age 65+/blindness (Form 1040) | engine applied only the BASE standard deduction; every senior/blind filer taking the standard deduction was over-taxed (a near-universal retiree situation). Per-box amounts are table-driven and higher for unmarried filers | fail: single 65+ std stays $14,600 / MFJ 3-box stays $29,200 — pass: single 65+ -> $16,550 (+$1,950 -> -$234 tax at 12%); MFJ both-65+-one-blind -> $33,850 (29,200 + 3x1,550); single ignores spouse boxes (guard) | gated? N | PR #TBD
+MATRIX | add US additional standard deduction for age 65+/blindness (Form 1040) | engine applied only the BASE standard deduction; every senior/blind filer taking the standard deduction was over-taxed (a near-universal retiree situation). Per-box amounts are table-driven and higher for unmarried filers | fail: single 65+ std stays $14,600 / MFJ 3-box stays $29,200 — pass: single 65+ -> $16,550 (+$1,950 -> -$234 tax at 12%); MFJ both-65+-one-blind -> $33,850 (29,200 + 3x1,550); single ignores spouse boxes (guard) | gated? N | PR #79
 
 **MAINTAIN:** #78 merged to main (HEAD 6d62d02); baseline suite green at 1017. Rebase-before-push held.
 
