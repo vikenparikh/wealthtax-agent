@@ -25,6 +25,7 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
     line33_total_payments = round(
         line_items.get("tax_withheld", 0.0)
         + line_items.get("additional_child_tax_credit", 0.0)
+        + line_items.get("earned_income_credit", 0.0)
         + line_items.get("excess_social_security_tax", 0.0),
         2,
     )
@@ -63,6 +64,7 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
                 # income tax belongs on a state artifact, not the federal 1040).
                 "line24_total_tax": line24_total_tax,
                 "line25a_federal_income_tax_withheld": line_items.get("tax_withheld", 0.0),
+                "line27_earned_income_credit": line_items.get("earned_income_credit", 0.0),
                 "line28_additional_child_tax_credit": line_items.get("additional_child_tax_credit", 0.0),
                 # Total payments = withholding + ACTC (line 28) + excess SS (Sch 3
                 # line 11). Net PTC is excluded (already netted into line 24).

@@ -86,6 +86,39 @@ def _num_dependents(user_answers: Dict[str, str]) -> int:
         return 0
 
 
+def _compute_eitc(earned: float, agi: float, num_children: int, status: str, taxpayer_age: float,
+                  investment_income: float, feie_claimed: bool, fed_tables: Dict[str, Any]) -> float:
+    """Earned Income Tax Credit (refundable, Form 1040 line 27), federal v1.
+
+    Phase-in/plateau/phase-out by number of qualifying children (0/1/2/3+), with
+    the phase-out driven by the larger of earned income and AGI (§32(a)(2)). Hard
+    disqualifiers: investment income over the year limit, a Form 2555 FEIE claim,
+    and (conservatively) married-filing-separately. The childless (0-child) credit
+    requires age 25-64. ``num_children`` is approximated by the dependent count, so
+    this can over-credit dependents who are not EITC-qualifying children — flagged
+    by the caller's note; a dedicated qualifying-children input is a follow-up.
+    """
+    eitc_tbl = fed_tables.get("eitc", {})
+    if not eitc_tbl or feie_claimed or status == "married_filing_separately":
+        return 0.0
+    inv_limit = float(eitc_tbl.get("investment_income_limit", 0))
+    if inv_limit and investment_income > inv_limit:
+        return 0.0
+    bucket = str(min(max(0, num_children), 3))
+    b = eitc_tbl.get("brackets", {}).get(bucket)
+    if not b:
+        return 0.0
+    if num_children == 0 and not (25 <= taxpayer_age <= 64):
+        # Childless EITC is age-gated; without a confirmable age, credit nothing.
+        return 0.0
+    rate = float(b["credit_rate"])
+    max_credit = float(b["max_credit"])
+    start = float(b["phaseout_start_mfj"] if status == "married_filing_jointly" else b["phaseout_start"])
+    credit = min(earned * rate, max_credit)
+    reduction = max(0.0, max(earned, agi) - start) * float(b["phaseout_rate"])
+    return round(max(0.0, credit - reduction), 2)
+
+
 def _truthy(val: Any) -> bool:
     return str(val).strip().lower() in {"1", "true", "yes", "y", "t"}
 
@@ -667,7 +700,21 @@ def compute_us_return(
             "is credited as an additional payment (Schedule 3, line 11)."
         )
 
-    balance = round(total_tax - fed_withheld - excess_ss_tax - actc, 2)
+    # Earned Income Tax Credit (refundable, Form 1040 line 27). The §32(i)
+    # investment-income cliff adds tax-exempt interest to the NIIT investment total
+    # (which omits it). num_deps approximates the qualifying-children count, which
+    # can over-credit non-qualifying dependents — flagged in the note.
+    eitc_earned = wages + max(0.0, self_employment_income)
+    taxpayer_age = _to_float(user_answers.get("taxpayer_age", 0))
+    eitc = _compute_eitc(eitc_earned, agi, num_deps, status, taxpayer_age,
+                         investment_income + tax_exempt_interest, feie_excluded > 0, fed_tables)
+    if eitc > 0:
+        notes.append(
+            f"Earned Income Tax Credit of ${eitc:,.2f} (refundable, Form 1040 line 27) credited as "
+            f"a payment, assuming all {num_deps} dependent(s) are EITC-qualifying children."
+        )
+
+    balance = round(total_tax - fed_withheld - excess_ss_tax - actc - eitc, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -726,6 +773,7 @@ def compute_us_return(
         "niit": niit,
         "child_tax_credit": ctc,
         "additional_child_tax_credit": actc,
+        "earned_income_credit": eitc,
         "premium_tax_credit": ptc_credit,
         "premium_tax_credit_repayment": ptc_repayment,
         "federal_tax": federal_tax,
@@ -747,6 +795,7 @@ def compute_us_return(
     credits = {
         "child_tax_credit": ctc,
         "additional_child_tax_credit": actc,
+        "earned_income_credit": eitc,
         "standard_deduction": std_deduction,
         "premium_tax_credit": ptc_credit,
         "qbi_deduction": qbi_deduction,

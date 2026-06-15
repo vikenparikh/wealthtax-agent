@@ -1268,3 +1268,29 @@ netfile auto-reflects the refund. Suite 1049 -> 1055.
 reconfigurations (note when province in {AB,QC,NU}); true family AFNI (spousal income unmodelled — note);
 secondary-earner exemption; 2025 table (pending official CRA Schedule 6 values). Next: 2025 CWB values,
 or US state artifact (design), or HOLD.
+
+## Cycle 53 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | add US Earned Income Tax Credit (EITC, Form 1040 line 27) as a refundable credit | the engine omitted the EITC entirely (noted out-of-scope x2); it is the single largest refundable credit for low-income workers (up to $7,830 for 3+ kids, 2024) -> their refund was understated by thousands. Direct US analog of the CA CWB (#89) | fail: no 'earned_income_credit' line_item — pass: 1 kid $15k -> $4,213 (plateau); $40k single -> $1,451.66 (phaseout); MFJ $40k -> $2,557.47 (higher start); 2 kids + $12k investment -> $0 (cliff); childless no-age -> $0; childless age30 $9k -> $632 | gated? N | PR #TBD
+
+**MAINTAIN:** #89 merged to main (HEAD 904cf00); baseline suite green at 1055. Rebase-before-push held.
+
+**Re-examination win #3 (same lens as #88 IN-advance-tax, #89 CA-CWB):** "EITC out of scope" was a
+flat-wrong-refund bug for a huge population. RESEARCH subagent verified full 2023/2024/2025 parameter
+tables (statutory rates 7.65/34/40/45% in, 7.65/15.98/21.06/21.06% out), gave a SHIP-flagged verdict,
+and surfaced two honest compromises: (1) num_deps approximates qualifying-children (can over-credit
+non-qualifying dependents — loudly noted; follow-up = dedicated input); (2) the 0-kid age-25-64 gate
+needs a NEW numeric taxpayer_age input in us_engine (it only had the boolean 65+); absent age -> 0-kid
+credit withheld (conservative).
+
+**Change:** `_compute_eitc` (phase-in min(earned*rate,max) − phaseout_rate*max(0,max(earned,agi)−start),
+MFJ-vs-other start); full `eitc` table block replaced the incomplete 2024 stub + added to 2023/2025;
+investment cliff includes tax-exempt interest; FEIE (Form 2555) + MFS hard-bar; subtract from balance
+(mirrors ACTC); line_items/credits['earned_income_credit']; us_mef line27 + included in line33 payments
+(so the MeF refund matches the engine). Updated the one ACTC test whose refund now also includes EITC.
+Suite 1055 -> 1062.
+
+**Flagged out of scope (notes):** qualifying-child tests (num_deps proxy), SSN validity, "qualifying
+child of another", MFS-living-apart exception (all MFS barred), half-year residency, combat-pay election,
+prior-year-earned-income lookback. Follow-up: dedicated num_qualifying_children input. Remaining tracked:
+US state artifact (design); IN surcharge marginal relief (narrow+risky); <100% FPL exceptions (input).
