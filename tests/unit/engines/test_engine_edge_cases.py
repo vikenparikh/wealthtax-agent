@@ -206,6 +206,38 @@ def test_us_ctc_phaseout_exact_thousand_unchanged_guard():
     assert d.line_items["child_tax_credit"] == 1750.0
 
 
+# --- US: Additional Child Tax Credit (refundable portion, Form 8812) ---
+
+def test_us_actc_refundable_when_tax_too_low_to_absorb_ctc():
+    """Single filer, $20k wages, 2 children. CTC = $4,000 but tax (~$540 on $5,400
+    taxable) absorbs only $540, leaving $3,460 unused. The refundable ACTC is
+    15% of earned income over $2,500 = 0.15 * (20000 - 2500) = $2,625 (less than
+    both the $3,460 unused and the 2 * $1,700 = $3,400 per-child cap).
+
+    FAILS before the fix: ACTC not computed → low-income family gets $0 refund."""
+    d = compute_us_return([_f("W-2", "US", wages=20000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "2"})
+    assert d.line_items["additional_child_tax_credit"] == 2625.0
+    assert d.totals["refund"] == 2625.0
+
+
+def test_us_actc_limited_by_earned_income_floor():
+    """Very low earned income binds the 15%-over-$2,500 limit. $5k wages, 2 kids:
+    earned limit = 0.15 * (5000 - 2500) = $375, far below the unused CTC and the
+    per-child cap → ACTC capped at $375 (the §24 earned-income guardrail)."""
+    d = compute_us_return([_f("W-2", "US", wages=5000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "2"})
+    assert d.line_items["additional_child_tax_credit"] == 375.0
+
+
+def test_us_actc_zero_when_ctc_fully_absorbed_guard():
+    """Guard: $200k wages, 2 children. Tax liability dwarfs the $4,000 CTC, so it
+    is fully used non-refundably → no unused portion → ACTC $0 (no double-dip)."""
+    d = compute_us_return([_f("W-2", "US", wages=200000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "2"})
+    assert d.line_items["additional_child_tax_credit"] == 0.0
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():

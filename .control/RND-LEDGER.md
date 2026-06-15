@@ -993,3 +993,17 @@ Exemption now consumed against the higher-rate post-change gains first (taxpayer
 the existing `test_ltcg_equity_split_pre_and_post_change` (it had asserted the buggy double-exempt
 value) + 2 new edge tests in test_engine_edge_cases.py (post-only full-exemption; no double-exempt
 across Jul23).
+
+## Cycle 37 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | add refundable Additional Child Tax Credit (ACTC, Form 8812) | CTC was applied non-refundable only (max(0, tax - ctc)); families whose tax liability cannot absorb the full CTC lost the refundable portion entirely -> low/modest-income families with children received $0 benefit | fail: additional_child_tax_credit KeyError — pass: single $20k wages + 2 kids -> $2,625 refund (15% x (20000-2500), under the $3,400 per-child cap and the $3,460 unused CTC) | gated? N | PR #77
+
+**MAINTAIN:** #76 merged to main (HEAD e524438); baseline suite green at 1012. Rebase-before-push held.
+
+**Angle (refundability of an existing non-refundable credit):** the CTC was computed and phased out
+correctly but only ever reduced tax to zero — the statutory refundable ACTC (Form 8812) was missing.
+Refundable amount = min(unused CTC, $1,700/child [2024], 15% of earned income over $2,500). Added
+refundable_per_child (1600 2023 / 1700 2024-25), earned_income_floor (2500), refundable_rate (0.15)
+to the us ctc tables; engine credits ACTC as a payment (balance -= actc) alongside excess-SS-tax.
+Earned income = wages + max(0, SE income). 3 tests: earned-floor binds ($2,625), very-low-earned
+binds ($375), fully-absorbed guard ($0). Suite 1012 -> 1015.

@@ -512,6 +512,28 @@ def compute_us_return(
 
     federal_tax = max(0.0, federal_tax_before_credits - ctc - ptc_credit) + ptc_repayment
 
+    # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
+    # When a family's tax liability is too low to absorb the full non-refundable
+    # CTC, the unused portion is refundable up to $1,700/child (2024) but no more
+    # than 15% of earned income over $2,500. Without this, low-income families
+    # with children wrongly receive $0 benefit from the CTC.
+    _ctc_tbl = fed_tables.get("ctc", {})
+    actc_per_child = float(_ctc_tbl.get("refundable_per_child", 1700))
+    actc_floor = float(_ctc_tbl.get("earned_income_floor", 2500))
+    actc_rate = float(_ctc_tbl.get("refundable_rate", 0.15))
+    ctc_absorbed = min(ctc, max(0.0, federal_tax_before_credits - ptc_credit))
+    unused_ctc = ctc - ctc_absorbed
+    actc = 0.0
+    if unused_ctc > 0 and num_deps > 0:
+        actc_earned = wages + max(0.0, self_employment_income)
+        earned_limit = max(0.0, (actc_earned - actc_floor) * actc_rate)
+        actc = round(min(unused_ctc, num_deps * actc_per_child, earned_limit), 2)
+    if actc > 0:
+        notes.append(
+            f"Additional Child Tax Credit of ${actc:,.2f} (refundable portion of the "
+            "Child Tax Credit, Form 8812) credited as a payment."
+        )
+
     # Alternative Minimum Tax (simplified Form 6251)
     amt_tax = _compute_amt(taxable_income, effective_deduction, status, fed_tables)
     if amt_tax > federal_tax:
@@ -571,7 +593,7 @@ def compute_us_return(
             "is credited as an additional payment (Schedule 3, line 11)."
         )
 
-    balance = round(total_tax - fed_withheld - excess_ss_tax, 2)
+    balance = round(total_tax - fed_withheld - excess_ss_tax - actc, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -628,6 +650,7 @@ def compute_us_return(
         "amt_tax": amt_tax,
         "niit": niit,
         "child_tax_credit": ctc,
+        "additional_child_tax_credit": actc,
         "premium_tax_credit": ptc_credit,
         "premium_tax_credit_repayment": ptc_repayment,
         "federal_tax": federal_tax,
@@ -648,6 +671,7 @@ def compute_us_return(
 
     credits = {
         "child_tax_credit": ctc,
+        "additional_child_tax_credit": actc,
         "standard_deduction": std_deduction,
         "premium_tax_credit": ptc_credit,
         "qbi_deduction": qbi_deduction,
