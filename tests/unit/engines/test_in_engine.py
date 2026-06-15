@@ -91,11 +91,16 @@ def test_ltcg_equity_threshold_exempt():
 
 
 def test_ltcg_equity_split_pre_and_post_change():
-    """Pre: ₹80k LTCG (exempt), Post: ₹2L LTCG → ₹75k taxable at 12.5%."""
+    """§112A exemption is a single ANNUAL amount, not one per pre/post period.
+
+    Pre: ₹80k LTCG, Post: ₹2L LTCG. The year's ₹1.25L annual exemption is
+    applied to the higher-rate post-change gains first (taxpayer-favourable),
+    fully consuming it — so the pre-change ₹80k is NOT separately exempt.
+    Post: 200k - 125k = 75k @ 12.5% = 9375; Pre: 80k @ 10% = 8000; total 17375.
+    """
     extracts = [_stock_gain(ltcg_equity_pre_change=80000, ltcg_equity_post_change=200000)]
     draft = compute_in_return(extracts, year=2025, regime="new", user_answers={"age": "30"})
-    # Pre: 80k exempt (< 1L). Post: 200k - 125k threshold = 75k taxable at 12.5% = 9375
-    assert draft.line_items["tax_ltcg_equity"] == 9375.0
+    assert draft.line_items["tax_ltcg_equity"] == 17375.0
 
 
 def test_stcg_equity_pre_15_pct_post_20_pct():

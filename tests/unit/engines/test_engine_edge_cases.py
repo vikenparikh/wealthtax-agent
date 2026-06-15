@@ -392,3 +392,29 @@ def test_in_87a_base_rebate_does_not_offset_ltcg_tax():
     ], 2024, regime="new", user_answers={"age": "30"})
     assert d.line_items["rebate_87a"] == 15000.0          # slab tax only (was 25,000)
     assert d.totals["total_tax"] == round(10000 * 1.04, 2)  # LTCG ₹10k + 4% cess = ₹10,400
+
+
+def test_in_ltcg_equity_annual_exemption_not_doubled_across_jul23():
+    """The §112A LTCG-equity exemption is annual (₹1.25L for AY2025-26), not one
+    per pre/post-Jul-23-2024 period. A taxpayer with ₹1L equity LTCG before and
+    ₹1L after gets ONE ₹1.25L exemption -> ₹75,000 taxable, not two exemptions
+    (which would tax ₹0).
+
+    FAILS before the fix: per-period exemption (₹1L pre + ₹1.25L post) exempts
+    the full ₹2L -> ₹0 taxable."""
+    d = compute_in_return([
+        _f("FORM-16", "IN", gross_salary=600000),
+        _f("STOCK-GAIN", "IN", ltcg_equity_pre_change=100000, ltcg_equity_post_change=100000),
+    ], 2025, regime="new", user_answers={"age": "30"})
+    # exemption applied to post (1.0L) first then pre (0.25L) -> taxable: post 0,
+    # pre 75,000 @ 10% = 7,500 LTCG tax
+    assert d.line_items["ltcg_equity_taxable"] == 75000.0
+
+
+def test_in_ltcg_equity_post_only_gets_full_annual_exemption():
+    """Guard: a post-change-only filer still gets the full ₹1.25L exemption."""
+    d = compute_in_return([
+        _f("FORM-16", "IN", gross_salary=600000),
+        _f("STOCK-GAIN", "IN", ltcg_equity_post_change=200000),
+    ], 2025, regime="new", user_answers={"age": "30"})
+    assert d.line_items["ltcg_equity_taxable"] == 75000.0  # 200,000 - 125,000

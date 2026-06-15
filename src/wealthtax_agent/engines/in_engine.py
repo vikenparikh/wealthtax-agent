@@ -145,8 +145,16 @@ def _capital_gains_split(
     # LTCG equity exemption applies per the year's threshold.
     pre_threshold = float(pre.get("ltcg_equity_threshold", 100000))
     post_threshold = float(post.get("ltcg_equity_threshold", pre_threshold))
-    ltcg_eq_pre_taxable = max(0.0, ltcg_eq_pre - pre_threshold)
-    ltcg_eq_post_taxable = max(0.0, ltcg_eq_post - post_threshold)
+    # §112A LTCG-equity exemption is an ANNUAL amount, not one per pre/post-change
+    # period. Applying it per period double-exempted taxpayers with gains both
+    # sides of Jul 23 2024 (and under-exempted pre-only filers). Use a single
+    # annual exemption (the year's higher amount) applied to the higher-rate
+    # post-change gains first, then pre-change (taxpayer-favourable).
+    annual_exemption = max(pre_threshold, post_threshold)
+    exempt_post = min(ltcg_eq_post, annual_exemption)
+    exempt_pre = min(ltcg_eq_pre, annual_exemption - exempt_post)
+    ltcg_eq_pre_taxable = max(0.0, ltcg_eq_pre - exempt_pre)
+    ltcg_eq_post_taxable = max(0.0, ltcg_eq_post - exempt_post)
 
     tax_ltcg_eq = (
         ltcg_eq_pre_taxable * float(pre.get("ltcg_equity_rate", 0.10))
