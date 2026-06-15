@@ -7,9 +7,10 @@ by running the engines read-only. Covers IN age brackets / 80E 8-year cutoff /
 Social-Security cap; and CA prior-loss gain offset.
 """
 
+from wealthtax_agent.config.tax_tables import load_tables
 from wealthtax_agent.engines.ca_engine import compute_ca_return
 from wealthtax_agent.engines.in_engine import compute_in_return
-from wealthtax_agent.engines.us_engine import compute_us_return
+from wealthtax_agent.engines.us_engine import _compute_amt, compute_us_return
 from wealthtax_agent.state import FormExtract
 
 
@@ -392,6 +393,34 @@ def test_ca_oas_clawback_2024_unchanged():
     over → 15% = $600.45."""
     d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=95000)], 2024, province="ON")
     assert d.line_items["oas_clawback"] == 600.45
+
+
+# --- US: AMT exemption / phaseout / rate breakpoint are year-specific (Form 6251) ---
+
+def test_us_amt_exemption_single_is_year_specific():
+    """The AMT exemption is indexed annually (single: 2023 $81,300, 2024 $85,700).
+    The engine hardcoded the 2024 constants for every year, so a 2023 AMT payer's
+    exemption was overstated by $4,400 → AMT understated by $4,400·26% = $1,144.
+
+    FAILS before the fix: _compute_amt ignores fed_tables → 2023 == 2024."""
+    amt_2023 = _compute_amt(300000.0, 0.0, "single", load_tables("us", 2023))
+    amt_2024 = _compute_amt(300000.0, 0.0, "single", load_tables("us", 2024))
+    # AMTI $300k is below the phaseout and the 26%/28% breakpoint in both years.
+    assert round(amt_2023 - amt_2024, 2) == 1144.0  # (85700 - 81300) * 0.26
+
+
+def test_us_amt_exemption_mfj_is_year_specific():
+    """MFJ exemption: 2023 $126,500 vs 2024 $133,300 → 2023 AMT higher by
+    (133300 - 126500)·26% = $1,768 at an AMTI below the breakpoint."""
+    amt_2023 = _compute_amt(300000.0, 0.0, "married_filing_jointly", load_tables("us", 2023))
+    amt_2024 = _compute_amt(300000.0, 0.0, "married_filing_jointly", load_tables("us", 2024))
+    assert round(amt_2023 - amt_2024, 2) == 1768.0
+
+
+def test_us_amt_2024_values_unchanged():
+    """Regression guard: 2024 single, AMTI $300k, below phaseout & breakpoint →
+    ($300,000 − $85,700)·26% = $55,718."""
+    assert _compute_amt(300000.0, 0.0, "single", load_tables("us", 2024)) == 55718.0
 
 
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---

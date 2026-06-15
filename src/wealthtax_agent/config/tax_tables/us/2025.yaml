@@ -29,6 +29,19 @@ standard_deduction:
   single: 15000
   married_filing_jointly: 30000
   head_of_household: 22500
+# Alternative Minimum Tax (Form 6251) — indexed annually. Exemption and
+# phaseout vary by filing status; the 26%/28% rate breakpoint is single-valued
+# (the engine does not model MFS, whose breakpoint is half).
+amt:
+  exemption:
+    single: 88100
+    married_filing_jointly: 137000
+    head_of_household: 88100
+  phaseout_start:
+    single: 626350
+    married_filing_jointly: 1252700
+    head_of_household: 626350
+  rate_breakpoint: 239100
 additional_standard_deduction:   # per box (age 65+ or blind), Form 1040
   single: 2000
   married_filing_jointly: 1600
