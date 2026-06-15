@@ -1007,3 +1007,21 @@ refundable_per_child (1600 2023 / 1700 2024-25), earned_income_floor (2500), ref
 to the us ctc tables; engine credits ACTC as a payment (balance -= actc) alongside excess-SS-tax.
 Earned income = wages + max(0, SE income). 3 tests: earned-floor binds ($2,625), very-low-earned
 binds ($375), fully-absorbed guard ($0). Suite 1012 -> 1015.
+
+## Cycle 38 — FULL LIFECYCLE (2026-06-15)
+
+MATRIX | add W-2 box 8 allocated tips to taxable income | box 8 (allocated tips) is NOT in box 1, and the engine read only box 1 wages -> a tipped worker's allocated tips escaped income tax entirely (under-taxation); box 7 SS tips ARE in box 1 and must NOT be re-added | fail: line_items has no 'allocated_tips' (KeyError); $5k tips add $0 tax — pass: line_items['allocated_tips']=$5,000, $5k taxed at 22% marginal = +$1,100; box-7 guard proves no double-count | gated? N | PR #78
+
+**MAINTAIN:** #77 merged to main (HEAD 9ff44d7); baseline suite green at 1015. Rebase-before-push held.
+
+**Angle (re-audit "niche"-tagged captured-but-unused W-2 fields, per cycle-33 lesson):** the W-2
+extractor captures box 7 (social_security_tips) and box 8 (allocated_tips) but the engine read
+neither. Box 8 allocated tips are statutorily excluded from box 1 and must be reported as income
+(Form 1040 line 1c) — pure under-taxation gap for tipped/hospitality workers. Added as a dedicated
+income line into other_income + surfaced as line_items['allocated_tips']; box 7 left unread (already
+inside box 1 — a guard test proves no double-count). The Form 4137 SS/Medicare-on-tips computation is
+a separate model the engine does not implement — noted, not silently dropped. Suite 1015 -> 1017.
+
+**Remaining captured-but-unused W-2 fields:** dependent_care_benefits (box 10, excess-over-$5,000
+add-back needs Form 2441 + care expenses), nonqualified_plans (box 11). Next cycle: DCB box-10 excess
+or sweep a fresh statutory angle.

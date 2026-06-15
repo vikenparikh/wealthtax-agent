@@ -302,6 +302,12 @@ def compute_us_return(
 
     # ---- Income ----
     wages = _sum_field(extracts, "W-2", "wages")
+    # W-2 box 8 (allocated tips) is NOT included in box 1; the IRS requires it
+    # reported as income (Form 1040 line 1c) unless the employee has records of
+    # lesser tips. Box 7 (Social Security tips) is already inside box 1, so only
+    # box 8 is added here. (The §3121(q)/Form 4137 SS+Medicare tax on these tips
+    # is a separate computation the engine does not model — noted below.)
+    allocated_tips = _sum_field(extracts, "W-2", "allocated_tips")
     fed_withheld = (
         _sum_field(extracts, "W-2", "federal_income_tax_withheld")
         + _sum_field(extracts, "1099-INT", "federal_income_tax_withheld")
@@ -401,6 +407,7 @@ def compute_us_return(
     # on this (via provisional income), so it is summed first.
     other_income = round(
         wages
+        + allocated_tips
         + interest_income
         + ordinary_dividends
         + nec
@@ -423,6 +430,11 @@ def compute_us_return(
         - feie_excluded,
         2,
     )
+    if allocated_tips > 0:
+        notes.append(
+            f"Allocated tips of ${allocated_tips:,.2f} (W-2 box 8) added to income; the "
+            f"Social Security and Medicare tax owed on unreported tips (Form 4137) is not modeled."
+        )
 
     # Self-employment tax and its one-half above-the-line deduction (§164(f)),
     # computed here so the deduction reduces AGI (and everything keyed off it).
@@ -613,6 +625,7 @@ def compute_us_return(
 
     line_items = {
         "wages": wages,
+        "allocated_tips": allocated_tips,
         "interest_income": interest_income,
         "ordinary_dividends": ordinary_dividends,
         "qualified_dividends": qualified_dividends,
