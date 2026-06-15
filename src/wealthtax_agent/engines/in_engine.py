@@ -452,10 +452,25 @@ def _compute_one_regime(
     cess = round(tax_with_surcharge * cess_rate, 2)
     total_tax = round(tax_with_surcharge + cess, 2)
 
+    # Prepaid taxes (ITR Part B-TTI): TDS is joined by advance tax, self-assessment
+    # tax and TCS — all credits against the liability. Crediting TDS alone made the
+    # full liability show as owing for the large population (business / capital-gains
+    # / professional) that pays advance tax. §234B/§234C interest on any advance-tax
+    # shortfall is a separate liability-side computation and is not modelled here.
+    advance_tax = _to_float(user_answers.get("advance_tax_paid", 0))
+    self_assessment_tax = _to_float(user_answers.get("self_assessment_tax_paid", 0))
+    tcs = _to_float(user_answers.get("tcs_collected", 0))
     total_tds = tds_salary + tds_non_salary
-    balance = round(total_tax - total_tds, 2)
+    total_taxes_paid = round(total_tds + advance_tax + self_assessment_tax + tcs, 2)
+    balance = round(total_tax - total_taxes_paid, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
+    if advance_tax + self_assessment_tax > 0:
+        notes.append(
+            f"Credited prepaid taxes ₹{total_taxes_paid:,.0f} (TDS ₹{total_tds:,.0f} + advance "
+            f"₹{advance_tax:,.0f} + self-assessment ₹{self_assessment_tax:,.0f} + TCS ₹{tcs:,.0f}); "
+            f"§234B/§234C interest on any shortfall is not computed."
+        )
 
     line_items = {
         "gross_salary": gross_salary,
@@ -494,6 +509,10 @@ def _compute_one_regime(
         "surcharge": surcharge,
         "cess": cess,
         "total_tds": total_tds,
+        "advance_tax": advance_tax,
+        "self_assessment_tax": self_assessment_tax,
+        "tcs": tcs,
+        "total_taxes_paid": total_taxes_paid,
         "regime": 1.0 if regime == "new" else 0.0,
     }
 
@@ -521,6 +540,7 @@ def _compute_one_regime(
             "total_income": round(slab_income + cg["stcg_equity_total"] + cg["ltcg_equity_total"] + cg["stcg_other_total"] + cg["ltcg_other_total"], 2),
             "taxable_income": total_income,
             "total_tax": total_tax,
+            "total_taxes_paid": total_taxes_paid,
             "balance_owing": owing,
             "refund": refund,
         },
