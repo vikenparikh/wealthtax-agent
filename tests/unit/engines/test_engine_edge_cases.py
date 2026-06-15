@@ -238,6 +238,35 @@ def test_us_actc_zero_when_ctc_fully_absorbed_guard():
     assert d.line_items["additional_child_tax_credit"] == 0.0
 
 
+# --- US: allocated tips (W-2 box 8) added to taxable income, box 7 not double-counted ---
+
+def test_us_allocated_tips_added_to_taxable_wages():
+    """W-2 box 8 (allocated tips) is NOT included in box 1 wages; the IRS requires
+    it reported as income (Form 1040 line 1c). The engine read only box 1, so a
+    tipped worker's allocated tips escaped income tax entirely (under-taxation).
+
+    FAILS before the fix: line_items has no 'allocated_tips' key (KeyError) and the
+    $5,000 of tips produces no additional tax."""
+    base = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                             user_answers={"filing_status": "single"})
+    tipped = compute_us_return([_f("W-2", "US", wages=80000, allocated_tips=5000)], 2024,
+                               user_answers={"filing_status": "single"})
+    assert tipped.line_items["allocated_tips"] == 5000.0
+    # $5,000 more taxable income, taxed at the 2024 single 22% marginal bracket.
+    assert round(tipped.totals["total_tax"] - base.totals["total_tax"], 2) == 1100.0
+
+
+def test_us_social_security_tips_box7_not_double_counted():
+    """Guard: W-2 box 7 (Social Security tips) IS already included in box 1 wages,
+    so it must NOT be added to income again. Only box 8 (allocated tips) is excluded
+    from box 1. Adding box 7 would over-tax reported-tip employees."""
+    base = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                             user_answers={"filing_status": "single"})
+    with_box7 = compute_us_return([_f("W-2", "US", wages=80000, social_security_tips=3000)], 2024,
+                                  user_answers={"filing_status": "single"})
+    assert with_box7.totals["total_tax"] == base.totals["total_tax"]
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():
