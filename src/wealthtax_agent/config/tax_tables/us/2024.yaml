@@ -55,6 +55,10 @@ ctc:
   phaseout_start_single: 200000
   phaseout_start_mfj: 400000
   phaseout_rate_per_1000: 50
+  # Additional Child Tax Credit (refundable portion, Form 8812)
+  refundable_per_child: 1700
+  earned_income_floor: 2500
+  refundable_rate: 0.15
 eitc:
   max_credit_no_kids: 632
   max_credit_one_kid: 4213
