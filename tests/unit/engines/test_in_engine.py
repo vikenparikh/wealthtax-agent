@@ -213,3 +213,53 @@ def test_hra_not_allowed_in_new_regime():
     }
     draft = compute_in_return(extracts, year=2024, regime="new", user_answers=answers)
     assert draft.line_items["hra_exemption"] == 0
+
+
+# ---------- Prepaid taxes: advance tax, self-assessment tax, TCS (Part B-TTI) ----------
+
+def test_in_advance_tax_credited_against_liability():
+    """The engine credited only TDS against the tax liability, so a filer who paid
+    advance tax (the norm for business / capital-gains / professional income) saw
+    the FULL liability as owing. Advance tax is a prepaid tax that reduces the
+    balance owing.
+
+    Salary 20L new regime → total_tax ₹2,96,400, no TDS. FAILS before the fix:
+    line_items has no 'advance_tax' key and balance owing ignores the ₹1,00,000."""
+    extracts = [_form16(gross_salary=2000000)]
+    base = compute_in_return(extracts, year=2024, regime="new", user_answers={"age": "30"})
+    adv = compute_in_return(extracts, year=2024, regime="new",
+                            user_answers={"age": "30", "advance_tax_paid": "100000"})
+    # No TDS → before any prepaid credit the entire liability is owing.
+    assert base.totals["balance_owing"] == base.totals["total_tax"]
+    assert adv.line_items["advance_tax"] == 100000.0
+    assert adv.totals["balance_owing"] == round(base.totals["total_tax"] - 100000.0, 2)
+
+
+def test_in_prepaid_taxes_combine_and_can_produce_refund():
+    """Advance + self-assessment + TCS all join TDS in the taxes-paid pool; an
+    overpayment produces a refund. total_tax ₹2,96,400 fully covered by advance
+    tax, plus ₹15,000 self-assessment + ₹5,000 TCS overpaid → ₹20,000 refund."""
+    extracts = [_form16(gross_salary=2000000)]
+    tt = compute_in_return(extracts, year=2024, regime="new",
+                           user_answers={"age": "30"}).totals["total_tax"]
+    d = compute_in_return(extracts, year=2024, regime="new", user_answers={
+        "age": "30",
+        "advance_tax_paid": str(tt),
+        "self_assessment_tax_paid": "15000",
+        "tcs_collected": "5000",
+    })
+    assert d.line_items["self_assessment_tax"] == 15000.0
+    assert d.line_items["tcs"] == 5000.0
+    assert d.totals["total_taxes_paid"] == round(tt + 20000.0, 2)
+    assert d.totals["refund"] == 20000.0
+    assert d.totals["balance_owing"] == 0.0
+
+
+def test_in_no_prepaid_input_is_unchanged():
+    """Additive: with no prepaid inputs, total_taxes_paid == total_tds and the
+    balance is byte-identical to the prior TDS-only behaviour (no regression)."""
+    extracts = [_form16(gross_salary=2000000)]
+    d = compute_in_return(extracts, year=2024, regime="new", user_answers={"age": "30"})
+    assert d.line_items["advance_tax"] == 0.0
+    assert d.totals["total_taxes_paid"] == d.line_items["total_tds"]
+    assert d.totals["balance_owing"] == d.totals["total_tax"]

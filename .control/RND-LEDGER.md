@@ -1221,3 +1221,26 @@ because net-PTC stays in line24, the artifact's line24/line33 each understate th
 the PTC amount (refund/owe still exactly correct). A form-faithful refactor would relocate PTC to line31
 (needs federal_tax decomposition) — out of scope. The us_mef federal-1040 bug class is now CLOSED
 (line24 #86 + line28/33/34/37 this cycle). Next: state artifact (so combined view has a home) or HOLD.
+
+## Cycle 51 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | India engine: credit advance tax + self-assessment tax + TCS as prepaid taxes (not just TDS) | balance = total_tax − total_tds credited ONLY TDS; advance tax (paid quarterly by anyone with business/capital-gains/professional income) + self-assessment tax + TCS were unmodelled -> the FULL liability showed as owing for a huge population who had already pre-paid | fail: no 'advance_tax' line_item; ₹2.96L liability + ₹1L advance -> balance owing still ₹2.96L — pass: balance owing ₹1.96L; advance+self-assessment+TCS pool can refund (overpay ₹20k -> refund ₹20k); no-input case byte-identical | gated? N | PR #88
+
+**MAINTAIN:** #87 merged to main (HEAD c9c1845); baseline suite green at 1045. Rebase-before-push held.
+
+**Re-examination win (corrected a prior under-rating):** in C50 I filed India advance/self-assessment
+tax under "engine scope expansion" and downgraded it. On re-examination it is a genuine high-value
+CORRECTNESS bug: ignoring advance tax produces a flat-wrong balance/refund (off by the full prepaid
+amount) for the large non-salary-income population. RESEARCH subagent confirmed the ITR Part B-TTI model
+(total_taxes_paid = TDS + TCS + advance + self-assessment; balance = total_tax − total_taxes_paid; no
+cap/ordering) and that §234B/§234C shortfall interest is a SEPARATE liability-side computation to keep
+out of scope (noted in-engine). Clean additive user_answers inputs (advance_tax_paid /
+self_assessment_tax_paid / tcs_collected), matching the engine's professional_tax_paid pattern.
+
+**Change:** in_engine total_taxes_paid pool + line_items (advance_tax/self_assessment_tax/tcs/
+total_taxes_paid) + totals (total_taxes_paid); in_itr PartB_TTI gains TCS/AdvanceTax/SelfAssessmentTax/
+TotalTaxesPaid. No-input case byte-identical -> existing tests green. Suite 1045 -> 1049.
+
+**Flagged (out of scope, noted in-engine):** §234B/§234C interest on advance-tax shortfall (liability-
+side, separate). Remaining tracked: US state artifact (design green-light); CA refundable benefits
+CWB/GST (engine scope); <100% FPL exceptions (new input); IN surcharge marginal relief (narrow+risky).

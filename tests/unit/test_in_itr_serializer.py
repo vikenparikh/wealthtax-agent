@@ -77,6 +77,23 @@ def test_partb_totals_come_from_totals_not_line_items():
     assert itr["PartB_TTI"]["BalanceOwing"] == 14_000.0
 
 
+def test_partb_surfaces_prepaid_taxes():
+    """Part B-TTI must surface the full taxes-paid pool: TDS, TCS, advance tax,
+    self-assessment tax, and their total — not TDS alone.
+
+    FAILS before: PartB_TTI has no AdvanceTax / SelfAssessmentTax / TCS /
+    TotalTaxesPaid keys."""
+    itr = serialize_itr(_in_draft(advance_tax=60_000.0, self_assessment_tax=10_000.0,
+                                  tcs=5_000.0, total_taxes_paid=165_000.0),
+                        extracts=[], year=2025)["ITR"]
+    tti = itr["PartB_TTI"]
+    assert tti["TotalTDS"] == 90_000.0
+    assert tti["AdvanceTax"] == 60_000.0
+    assert tti["SelfAssessmentTax"] == 10_000.0
+    assert tti["TCS"] == 5_000.0
+    assert tti["TotalTaxesPaid"] == 165_000.0
+
+
 def test_attached_sources_filtered_to_india_only():
     extracts = [
         FormExtract(form_code="FORM16", jurisdiction="IN", source_filename="form16.pdf"),
