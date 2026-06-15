@@ -41,6 +41,16 @@ def _to_float(value, default: float = 0.0) -> float:
         return default
 
 
+def _is_65_or_older(user_answers: Dict[str, str]) -> bool:
+    """True when the taxpayer is 65+ at year-end, via a truthy flag or an age."""
+    if str(user_answers.get("taxpayer_age_65_or_older", "")).strip().lower() in {"1", "true", "yes", "y", "t"}:
+        return True
+    try:
+        return float(user_answers.get("taxpayer_age", 0) or 0) >= 65
+    except (TypeError, ValueError):
+        return False
+
+
 def _sum_field(extracts: Iterable[FormExtract], form_code: str, field: str) -> float:
     return float(sum(
         e.fields.get(field, 0.0)
@@ -314,10 +324,24 @@ def compute_ca_return(
     pension_income_amount = min(pension_income, 2000.0)
     pension_income_credit = pension_income_amount * float(lowest_rate)
 
+    # Age amount (federal line 30100): a lowest-rate credit for taxpayers 65+ at
+    # year-end, reduced by 15% of net income over the year's threshold and fully
+    # phased out above it. Federal only — the provincial age amount is not modelled
+    # (mirrors how the pension income amount is handled). Requires an age input.
+    age_tbl = fed_tables.get("age_amount", {})
+    age_amount_credit = 0.0
+    if age_tbl and _is_65_or_older(user_answers):
+        age_max = float(age_tbl.get("maximum", 0))
+        age_threshold = float(age_tbl.get("net_income_threshold", 0))
+        age_reduction = float(age_tbl.get("reduction_rate", 0.15))
+        age_amount = max(0.0, age_max - age_reduction * max(0.0, net_income - age_threshold))
+        age_amount_credit = round(age_amount * float(lowest_rate), 2)
+
     fed_non_refundable = (
         (bpa + employment_amount) * float(lowest_rate)
         + cpp_ei_credit
         + pension_income_credit
+        + age_amount_credit
         + donations_credit
         + medical_credit
         + student_loan_credit
@@ -416,6 +440,7 @@ def compute_ca_return(
         "rrif_income": rrif_income,
         "pension_income": pension_income,
         "pension_income_credit": pension_income_credit,
+        "age_amount_credit": age_amount_credit,
         "other_self_employment": self_emp_t4a,
         "trust_other_income": t3_other_income,
         "rrsp_deduction": rrsp_deduction,

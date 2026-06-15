@@ -307,6 +307,36 @@ def test_us_additional_std_spouse_boxes_ignored_when_single():
     assert d.line_items["standard_deduction"] == 14600.0  # spouse boxes ignored
 
 
+# --- CA: federal age amount credit (line 30100), age 65+ with income phase-out ---
+
+def test_ca_age_amount_credit_full_below_threshold():
+    """A taxpayer 65+ with net income below the year's threshold gets the full
+    federal age amount ($8,790 for 2024) credited at the lowest rate (15%) =
+    $1,318.50. The engine had no age amount, over-taxing every senior.
+
+    FAILS before the fix: no 'age_amount_credit' line item; tax unchanged by age."""
+    base = compute_ca_return([_f("T4", "CA", employment_income=40000)], 2024, province="ON")
+    senior = compute_ca_return([_f("T4", "CA", employment_income=40000)], 2024, province="ON",
+                               user_answers={"taxpayer_age_65_or_older": "true"})
+    assert senior.line_items["age_amount_credit"] == 1318.50   # 8790 * 0.15
+    assert round(base.totals["total_tax"] - senior.totals["total_tax"], 2) == 1318.50
+
+
+def test_ca_age_amount_credit_phased_out_by_net_income():
+    """Above the threshold the age amount is reduced by 15% of net income over it.
+    Net income $64,325 is $20,000 over the $44,325 (2024) threshold → age amount
+    $8,790 − 0.15·$20,000 = $5,790 → credit $5,790·0.15 = $868.50."""
+    senior = compute_ca_return([_f("T4", "CA", employment_income=64325)], 2024, province="ON",
+                               user_answers={"taxpayer_age_65_or_older": "true"})
+    assert senior.line_items["age_amount_credit"] == 868.50
+
+
+def test_ca_age_amount_zero_when_under_65():
+    """Guard: no age flag (under 65) → no age amount credit."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=40000)], 2024, province="ON")
+    assert d.line_items["age_amount_credit"] == 0.0
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():

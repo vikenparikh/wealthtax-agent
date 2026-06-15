@@ -1048,3 +1048,22 @@ lacks; forcing "excess>$5k is taxable" would double-count. Left as a genuine but
 **Remaining candidates:** box 11 nonqualified_plans (niche); CA age amount + pension income amount
 (retiree credits) — re-verify whether already covered; NR/RNOR per-head foreign-source flags (needs
 new inputs). Next cycle sweep CA retiree credits or a fresh statutory angle.
+
+## Cycle 40 — FULL LIFECYCLE (2026-06-15)
+
+MATRIX | add CA federal age amount credit (line 30100) for taxpayers 65+ | engine had pension income amount but NO age amount; every Canadian senior taking the credit was over-taxed. Lowest-rate credit on a base that phases out at 15% of net income over the year threshold | fail: no 'age_amount_credit' line item (KeyError); age flag changes nothing — pass: 65+ at $40k net -> $1,318.50 credit (8790x0.15) -> -$1,318.50 federal tax; phase-out at $64,325 net -> $868.50 (5,790x0.15); under-65 guard -> $0 | gated? N | PR #80
+
+**MAINTAIN:** #79 merged to main (HEAD 4bfc9c9); baseline suite green at 1020. Rebase-before-push held.
+
+**Angle (missing statutory retiree credit, large population — pairs with #79 US age deduction):**
+the CA engine modelled the pension income amount (line 31400) but not the age amount (line 30100).
+Added table-driven `age_amount` block to ca/{2023,2024,2025}.yaml (max 8396/8790/9028; threshold
+42335/44325/45522; reduction 0.15) + `_is_65_or_older` gate (truthy flag or numeric taxpayer_age>=65).
+Credit = max(0, max - 0.15*(net_income - threshold)) * lowest_rate, folded into fed_non_refundable;
+federal only (provincial age amount not modelled, mirrors pension income amount). Missing table key OR
+no age input -> 0 (no regression). Suite 1020 -> 1023.
+
+**Remaining candidates:** provincial age amount (per-province table data); box 11 nonqualified_plans
+(US, niche); NR/RNOR per-head foreign-source flags (needs new inputs); IN surcharge marginal relief
+(flagged risky — do NOT force). The clean no-new-input statutory-credit vein is thinning — next cycle
+may trend toward NOTHING-HIGH-VALUE unless a fresh angle surfaces.
