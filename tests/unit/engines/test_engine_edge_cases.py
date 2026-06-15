@@ -207,6 +207,52 @@ def test_us_ctc_phaseout_exact_thousand_unchanged_guard():
     assert d.line_items["child_tax_credit"] == 1750.0
 
 
+# --- US: Credit for Other Dependents (ODC) vs Child Tax Credit split ---
+
+def test_us_odc_splits_other_dependents_from_ctc():
+    """Only children under 17 get the $2,000 CTC; other dependents (17+, parents,
+    relatives) get the $500 Credit for Other Dependents. The engine gave the full
+    $2,000 to every dependent. 3 dependents, 1 of them an 'other' dependent →
+    2 children × $2,000 = $4,000 CTC + 1 × $500 ODC, not 3 × $2,000 = $6,000.
+
+    FAILS before the fix: no 'credit_for_other_dependents' key, and child_tax_credit
+    is $6,000 (the over-credit)."""
+    d = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "3",
+                                        "num_other_dependents": "1"})
+    assert d.line_items["child_tax_credit"] == 4000.0
+    assert d.line_items["credit_for_other_dependents"] == 500.0
+
+
+def test_us_odc_default_no_regression():
+    """Regression guard: with no num_other_dependents, all dependents are treated
+    as qualifying children (current behaviour). 2 deps → $4,000 CTC, $0 ODC."""
+    d = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "2"})
+    assert d.line_items["child_tax_credit"] == 4000.0
+    assert d.line_items["credit_for_other_dependents"] == 0.0
+
+
+def test_us_odc_phased_out_first_preserving_ctc():
+    """Combined CTC+ODC phase-out reduces the ODC first. MFJ, AGI $410,000, 3 deps
+    (1 other): excess $10,000 → $500 reduction wipes the $500 ODC, leaving the
+    $4,000 CTC intact."""
+    d = compute_us_return([_f("W-2", "US", wages=410000)], 2024,
+                          user_answers={"filing_status": "married_filing_jointly",
+                                        "num_dependents": "3", "num_other_dependents": "1"})
+    assert d.line_items["credit_for_other_dependents"] == 0.0
+    assert d.line_items["child_tax_credit"] == 4000.0
+
+
+def test_us_actc_uses_qualifying_children_not_other_dependents():
+    """The refundable ACTC counts qualifying children only. Wages $14,000, 2 deps
+    (1 other) → 1 child → ACTC capped at 1 × $1,700 = $1,700 (not 2 × $1,700)."""
+    d = compute_us_return([_f("W-2", "US", wages=14000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "2",
+                                        "num_other_dependents": "1"})
+    assert d.line_items["additional_child_tax_credit"] == 1700.0
+
+
 # --- US: Earned Income Tax Credit (refundable, Form 1040 line 27) ---
 
 def test_us_eitc_one_child_plateau_max_credit():
