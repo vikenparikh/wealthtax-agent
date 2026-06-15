@@ -37,6 +37,18 @@ standard_deduction:
 fpl:
   one_person: 13590
   additional_person: 4720
+# Premium Tax Credit applicable-figure schedule (Form 8962 Table 2).
+# ARPA/IRA enhanced, identical for 2021-2025 (only the FPL base dollars are
+# indexed). [fpl_ratio, applicable_pct] anchors; linear interpolation between,
+# 0 below the first, flat at cap at/above the last (no 400% cliff through 2025).
+ptc:
+  applicable_figure:
+    - [1.50, 0.000]
+    - [2.00, 0.020]
+    - [2.50, 0.040]
+    - [3.00, 0.060]
+    - [4.00, 0.085]
+  cap_applicable_pct: 0.085
 amt:
   exemption:
     single: 81300

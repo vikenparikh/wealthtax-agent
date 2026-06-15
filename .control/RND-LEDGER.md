@@ -1146,3 +1146,29 @@ removal (year-dependent through 2025). Tracked, not done.
 clean (year+fed_tables already in scope, no signature change), but bounded ~$11-19/return: a genuine
 but LOW-value fix. After it, this hardcoded-constant class is converged; expect NOTHING-HIGH-VALUE next
 unless a fresh angle surfaces.
+
+## Cycle 46 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | replace US PTC applicable-% step table with the real piecewise-linear Form 8962 ramp | _compute_ptc used a 5-bucket STEP function holding each bucket's UPPER value (flat 8.5% across 300-400% FPL etc.), materially over-charging mid-range ACA filers; the statutory applicable figure is a piecewise-LINEAR ramp through anchors (150%,0)(200%,2%)(250%,4%)(300%,6%)(400%,8.5%), capped 8.5% with no cliff (ARPA/IRA 2021-2025) | fail: at exactly 300% FPL step gave 8.5% -> contribution $3,717.90 -> credit $4,482.10 — pass: ramp gives 6.0% -> $2,624.40 -> credit $5,575.60; 275% interpolates to 5.0% ($5,495.25); 200% boundary 2.0% ($5,916.80); 450% caps 8.5% no-cliff guard ($3,423.15) | gated? N | PR #85
+
+**MAINTAIN:** #84 merged to main (HEAD e0851c7); baseline suite green at 1035. Rebase-before-push held.
+
+**5-primitive method:** (1) RESEARCH subagent pinned the exact Form 8962 Table 2 schedule and CAUGHT an
+error in my proposed single-slope formula — the real schedule has per-tier slopes (300-400% is shallower,
+0.025 vs 0.04), so a single line 1.5->4.0 understates contribution at 250-300%. Used the 5-anchor table
+instead. (2) DEVELOP in git worktree (/tmp/wt-ptc2). (3) PR. Implemented `_ptc_applicable_figure` linear
+interpolation + a YAML `ptc.applicable_figure` anchor block + `cap_applicable_pct` in us/{2023,2024,2025}
+.yaml (identical across years — indexing suspended 2021-2025; FPL base already year-specific from #84).
+Code fallback = enhanced schedule so a table without the block doesn't regress.
+
+**Existing-test correction (NOT a regression):** the 3 #84 FPL-base tests asserted dollar values computed
+under the OLD step function; the corrected ramp changes those amounts (year-specificity PROPERTY still
+holds — 2023 $35k $10,494.41 != 2024 $35k $10,739.23). Updated their expected values + docstrings; renamed
+`_2024_unchanged` -> `_2024` (no longer "unchanged"). Suite 1035 -> 1039 (+4 new applicable-figure tests).
+
+**Flagged follow-ups (NOT done, not oversold):** (1) <100% FPL: engine still treats <150% as 0%
+contribution -> over-credits genuine sub-100% filers who are generally PTC-ineligible (has narrow lawful-
+immigrant exceptions -> needs an input to handle correctly; left as-is). (2) Form 8962 uses applicable
+figure x (MAGI/household income); engine approximates with agi. (3) Post-2025 the 400% cliff returns ->
+a 2026 table would add a cliff anchor (the table-driven design makes this a YAML edit). This class is now
+genuinely converged; expect NOTHING-HIGH-VALUE next unless #85+ merges open something or a new year appears.

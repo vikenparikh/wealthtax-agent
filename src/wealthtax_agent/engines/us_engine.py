@@ -166,6 +166,20 @@ def _compute_amt(taxable_income: float, deduction_used: float, status: str, fed_
     return round(threshold * 0.26 + (amt_base - threshold) * 0.28, 2)
 
 
+def _ptc_applicable_figure(fpl_pct: float, anchors: list, cap: float) -> float:
+    """Linearly interpolate the Form 8962 applicable figure between (fpl_ratio,
+    applicable_pct) anchors. Below the first anchor → 0; at/above the last → cap."""
+    pts = sorted((float(r), float(p)) for r, p in anchors)
+    if fpl_pct < pts[0][0]:
+        return 0.0
+    if fpl_pct >= pts[-1][0]:
+        return float(cap)
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if x0 <= fpl_pct < x1:
+            return y0 + (fpl_pct - x0) / (x1 - x0) * (y1 - y0)
+    return float(cap)
+
+
 def _compute_ptc(annual_premiums: float, slcsp: float, aptc: float, agi: float, dependents: int,
                  status: str, fed_tables: Dict[str, Any]) -> tuple[float, float]:
     """Simplified Premium Tax Credit calculation (Form 8962).
@@ -186,18 +200,18 @@ def _compute_ptc(annual_premiums: float, slcsp: float, aptc: float, agi: float, 
     fpl_tbl = fed_tables.get("fpl", {})
     fpl_base = float(fpl_tbl.get("one_person", 14580)) + float(fpl_tbl.get("additional_person", 5140)) * (household_size - 1)
     fpl_pct = agi / fpl_base if fpl_base > 0 else 0
-    if fpl_pct < 1.5:
-        applicable_pct = 0.0
-    elif fpl_pct < 2.0:
-        applicable_pct = 0.02
-    elif fpl_pct < 2.5:
-        applicable_pct = 0.04
-    elif fpl_pct < 3.0:
-        applicable_pct = 0.06
-    elif fpl_pct < 4.0:
-        applicable_pct = 0.085
-    else:
-        applicable_pct = 0.085
+    # Form 8962 applicable figure: a piecewise-LINEAR ramp between Table 2 anchors,
+    # not a step function. The old 5-bucket step used each bucket's upper value
+    # (e.g. a flat 8.5% from 300-400%), materially over-charging mid-range filers.
+    # Anchors/cap come from the year table; the fallback is the ARPA/IRA enhanced
+    # schedule (2021-2025). Post-2025 the cliff returns — a future year's table
+    # would re-introduce a 400% cutoff, so this stays table-driven.
+    ptc_tbl = fed_tables.get("ptc", {})
+    anchors = ptc_tbl.get("applicable_figure") or [
+        [1.5, 0.0], [2.0, 0.02], [2.5, 0.04], [3.0, 0.06], [4.0, 0.085],
+    ]
+    cap = float(ptc_tbl.get("cap_applicable_pct", 0.085))
+    applicable_pct = _ptc_applicable_figure(fpl_pct, anchors, cap)
     expected_contribution = agi * applicable_pct
     ptc = max(0.0, min(annual_premiums, slcsp) - expected_contribution)
     if aptc > ptc:

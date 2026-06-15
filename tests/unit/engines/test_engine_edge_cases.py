@@ -428,31 +428,69 @@ def test_us_amt_2024_values_unchanged():
 def test_us_ptc_fpl_base_year_specific_2023():
     """The PTC poverty-line base is indexed annually (a coverage year uses the
     prior calendar year's HHS guidelines): 1-person base 2023 $13,590 / 2024
-    $14,580 / 2025 $15,060. The engine hardcoded the 2024-tax-year base ($14,580)
-    for every year, mis-placing filers across applicable-percentage buckets.
+    $14,580 / 2025 $15,060. Same inputs in different years land at a different
+    FPL% and therefore a different applicable figure / credit.
 
-    Single, AGI $35,000, $12,000 premiums/SLCSP, no APTC. With the 2023 base the
-    FPL% is 2.575 (6% contribution → $2,100) → credit $9,900. The hardcoded base
-    gave FPL% 2.401 (4% → $1,400) → $10,600.
-
-    FAILS before the fix: _compute_ptc ignores the year tables → returns $10,600."""
+    Single, AGI $35,000, $12,000 premiums/SLCSP, no APTC. 2023 base → FPL% 2.575
+    → applicable figure 4.302% → credit $10,494.41; the 2024 base (FPL% 2.401 →
+    3.602%) gives $10,739.23 (see the 2024 case) — proving the base is year-
+    specific. (Values reflect the piecewise-linear applicable-figure ramp.)"""
     credit, repay = _compute_ptc(12000.0, 12000.0, 0.0, 35000.0, 0, "single", load_tables("us", 2023))
-    assert (credit, repay) == (9900.0, 0.0)
+    assert (credit, repay) == (10494.41, 0.0)
 
 
 def test_us_ptc_fpl_base_year_specific_2025():
-    """Single, AGI $37,000. With the 2025 base ($15,060) FPL% is 2.457 (4% →
-    $1,480) → credit $10,520; the hardcoded 2024 base gave FPL% 2.538 (6% →
-    $2,220) → $9,780."""
+    """Single, AGI $37,000. 2025 base ($15,060) → FPL% 2.457 → applicable figure
+    3.827% → credit $10,583.88, distinct from what the 2024 base would yield —
+    the FPL base is year-specific."""
     credit, repay = _compute_ptc(12000.0, 12000.0, 0.0, 37000.0, 0, "single", load_tables("us", 2025))
-    assert (credit, repay) == (10520.0, 0.0)
+    assert (credit, repay) == (10583.88, 0.0)
 
 
-def test_us_ptc_fpl_base_2024_unchanged():
-    """Regression guard: 2024 single, AGI $35,000 → FPL% 2.401 (4% → $1,400) →
-    credit $10,600 (the value the hardcoded base produced)."""
+def test_us_ptc_fpl_base_2024():
+    """2024 single, AGI $35,000 → FPL% 2.401 → applicable figure 3.602% →
+    credit $10,739.23 (contrast the 2023 base case at the same inputs)."""
     credit, repay = _compute_ptc(12000.0, 12000.0, 0.0, 35000.0, 0, "single", load_tables("us", 2024))
-    assert (credit, repay) == (10600.0, 0.0)
+    assert (credit, repay) == (10739.23, 0.0)
+
+
+# --- US: PTC applicable percentage is a piecewise-linear ramp, not a step table ---
+# 2024 single FPL base = $14,580; aptc = 0 so credit == ptc. Values per Form 8962
+# Table 2 anchors: (150%,0) (200%,2%) (250%,4%) (300%,6%) (400%,8.5%), cap 8.5%.
+
+def test_us_ptc_applicable_pct_at_300pct_fpl_is_6pct_not_step():
+    """At exactly 300% FPL the old step function charged 8.5% (it fell into the
+    300–400% bucket), but the real applicable figure is 6.0%. AGI $43,740 →
+    expected contribution $2,624.40 → credit $5,575.60.
+
+    FAILS before: step table → 8.5% → $3,717.90 contribution → credit $4,482.10."""
+    credit, repay = _compute_ptc(9000.0, 8200.0, 0.0, 43740.0, 0, "single", load_tables("us", 2024))
+    assert (credit, repay) == (5575.60, 0.0)
+
+
+def test_us_ptc_applicable_pct_interpolates_within_tier_275pct():
+    """275% FPL interpolates inside the 250–300% tier: 4% + 0.5·(6%−4%) = 5.0%.
+    AGI $40,095 → $2,004.75 contribution → credit $5,495.25.
+
+    FAILS before: flat 6% bucket → $2,405.70 → credit $5,094.30."""
+    credit, repay = _compute_ptc(8000.0, 7500.0, 0.0, 40095.0, 0, "single", load_tables("us", 2024))
+    assert (credit, repay) == (5495.25, 0.0)
+
+
+def test_us_ptc_applicable_pct_at_200pct_boundary_is_2pct():
+    """Exact 200% FPL boundary → 2.0%. AGI $29,160 → $583.20 → credit $5,916.80.
+
+    FAILS before: step table used the bucket's upper value 4% → credit $5,333.60."""
+    credit, repay = _compute_ptc(7000.0, 6500.0, 0.0, 29160.0, 0, "single", load_tables("us", 2024))
+    assert (credit, repay) == (5916.80, 0.0)
+
+
+def test_us_ptc_no_cliff_above_400pct_caps_at_8_5pct():
+    """Guard (no subsidy cliff, 2021–2025): 450% FPL stays at the 8.5% cap and the
+    credit is still available. AGI $65,610 → $5,576.85 → credit $3,423.15. This
+    value is unchanged by the fix (the old `else` branch already used 8.5%)."""
+    credit, repay = _compute_ptc(10000.0, 9000.0, 0.0, 65610.0, 0, "single", load_tables("us", 2024))
+    assert (credit, repay) == (3423.15, 0.0)
 
 
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
