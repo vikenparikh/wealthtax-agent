@@ -1175,7 +1175,7 @@ genuinely converged; expect NOTHING-HIGH-VALUE next unless #85+ merges open some
 
 ## Cycle 47 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | federal 1040 MeF line 24 (Total tax) must exclude state income tax | us_mef.py mapped line24_total_tax to the engine's totals["total_tax"] = federal_tax + STATE_tax + se_tax; lines 22/23 are already federal-only, so line24 contradicted line22+line23 and overstated a federal filer's Total Tax by the entire state income tax (CA/NY filers, commonly $2k-$15k+) | fail: federal $8k + SE $1k + state $3k -> line24 $12,000 — pass: line24 $9,000 (= line22+line23, federal-only); invariant line24==line22+line23 holds | gated? N | PR #TBD
+MATRIX | federal 1040 MeF line 24 (Total tax) must exclude state income tax | us_mef.py mapped line24_total_tax to the engine's totals["total_tax"] = federal_tax + STATE_tax + se_tax; lines 22/23 are already federal-only, so line24 contradicted line22+line23 and overstated a federal filer's Total Tax by the entire state income tax (CA/NY filers, commonly $2k-$15k+) | fail: federal $8k + SE $1k + state $3k -> line24 $12,000 — pass: line24 $9,000 (= line22+line23, federal-only); invariant line24==line22+line23 holds | gated? N | PR #86
 
 **MAINTAIN:** #85 merged to main (HEAD fc6ca1f); baseline suite green at 1039. Rebase-before-push held.
 
