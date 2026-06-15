@@ -16,6 +16,19 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
     totals = draft.totals or {}
     credits = draft.credits or {}
 
+    # Federal-only line 24 (total tax) and line 33 (total payments), computed once
+    # so the refund/owe lines reconcile (line34 = max(0, 33-24), line37 = max(0,
+    # 24-33)) instead of pulling the engine's COMBINED federal+state totals. The
+    # net Premium Tax Credit is intentionally NOT in line 33 — the engine already
+    # nets it into federal_tax (line 24), so adding it here would double-count it.
+    line24_total_tax = round(line_items.get("federal_tax", 0.0) + line_items.get("self_employment_tax", 0.0), 2)
+    line33_total_payments = round(
+        line_items.get("tax_withheld", 0.0)
+        + line_items.get("additional_child_tax_credit", 0.0)
+        + line_items.get("excess_social_security_tax", 0.0),
+        2,
+    )
+
     return {
         "transmissible": False,
         "schema_version": SCHEMA_VERSION,
@@ -46,15 +59,16 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
                 "line19_child_tax_credit": credits.get("child_tax_credit", 0.0),
                 "line22_total_tax_before_other": line_items.get("federal_tax", 0.0),
                 "line23_other_taxes_self_employment": line_items.get("self_employment_tax", 0.0),
-                # Federal-form total tax = line 22 + line 23. The engine's
-                # totals["total_tax"] also bundles state income tax, which does not
-                # belong on a federal 1040; use the federal figures so line 24
-                # reconciles with lines 22-23 (state tax belongs on a state artifact).
-                "line24_total_tax": round(line_items.get("federal_tax", 0.0) + line_items.get("self_employment_tax", 0.0), 2),
+                # Federal-form total tax = line 22 + line 23 (federal only; state
+                # income tax belongs on a state artifact, not the federal 1040).
+                "line24_total_tax": line24_total_tax,
                 "line25a_federal_income_tax_withheld": line_items.get("tax_withheld", 0.0),
-                "line33_total_payments": line_items.get("tax_withheld", 0.0),
-                "line34_overpayment": totals.get("refund", 0.0),
-                "line37_amount_you_owe": totals.get("balance_owing", 0.0),
+                "line28_additional_child_tax_credit": line_items.get("additional_child_tax_credit", 0.0),
+                # Total payments = withholding + ACTC (line 28) + excess SS (Sch 3
+                # line 11). Net PTC is excluded (already netted into line 24).
+                "line33_total_payments": line33_total_payments,
+                "line34_overpayment": round(max(0.0, line33_total_payments - line24_total_tax), 2),
+                "line37_amount_you_owe": round(max(0.0, line24_total_tax - line33_total_payments), 2),
             },
             "Slips": [
                 {
