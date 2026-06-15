@@ -1224,7 +1224,7 @@ the PTC amount (refund/owe still exactly correct). A form-faithful refactor woul
 
 ## Cycle 51 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | India engine: credit advance tax + self-assessment tax + TCS as prepaid taxes (not just TDS) | balance = total_tax − total_tds credited ONLY TDS; advance tax (paid quarterly by anyone with business/capital-gains/professional income) + self-assessment tax + TCS were unmodelled -> the FULL liability showed as owing for a huge population who had already pre-paid | fail: no 'advance_tax' line_item; ₹2.96L liability + ₹1L advance -> balance owing still ₹2.96L — pass: balance owing ₹1.96L; advance+self-assessment+TCS pool can refund (overpay ₹20k -> refund ₹20k); no-input case byte-identical | gated? N | PR #TBD
+MATRIX | India engine: credit advance tax + self-assessment tax + TCS as prepaid taxes (not just TDS) | balance = total_tax − total_tds credited ONLY TDS; advance tax (paid quarterly by anyone with business/capital-gains/professional income) + self-assessment tax + TCS were unmodelled -> the FULL liability showed as owing for a huge population who had already pre-paid | fail: no 'advance_tax' line_item; ₹2.96L liability + ₹1L advance -> balance owing still ₹2.96L — pass: balance owing ₹1.96L; advance+self-assessment+TCS pool can refund (overpay ₹20k -> refund ₹20k); no-input case byte-identical | gated? N | PR #88
 
 **MAINTAIN:** #87 merged to main (HEAD c9c1845); baseline suite green at 1045. Rebase-before-push held.
 
