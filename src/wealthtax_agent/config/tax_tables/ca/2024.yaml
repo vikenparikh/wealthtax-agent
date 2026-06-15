@@ -27,6 +27,8 @@ ei:
 
 # Age amount (federal line 30100): 65+ credit, reduced by 15% of net income
 # over the threshold and fully phased out above it.
+# OAS recovery tax (clawback) threshold — indexed annually.
+oas_recovery_threshold: 90997
 age_amount:
   maximum: 8790
   net_income_threshold: 44325

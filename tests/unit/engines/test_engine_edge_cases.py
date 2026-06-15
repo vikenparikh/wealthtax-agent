@@ -367,6 +367,33 @@ def test_ca_pension_income_amount_caps_combined_super_and_rrif_at_65():
     assert d.line_items["pension_income_credit"] == 300.0  # min(6200, 2000) * 0.15
 
 
+# --- CA: OAS clawback (recovery tax) threshold is year-specific, not a 2024 constant ---
+
+def test_ca_oas_clawback_uses_2023_threshold():
+    """The OAS recovery-tax threshold was hardcoded to the 2024 value ($90,997)
+    for every year. The 2023 threshold is $86,912, so a 2023 retiree with net
+    income between the two was wrongly given NO clawback (under-taxation).
+
+    FAILS before the fix: 2023 uses $90,997 → $89,000 < threshold → clawback $0."""
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=89000)], 2023, province="ON")
+    # 2023 threshold $86,912; $89,000 is $2,088 over → 15% = $313.20.
+    assert d.line_items["oas_clawback"] == 313.20
+
+
+def test_ca_oas_clawback_uses_2025_threshold():
+    """The 2025 threshold is $93,454, so a 2025 retiree at $92,000 net income owes
+    NO clawback — but the hardcoded $90,997 wrongly clawed back (over-taxation)."""
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=92000)], 2025, province="ON")
+    assert d.line_items["oas_clawback"] == 0.0
+
+
+def test_ca_oas_clawback_2024_unchanged():
+    """Regression guard: 2024 keeps the $90,997 threshold. $95,000 net → $4,003
+    over → 15% = $600.45."""
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=95000)], 2024, province="ON")
+    assert d.line_items["oas_clawback"] == 600.45
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():

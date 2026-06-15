@@ -1085,3 +1085,21 @@ inputs (rrif_income already extracted at T4RIF; age gate already present). Suite
 11 nonqualified_plans (niche); NR/RNOR per-head foreign-source flags (needs new inputs); IN surcharge
 marginal relief (risky — do NOT force). The clean no-new-input statutory vein is now genuinely thin —
 expect the next cycle to trend toward HONEST NOTHING-HIGH-VALUE unless a fresh audit angle surfaces.
+
+## Cycle 42 — FULL LIFECYCLE (2026-06-15)
+
+MATRIX | make CA OAS clawback threshold year-specific (was hardcoded 2024 $90,997) | the OAS recovery-tax threshold is indexed annually (2023 $86,912 / 2024 $90,997 / 2025 $93,454) but the engine hardcoded $90,997 for ALL years -> a 2023 retiree between $86,912-$90,997 got NO clawback (under-tax) and a 2025 retiree between $90,997-$93,454 was over-clawed (over-tax) | fail: 2023 $89k net -> clawback $0 (uses 90997); 2025 $92k net -> clawback $150.45 — pass: 2023 -> $313.20 (over $86,912 x15%); 2025 -> $0 (under $93,454); 2024 $95k guard -> $600.45 | gated? N | PR #TBD
+
+**MAINTAIN:** #81 merged to main (HEAD 47727d9); baseline suite green at 1026. Rebase-before-push held.
+
+**Angle (table-currency / hardcoded-constant bug — the #72 BPA / #32 angle):** swept the CA engine for
+year-specific constants applied across years. OAS recovery threshold was a literal $90,997 used for
+2023/2024/2025. Moved to `oas_recovery_threshold` in ca/{2023,2024,2025}.yaml (fallback to 90997.0 if
+absent -> no regression); also rounded the clawback to 2dp (was an unrounded float; consistent with
+age_amount_credit). Suite 1026 -> 1029.
+
+**Remaining candidates:** provincial age/pension amounts (per-province data); US box 11 nonqualified_
+plans (niche); NR/RNOR per-head foreign flags (needs inputs); IN surcharge marginal relief (risky).
+Worth a dedicated next-cycle sweep: OTHER hardcoded constants across all three engines (US/CA/IN) — e.g.
+US NIIT/additional-medicare thresholds, IN OAS-equivalent, CA CPP/EI maxima — same table-currency angle
+may have more instances. If that sweep finds nothing clean, next cycle is honest NOTHING-HIGH-VALUE.

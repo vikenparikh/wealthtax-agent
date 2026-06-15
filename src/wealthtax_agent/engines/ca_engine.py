@@ -353,12 +353,14 @@ def compute_ca_return(
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
     federal_tax = max(0.0, federal_tax_before_credits - fed_non_refundable - federal_dtc)
 
-    # OAS clawback (recovery tax) — 15% of net income above the threshold
-    # ($90,997 for 2024). Adds to federal tax. Skip if no pension/RRIF income.
-    oas_threshold = 90997.0
+    # OAS clawback (recovery tax) — 15% of net income above the year's threshold.
+    # The threshold is indexed annually (2023 $86,912; 2024 $90,997; 2025 $93,454),
+    # so it must come from the year table — a single hardcoded value mis-taxed every
+    # non-2024 return near the boundary. Falls back to the 2024 value if absent.
+    oas_threshold = float(fed_tables.get("oas_recovery_threshold", 90997.0))
     pensionable = pension_income + rrif_income
     if pensionable > 0 and net_income > oas_threshold:
-        clawback = min(pensionable, (net_income - oas_threshold) * 0.15)
+        clawback = round(min(pensionable, (net_income - oas_threshold) * 0.15), 2)
         federal_tax += clawback
         notes.append(f"OAS recovery tax (clawback): net income > ${oas_threshold:,.0f}; added ${clawback:,.0f}.")
     else:
