@@ -1201,7 +1201,7 @@ inputs (<100% FPL exceptions) — expect HOLD next unless the operator green-lig
 
 ## Cycle 49 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | complete federal-only 1040 MeF artifact: line28 ACTC + line33 payments + reconciling refund | after #86 made line24 federal-only, line33 still = withholding ONLY (omitted ACTC + excess-SS), there was NO line28, and line34/line37 still pulled the engine's COMBINED federal+state refund -> the federal artifact didn't reconcile (line34 != line33-line24) when state tax present, and refundable ACTC/excess-SS never showed as payments | fail: no line28 key; line33 $300 (withholding only) for a $1.7k-ACTC + $500-excess-SS filer; federal refund showed combined owe — pass: line28 $1,700; line33 $2,500; line34 federal refund $2,500; state filer fed refund $1,000 != combined owe $2,000; PTC-double-count guard | gated? N | PR #TBD
+MATRIX | complete federal-only 1040 MeF artifact: line28 ACTC + line33 payments + reconciling refund | after #86 made line24 federal-only, line33 still = withholding ONLY (omitted ACTC + excess-SS), there was NO line28, and line34/line37 still pulled the engine's COMBINED federal+state refund -> the federal artifact didn't reconcile (line34 != line33-line24) when state tax present, and refundable ACTC/excess-SS never showed as payments | fail: no line28 key; line33 $300 (withholding only) for a $1.7k-ACTC + $500-excess-SS filer; federal refund showed combined owe — pass: line28 $1,700; line33 $2,500; line34 federal refund $2,500; state filer fed refund $1,000 != combined owe $2,000; PTC-double-count guard | gated? N | PR #87
 
 **MAINTAIN:** #86 merged to main (HEAD 55023ef); baseline suite green at 1041. Rebase-before-push held.
 
