@@ -1010,7 +1010,7 @@ binds ($375), fully-absorbed guard ($0). Suite 1012 -> 1015.
 
 ## Cycle 38 — FULL LIFECYCLE (2026-06-15)
 
-MATRIX | add W-2 box 8 allocated tips to taxable income | box 8 (allocated tips) is NOT in box 1, and the engine read only box 1 wages -> a tipped worker's allocated tips escaped income tax entirely (under-taxation); box 7 SS tips ARE in box 1 and must NOT be re-added | fail: line_items has no 'allocated_tips' (KeyError); $5k tips add $0 tax — pass: line_items['allocated_tips']=$5,000, $5k taxed at 22% marginal = +$1,100; box-7 guard proves no double-count | gated? N | PR #TBD
+MATRIX | add W-2 box 8 allocated tips to taxable income | box 8 (allocated tips) is NOT in box 1, and the engine read only box 1 wages -> a tipped worker's allocated tips escaped income tax entirely (under-taxation); box 7 SS tips ARE in box 1 and must NOT be re-added | fail: line_items has no 'allocated_tips' (KeyError); $5k tips add $0 tax — pass: line_items['allocated_tips']=$5,000, $5k taxed at 22% marginal = +$1,100; box-7 guard proves no double-count | gated? N | PR #78
 
 **MAINTAIN:** #77 merged to main (HEAD 9ff44d7); baseline suite green at 1015. Rebase-before-push held.
 
