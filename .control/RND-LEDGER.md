@@ -1297,7 +1297,7 @@ US state artifact (design); IN surcharge marginal relief (narrow+risky); <100% F
 
 ## Cycle 54 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | split CTC ($2,000 under-17) from the Credit for Other Dependents ($500) | _compute_ctc gave the full $2,000 CTC to EVERY dependent; only children under 17 qualify, others (17+, parents, relatives) get the $500 ODC -> 17+ dependents over-credited by $1,500 each AND the refundable ACTC was inflated by counting non-children | fail: no 'credit_for_other_dependents' key; 3 deps (1 other) -> $6,000 CTC — pass: $4,000 CTC + $500 ODC; default (no input) -> $4,000/$0 (no regression); phaseout reduces ODC first ($410k MFJ -> ODC $0, CTC $4,000); ACTC uses children only (1 child -> $1,700 not $3,400 cap) | gated? N | PR #TBD
+MATRIX | split CTC ($2,000 under-17) from the Credit for Other Dependents ($500) | _compute_ctc gave the full $2,000 CTC to EVERY dependent; only children under 17 qualify, others (17+, parents, relatives) get the $500 ODC -> 17+ dependents over-credited by $1,500 each AND the refundable ACTC was inflated by counting non-children | fail: no 'credit_for_other_dependents' key; 3 deps (1 other) -> $6,000 CTC — pass: $4,000 CTC + $500 ODC; default (no input) -> $4,000/$0 (no regression); phaseout reduces ODC first ($410k MFJ -> ODC $0, CTC $4,000); ACTC uses children only (1 child -> $1,700 not $3,400 cap) | gated? N | PR #91
 
 **MAINTAIN:** #90 merged to main (HEAD 76e460c); baseline suite green at 1062. Rebase-before-push held.
 
