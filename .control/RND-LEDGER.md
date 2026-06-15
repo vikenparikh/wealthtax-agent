@@ -1316,3 +1316,24 @@ line_items/credits['credit_for_other_dependents']. Suite 1062 -> 1066. All exist
 **Flagged follow-up:** the same num_deps-as-qualifying-children proxy still affects EITC (#90) — a unified
 qualifying-child input (with the differing CTC<17 vs EITC<19 age tests) would close both. Remaining tracked:
 US state artifact (design); IN surcharge marginal relief (narrow+risky); <100% FPL (input); 2025 CWB (CRA).
+
+## Cycle 55 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | EITC qualifying-children count distinct from raw dependent count (closes #90 flagged compromise) | _compute_eitc bucketed on raw num_deps; an EITC qualifying child is under-19 (not a parent/relative), so a filer supporting a dependent PARENT got the 1-child EITC (~$4,213) instead of the childless credit -> ~$3,938 over-credit for a common situation | fail: dependent-parent (num_eitc_qualifying_children=0) -> $4,213 — pass: -> $274.75 (childless, age-40 gate passes); default (no input) -> $4,213 (no regression); coexists with #91 ODC (17yo: ODC $500 + EITC 1-child) | gated? N | PR #TBD
+
+**MAINTAIN:** #91 merged to main (HEAD 7bca23c); baseline suite green at 1066. Rebase-before-push held.
+
+**Closes a self-flagged defect:** _compute_eitc's own docstring already admitted "num_children is approximated
+by the dependent count, so this can over-credit dependents who are not EITC-qualifying children." RESEARCH
+subagent verified EITC qualifying-child = under-19/under-24-student/disabled (NOT a parent), confirmed it's a
+DIFFERENT test than CTC under-17 (so a 17-18yo is an EITC child but a CTC other-dependent), and that the new
+input must be INDEPENDENT from #91's num_other_dependents (they overlap deliberately, don't sum to num_deps).
+SHIP verdict (material + common dependent-parent case).
+
+**Change:** `_num_eitc_qualifying_children(user_answers, num_deps)` defaults to num_deps (no regression),
+capped at num_deps; EITC call site uses it instead of num_deps; childless-age-gate (25-64) handles the
+0-child result correctly via existing logic. Suite 1066 -> 1069.
+
+**Credit-accuracy seam now substantially complete:** ACTC #77, PTC #84/85, EITC #90, EITC-children #55(#92),
+CWB #89, IN-prepaid #88, CTC/ODC split #91. Remaining: US state artifact (design); IN surcharge marginal
+relief (narrow+risky); <100% FPL (input/niche); 2025 CWB (CRA data); IN §234B/C interest. Likely HOLD next.

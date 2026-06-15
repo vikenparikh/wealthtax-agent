@@ -253,6 +253,42 @@ def test_us_actc_uses_qualifying_children_not_other_dependents():
     assert d.line_items["additional_child_tax_credit"] == 1700.0
 
 
+# --- US: EITC qualifying-children count (distinct from CTC's, coexists with ODC) ---
+
+def test_us_eitc_dependent_parent_gets_childless_credit_not_one_child():
+    """A dependent parent/relative is NOT an EITC qualifying child, so the EITC
+    should be the childless credit, not the 1-child credit. Single, age 40, wages
+    $15,000, 1 dependent that is NOT an EITC qualifying child (num_eitc_qualifying_
+    children=0) → childless EITC $274.75, not the $4,213 one-child credit (a ~$3,938
+    over-credit the engine produced by bucketing on the raw dependent count).
+
+    FAILS before the fix: EITC buckets on num_deps=1 → $4,213."""
+    d = compute_us_return([_f("W-2", "US", wages=15000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1",
+                                        "taxpayer_age": "40", "num_eitc_qualifying_children": "0"})
+    assert d.line_items["earned_income_credit"] == 274.75
+
+
+def test_us_eitc_qualifying_children_default_no_regression():
+    """Regression guard: with no num_eitc_qualifying_children, all dependents are
+    treated as EITC qualifying children (current behaviour). 1 dep → $4,213."""
+    d = compute_us_return([_f("W-2", "US", wages=15000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1"})
+    assert d.line_items["earned_income_credit"] == 4213.0
+
+
+def test_us_eitc_children_count_coexists_with_odc_for_17_year_old():
+    """A 17-year-old is a CTC 'other dependent' (ODC) but an EITC qualifying child.
+    The two inputs are independent: num_other_dependents=1 (CTC→ODC $500) and
+    num_eitc_qualifying_children=1 (EITC→1-child credit) coexist without contradiction."""
+    d = compute_us_return([_f("W-2", "US", wages=15000)], 2024,
+                          user_answers={"filing_status": "single", "num_dependents": "1",
+                                        "num_other_dependents": "1", "num_eitc_qualifying_children": "1"})
+    assert d.line_items["credit_for_other_dependents"] == 500.0
+    assert d.line_items["child_tax_credit"] == 0.0
+    assert d.line_items["earned_income_credit"] == 4213.0
+
+
 # --- US: Earned Income Tax Credit (refundable, Form 1040 line 27) ---
 
 def test_us_eitc_one_child_plateau_max_credit():
