@@ -493,6 +493,57 @@ def test_us_ptc_no_cliff_above_400pct_caps_at_8_5pct():
     assert (credit, repay) == (3423.15, 0.0)
 
 
+# --- CA: Canada Workers Benefit (Schedule 6), refundable, single-filer federal v1 ---
+
+def test_ca_cwb_full_basic_amount_below_phaseout():
+    """A low-income worker (working income $15,000, no other deductions so net
+    income = $15,000) gets the full 2024 federal CWB basic max of $1,518: the 27%
+    phase-in (0.27·($15,000−$3,000) = $3,240) is capped at the max, and net income
+    is below the $26,149 phase-out threshold. The engine had no CWB at all, so this
+    refundable credit never reduced the balance / increased the refund.
+
+    FAILS before the fix: no 'canada_workers_benefit' line item (KeyError)."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=15000)], 2024, province="ON")
+    assert d.line_items["canada_workers_benefit"] == 1518.0
+
+
+def test_ca_cwb_partial_phaseout():
+    """Working/net income $30,000 → basic capped at $1,518, reduced by 15% of the
+    $3,851 over the $26,149 threshold ($577.65) → $940.35."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=30000)], 2024, province="ON")
+    assert d.line_items["canada_workers_benefit"] == 940.35
+
+
+def test_ca_cwb_zero_below_working_income_floor():
+    """Working income $2,500 ≤ $3,000 floor → ineligible → CWB $0 (guard)."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=2500)], 2024, province="ON")
+    assert d.line_items["canada_workers_benefit"] == 0.0
+
+
+def test_ca_cwb_zero_when_fully_phased_out():
+    """Net income $40,000 is past the full phase-out point ($36,269 single) → $0."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=40000)], 2024, province="ON")
+    assert d.line_items["canada_workers_benefit"] == 0.0
+
+
+def test_ca_cwb_family_max_when_spouse_or_dependant():
+    """With has_spouse_or_dependant, the family max ($2,616 for 2024) and family
+    threshold ($29,833) apply: working/net $15,000 → full $2,616 (phase-in $3,240
+    capped, below family threshold)."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=15000)], 2024, province="ON",
+                          user_answers={"has_spouse_or_dependant": "true"})
+    assert d.line_items["canada_workers_benefit"] == 2616.0
+
+
+def test_ca_cwb_refundable_increases_refund():
+    """CWB is refundable: with no withholding the refund = CWB minus any residual
+    (here small provincial) tax, and is strictly positive — the credit is paid out,
+    not merely used to reduce tax to zero."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=15000)], 2024, province="ON")
+    assert d.totals["refund"] == round(d.line_items["canada_workers_benefit"] - d.totals["total_tax"], 2)
+    assert d.totals["refund"] > 0
+
+
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---
 
 def test_in_self_occupied_home_loan_loss_sets_off_old_regime():

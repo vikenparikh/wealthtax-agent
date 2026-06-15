@@ -29,6 +29,17 @@ ei:
 # over the threshold and fully phased out above it.
 # OAS recovery tax (clawback) threshold — indexed annually.
 oas_recovery_threshold: 90997
+# Canada Workers Benefit (Schedule 6), FEDERAL basic amount only. Excludes the
+# disability supplement, provincial AB/QC/NU reconfigurations, and true family
+# AFNI (spousal income is not modelled). Single-filer is the high-value path.
+cwb:
+  phase_in_rate: 0.27
+  working_income_floor: 3000
+  max_single: 1518
+  max_family: 2616
+  phaseout_threshold_single: 26149
+  phaseout_threshold_family: 29833
+  phaseout_rate: 0.15
 age_amount:
   maximum: 8790
   net_income_threshold: 44325
