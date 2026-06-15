@@ -86,6 +86,16 @@ def _num_dependents(user_answers: Dict[str, str]) -> int:
         return 0
 
 
+def _num_other_dependents(user_answers: Dict[str, str]) -> int:
+    """Dependents who are NOT CTC qualifying children (17+, parents, relatives) —
+    they get the $500 Credit for Other Dependents, not the $2,000 CTC. Defaults to
+    0 so, with no input, all dependents are treated as qualifying children."""
+    try:
+        return max(0, int(user_answers.get("num_other_dependents", "0")))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _compute_eitc(earned: float, agi: float, num_children: int, status: str, taxpayer_age: float,
                   investment_income: float, feie_claimed: bool, fed_tables: Dict[str, Any]) -> float:
     """Earned Income Tax Credit (refundable, Form 1040 line 27), federal v1.
@@ -156,20 +166,32 @@ def _qualified_dividend_tax(qualified_dividends: float, long_term_gain: float, o
     return round(max(0.0, tax_total - tax_ordinary_only), 2)
 
 
-def _compute_ctc(num_dependents: int, agi: float, status: str, fed_tables: Dict[str, Any]) -> float:
+def _compute_ctc(num_children: int, num_other_deps: int, agi: float, status: str,
+                 fed_tables: Dict[str, Any]) -> tuple[float, float]:
+    """Return (CTC for qualifying children, ODC for other dependents) after the
+    shared §24(h) phase-out. Only children under 17 get the $2,000 CTC; other
+    dependents get the $500 Credit for Other Dependents (non-refundable)."""
     ctc = fed_tables.get("ctc", {})
     per_child = float(ctc.get("per_child", 2000))
+    odc_per = float(ctc.get("odc_per_dependent", 500))
     phaseout_start = float(
         ctc.get("phaseout_start_mfj", 400000) if status == "married_filing_jointly"
         else ctc.get("phaseout_start_single", 200000)
     )
-    base = num_dependents * per_child
+    base_ctc = num_children * per_child
+    base_odc = num_other_deps * odc_per
     if agi <= phaseout_start:
-        return base
-    # §24(b)(2): reduce by $50 for each $1,000 "or fraction thereof" above the
-    # threshold — round the excess UP to the next $1,000, not down.
+        return base_ctc, base_odc
+    # §24(b)(2): one combined phase-out — reduce by $50 per $1,000 (or fraction
+    # thereof) of AGI over the threshold. Apply the reduction to the (lower-value,
+    # non-refundable) ODC first, preserving the more valuable refundable CTC last
+    # (Schedule 8812-consistent / taxpayer-favorable; the exact statutory ordering
+    # only shifts the CTC/ODC split inside the phase-out band).
     excess = math.ceil((agi - phaseout_start) / 1000.0) * 50
-    return max(0.0, base - float(excess))
+    odc = max(0.0, base_odc - float(excess))
+    remaining = max(0.0, float(excess) - base_odc)
+    ctc_children = max(0.0, base_ctc - remaining)
+    return ctc_children, odc
 
 
 def _compute_amt(taxable_income: float, deduction_used: float, status: str, fed_tables: Dict[str, Any]) -> float:
@@ -609,7 +631,15 @@ def compute_us_return(
     preferential_tax = _qualified_dividend_tax(qualified_dividends, long_gain, ordinary_taxable, status, fed_tables)
     federal_tax_before_credits = ordinary_tax + preferential_tax
 
-    ctc = _compute_ctc(num_deps, agi, status, fed_tables)
+    # Split dependents: children under 17 get the CTC, the rest get the ODC.
+    num_other_deps = _num_other_dependents(user_answers)
+    num_qualifying_kids = max(0, num_deps - num_other_deps)
+    ctc, odc = _compute_ctc(num_qualifying_kids, num_other_deps, agi, status, fed_tables)
+    if odc > 0:
+        notes.append(
+            f"Credit for Other Dependents of ${odc:,.2f} ({num_other_deps} non-child "
+            "dependent(s) at $500 each, non-refundable)."
+        )
 
     # Premium Tax Credit reconciliation (1095-A)
     aptc = _sum_field(extracts, "1095-A", "advance_ptc")
@@ -617,7 +647,7 @@ def compute_us_return(
     slcsp = _sum_field(extracts, "1095-A", "annual_slcsp")
     ptc_credit, ptc_repayment = _compute_ptc(annual_premiums, slcsp, aptc, agi, num_deps, status, fed_tables)
 
-    federal_tax = max(0.0, federal_tax_before_credits - ctc - ptc_credit) + ptc_repayment
+    federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit) + ptc_repayment
 
     # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
     # When a family's tax liability is too low to absorb the full non-refundable
@@ -628,13 +658,15 @@ def compute_us_return(
     actc_per_child = float(_ctc_tbl.get("refundable_per_child", 1700))
     actc_floor = float(_ctc_tbl.get("earned_income_floor", 2500))
     actc_rate = float(_ctc_tbl.get("refundable_rate", 0.15))
-    ctc_absorbed = min(ctc, max(0.0, federal_tax_before_credits - ptc_credit))
+    # Only the CTC (qualifying children) is refundable — the ODC never is. The ODC,
+    # being non-refundable, absorbs tax first so more of the refundable CTC survives.
+    ctc_absorbed = min(ctc, max(0.0, federal_tax_before_credits - ptc_credit - odc))
     unused_ctc = ctc - ctc_absorbed
     actc = 0.0
-    if unused_ctc > 0 and num_deps > 0:
+    if unused_ctc > 0 and num_qualifying_kids > 0:
         actc_earned = wages + max(0.0, self_employment_income)
         earned_limit = max(0.0, (actc_earned - actc_floor) * actc_rate)
-        actc = round(min(unused_ctc, num_deps * actc_per_child, earned_limit), 2)
+        actc = round(min(unused_ctc, num_qualifying_kids * actc_per_child, earned_limit), 2)
     if actc > 0:
         notes.append(
             f"Additional Child Tax Credit of ${actc:,.2f} (refundable portion of the "
@@ -772,6 +804,7 @@ def compute_us_return(
         "amt_tax": amt_tax,
         "niit": niit,
         "child_tax_credit": ctc,
+        "credit_for_other_dependents": odc,
         "additional_child_tax_credit": actc,
         "earned_income_credit": eitc,
         "premium_tax_credit": ptc_credit,
@@ -794,6 +827,7 @@ def compute_us_return(
 
     credits = {
         "child_tax_credit": ctc,
+        "credit_for_other_dependents": odc,
         "additional_child_tax_credit": actc,
         "earned_income_credit": eitc,
         "standard_deduction": std_deduction,

@@ -93,6 +93,7 @@ ctc:
   refundable_per_child: 1700
   earned_income_floor: 2500
   refundable_rate: 0.15
+  odc_per_dependent: 500   # Credit for Other Dependents (TCJA, non-refundable, flat 2018-2025)
 eitc:
   investment_income_limit: 11600
   brackets:

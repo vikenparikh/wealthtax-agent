@@ -1294,3 +1294,25 @@ Suite 1055 -> 1062.
 child of another", MFS-living-apart exception (all MFS barred), half-year residency, combat-pay election,
 prior-year-earned-income lookback. Follow-up: dedicated num_qualifying_children input. Remaining tracked:
 US state artifact (design); IN surcharge marginal relief (narrow+risky); <100% FPL exceptions (input).
+
+## Cycle 54 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | split CTC ($2,000 under-17) from the Credit for Other Dependents ($500) | _compute_ctc gave the full $2,000 CTC to EVERY dependent; only children under 17 qualify, others (17+, parents, relatives) get the $500 ODC -> 17+ dependents over-credited by $1,500 each AND the refundable ACTC was inflated by counting non-children | fail: no 'credit_for_other_dependents' key; 3 deps (1 other) -> $6,000 CTC — pass: $4,000 CTC + $500 ODC; default (no input) -> $4,000/$0 (no regression); phaseout reduces ODC first ($410k MFJ -> ODC $0, CTC $4,000); ACTC uses children only (1 child -> $1,700 not $3,400 cap) | gated? N | PR #91
+
+**MAINTAIN:** #90 merged to main (HEAD 76e460c); baseline suite green at 1062. Rebase-before-push held.
+
+**Distinct over-credit bug (not a refundable-credit variant):** unlike the refundable wave (#88/89/90 which
+ADDED missing credits), this CORRECTS an over-credit in a core existing credit. RESEARCH subagent gave a
+SHIP verdict, confirmed ODC=$500 flat 2023-2025, the combined CTC+ODC phase-out, and that the ACTC must
+count qualifying children only. The one MEDIUM-confidence point (CTC-vs-ODC phaseout ordering) -> chose
+ODC-first (taxpayer-favorable, 8812-consistent; only shifts the split inside the phaseout band) w/ comment.
+
+**Change:** new `_num_other_dependents` input (default 0 -> all deps are children -> NO regression);
+`_compute_ctc` returns (ctc_children, odc); federal_tax consumes ctc+odc; ACTC uses num_qualifying_kids
+and ODC absorbs tax first (so refundable CTC survives); odc_per_dependent:500 in ctc YAML x3 years;
+line_items/credits['credit_for_other_dependents']. Suite 1062 -> 1066. All existing CTC/ACTC tests green
+(additive). 
+
+**Flagged follow-up:** the same num_deps-as-qualifying-children proxy still affects EITC (#90) — a unified
+qualifying-child input (with the differing CTC<17 vs EITC<19 age tests) would close both. Remaining tracked:
+US state artifact (design); IN surcharge marginal relief (narrow+risky); <100% FPL (input); 2025 CWB (CRA).
