@@ -1319,7 +1319,7 @@ US state artifact (design); IN surcharge marginal relief (narrow+risky); <100% F
 
 ## Cycle 55 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | EITC qualifying-children count distinct from raw dependent count (closes #90 flagged compromise) | _compute_eitc bucketed on raw num_deps; an EITC qualifying child is under-19 (not a parent/relative), so a filer supporting a dependent PARENT got the 1-child EITC (~$4,213) instead of the childless credit -> ~$3,938 over-credit for a common situation | fail: dependent-parent (num_eitc_qualifying_children=0) -> $4,213 — pass: -> $274.75 (childless, age-40 gate passes); default (no input) -> $4,213 (no regression); coexists with #91 ODC (17yo: ODC $500 + EITC 1-child) | gated? N | PR #TBD
+MATRIX | EITC qualifying-children count distinct from raw dependent count (closes #90 flagged compromise) | _compute_eitc bucketed on raw num_deps; an EITC qualifying child is under-19 (not a parent/relative), so a filer supporting a dependent PARENT got the 1-child EITC (~$4,213) instead of the childless credit -> ~$3,938 over-credit for a common situation | fail: dependent-parent (num_eitc_qualifying_children=0) -> $4,213 — pass: -> $274.75 (childless, age-40 gate passes); default (no input) -> $4,213 (no regression); coexists with #91 ODC (17yo: ODC $500 + EITC 1-child) | gated? N | PR #92
 
 **MAINTAIN:** #91 merged to main (HEAD 7bca23c); baseline suite green at 1066. Rebase-before-push held.
 
@@ -1334,6 +1334,6 @@ SHIP verdict (material + common dependent-parent case).
 capped at num_deps; EITC call site uses it instead of num_deps; childless-age-gate (25-64) handles the
 0-child result correctly via existing logic. Suite 1066 -> 1069.
 
-**Credit-accuracy seam now substantially complete:** ACTC #77, PTC #84/85, EITC #90, EITC-children #55(#92),
+**Credit-accuracy seam now substantially complete:** ACTC #77, PTC #84/85, EITC #90, EITC-children #92,
 CWB #89, IN-prepaid #88, CTC/ODC split #91. Remaining: US state artifact (design); IN surcharge marginal
 relief (narrow+risky); <100% FPL (input/niche); 2025 CWB (CRA data); IN §234B/C interest. Likely HOLD next.
