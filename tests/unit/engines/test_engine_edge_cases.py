@@ -10,7 +10,7 @@ Social-Security cap; and CA prior-loss gain offset.
 from wealthtax_agent.config.tax_tables import load_tables
 from wealthtax_agent.engines.ca_engine import compute_ca_return
 from wealthtax_agent.engines.in_engine import compute_in_return
-from wealthtax_agent.engines.us_engine import _compute_amt, compute_us_return
+from wealthtax_agent.engines.us_engine import _compute_amt, _compute_ptc, compute_us_return
 from wealthtax_agent.state import FormExtract
 
 
@@ -421,6 +421,38 @@ def test_us_amt_2024_values_unchanged():
     """Regression guard: 2024 single, AMTI $300k, below phaseout & breakpoint →
     ($300,000 − $85,700)·26% = $55,718."""
     assert _compute_amt(300000.0, 0.0, "single", load_tables("us", 2024)) == 55718.0
+
+
+# --- US: Premium Tax Credit FPL base is year-specific (Form 8962) ---
+
+def test_us_ptc_fpl_base_year_specific_2023():
+    """The PTC poverty-line base is indexed annually (a coverage year uses the
+    prior calendar year's HHS guidelines): 1-person base 2023 $13,590 / 2024
+    $14,580 / 2025 $15,060. The engine hardcoded the 2024-tax-year base ($14,580)
+    for every year, mis-placing filers across applicable-percentage buckets.
+
+    Single, AGI $35,000, $12,000 premiums/SLCSP, no APTC. With the 2023 base the
+    FPL% is 2.575 (6% contribution → $2,100) → credit $9,900. The hardcoded base
+    gave FPL% 2.401 (4% → $1,400) → $10,600.
+
+    FAILS before the fix: _compute_ptc ignores the year tables → returns $10,600."""
+    credit, repay = _compute_ptc(12000.0, 12000.0, 0.0, 35000.0, 0, "single", load_tables("us", 2023))
+    assert (credit, repay) == (9900.0, 0.0)
+
+
+def test_us_ptc_fpl_base_year_specific_2025():
+    """Single, AGI $37,000. With the 2025 base ($15,060) FPL% is 2.457 (4% →
+    $1,480) → credit $10,520; the hardcoded 2024 base gave FPL% 2.538 (6% →
+    $2,220) → $9,780."""
+    credit, repay = _compute_ptc(12000.0, 12000.0, 0.0, 37000.0, 0, "single", load_tables("us", 2025))
+    assert (credit, repay) == (10520.0, 0.0)
+
+
+def test_us_ptc_fpl_base_2024_unchanged():
+    """Regression guard: 2024 single, AGI $35,000 → FPL% 2.401 (4% → $1,400) →
+    credit $10,600 (the value the hardcoded base produced)."""
+    credit, repay = _compute_ptc(12000.0, 12000.0, 0.0, 35000.0, 0, "single", load_tables("us", 2024))
+    assert (credit, repay) == (10600.0, 0.0)
 
 
 # --- India: house-property loss set-off against other income (§71(3A), old regime) ---

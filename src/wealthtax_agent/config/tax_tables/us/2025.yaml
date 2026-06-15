@@ -32,6 +32,11 @@ standard_deduction:
 # Alternative Minimum Tax (Form 6251) — indexed annually. Exemption and
 # phaseout vary by filing status; the 26%/28% rate breakpoint is single-valued
 # (the engine does not model MFS, whose breakpoint is half).
+# Federal poverty line (48 contiguous states + DC) for the Premium Tax Credit.
+# A coverage year uses the PRIOR calendar year's HHS guidelines (2024 guidelines).
+fpl:
+  one_person: 15060
+  additional_person: 5380
 amt:
   exemption:
     single: 88100
