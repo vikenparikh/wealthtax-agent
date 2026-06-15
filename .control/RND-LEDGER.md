@@ -1070,7 +1070,7 @@ may trend toward NOTHING-HIGH-VALUE unless a fresh angle surfaces.
 
 ## Cycle 41 — FULL LIFECYCLE (2026-06-15)
 
-MATRIX | include RRIF income in CA pension income amount (line 31400) at 65+ | the credit base used only T4A superannuation and excluded RRIF outright (commented "conservatively excluded"); but RRIF (T4RIF) IS eligible pension income at 65+ -> a 65+ retiree on the standard RRSP->RRIF path (often no employer superannuation) was denied up to $300 credit | fail: RRIF-only 65+ -> pension_income_credit $0; super+RRIF -> $180 (super only) — pass: RRIF-only 65+ -> $300 (min(10k,2k)*0.15); super $1,200 + RRIF $5,000 -> $300 (combined base capped at $2k); under-65 RRIF guard -> $0 | gated? N | PR #TBD
+MATRIX | include RRIF income in CA pension income amount (line 31400) at 65+ | the credit base used only T4A superannuation and excluded RRIF outright (commented "conservatively excluded"); but RRIF (T4RIF) IS eligible pension income at 65+ -> a 65+ retiree on the standard RRSP->RRIF path (often no employer superannuation) was denied up to $300 credit | fail: RRIF-only 65+ -> pension_income_credit $0; super+RRIF -> $180 (super only) — pass: RRIF-only 65+ -> $300 (min(10k,2k)*0.15); super $1,200 + RRIF $5,000 -> $300 (combined base capped at $2k); under-65 RRIF guard -> $0 | gated? N | PR #81
 
 **MAINTAIN:** #80 merged to main (HEAD 77cbcd2); baseline suite green at 1023. Rebase-before-push held.
 
