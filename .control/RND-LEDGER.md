@@ -1271,7 +1271,7 @@ or US state artifact (design), or HOLD.
 
 ## Cycle 53 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | add US Earned Income Tax Credit (EITC, Form 1040 line 27) as a refundable credit | the engine omitted the EITC entirely (noted out-of-scope x2); it is the single largest refundable credit for low-income workers (up to $7,830 for 3+ kids, 2024) -> their refund was understated by thousands. Direct US analog of the CA CWB (#89) | fail: no 'earned_income_credit' line_item — pass: 1 kid $15k -> $4,213 (plateau); $40k single -> $1,451.66 (phaseout); MFJ $40k -> $2,557.47 (higher start); 2 kids + $12k investment -> $0 (cliff); childless no-age -> $0; childless age30 $9k -> $632 | gated? N | PR #TBD
+MATRIX | add US Earned Income Tax Credit (EITC, Form 1040 line 27) as a refundable credit | the engine omitted the EITC entirely (noted out-of-scope x2); it is the single largest refundable credit for low-income workers (up to $7,830 for 3+ kids, 2024) -> their refund was understated by thousands. Direct US analog of the CA CWB (#89) | fail: no 'earned_income_credit' line_item — pass: 1 kid $15k -> $4,213 (plateau); $40k single -> $1,451.66 (phaseout); MFJ $40k -> $2,557.47 (higher start); 2 kids + $12k investment -> $0 (cliff); childless no-age -> $0; childless age30 $9k -> $632 | gated? N | PR #90
 
 **MAINTAIN:** #89 merged to main (HEAD 904cf00); baseline suite green at 1055. Rebase-before-push held.
 
