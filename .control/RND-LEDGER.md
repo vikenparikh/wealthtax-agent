@@ -1051,7 +1051,7 @@ new inputs). Next cycle sweep CA retiree credits or a fresh statutory angle.
 
 ## Cycle 40 — FULL LIFECYCLE (2026-06-15)
 
-MATRIX | add CA federal age amount credit (line 30100) for taxpayers 65+ | engine had pension income amount but NO age amount; every Canadian senior taking the credit was over-taxed. Lowest-rate credit on a base that phases out at 15% of net income over the year threshold | fail: no 'age_amount_credit' line item (KeyError); age flag changes nothing — pass: 65+ at $40k net -> $1,318.50 credit (8790x0.15) -> -$1,318.50 federal tax; phase-out at $64,325 net -> $868.50 (5,790x0.15); under-65 guard -> $0 | gated? N | PR #TBD
+MATRIX | add CA federal age amount credit (line 30100) for taxpayers 65+ | engine had pension income amount but NO age amount; every Canadian senior taking the credit was over-taxed. Lowest-rate credit on a base that phases out at 15% of net income over the year threshold | fail: no 'age_amount_credit' line item (KeyError); age flag changes nothing — pass: 65+ at $40k net -> $1,318.50 credit (8790x0.15) -> -$1,318.50 federal tax; phase-out at $64,325 net -> $868.50 (5,790x0.15); under-65 guard -> $0 | gated? N | PR #80
 
 **MAINTAIN:** #79 merged to main (HEAD 4bfc9c9); baseline suite green at 1020. Rebase-before-push held.
 
