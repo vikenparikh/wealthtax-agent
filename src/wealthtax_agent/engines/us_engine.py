@@ -440,9 +440,10 @@ def compute_us_return(
     # Social Security taxability — IRS provisional-income worksheet (Pub 915),
     # replacing the prior flat-85% inclusion which over-taxed low/middle-income
     # retirees (an SS-only retiree owes $0, not 85%). Provisional income is
-    # modified AGI excluding SS plus one-half of benefits (tax-exempt interest,
-    # which would also be added, is not tracked by this prototype).
-    provisional_base = max(0.0, other_income - above_line)
+    # modified AGI excluding SS, plus tax-exempt interest (1099-INT box 8, added
+    # back under §86), plus one-half of benefits (added inside the worksheet).
+    tax_exempt_interest = _sum_field(extracts, "1099-INT", "tax_exempt_interest")
+    provisional_base = max(0.0, other_income - above_line) + tax_exempt_interest
     taxable_ssa = _taxable_social_security(ssa_net, provisional_base, status)
 
     total_income = round(other_income + taxable_ssa, 2)

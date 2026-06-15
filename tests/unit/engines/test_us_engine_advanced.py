@@ -404,3 +404,21 @@ def test_excess_social_security_tax_not_credited_for_single_employer():
                             fields={"wages": 250000.0, "social_security_tax_withheld": 15000.0})]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
     assert draft.line_items["excess_social_security_tax"] == 0.0
+def test_ss_provisional_income_includes_tax_exempt_interest():
+    """§86 adds tax-exempt interest (1099-INT box 8) back into provisional income
+    for Social Security taxability — it was captured but omitted, understating
+    the taxable portion of benefits for retirees with muni bonds.
+
+    $10k pension + $20k SS + $20k tax-exempt interest, single: provisional =
+    10,000 + 20,000 + 0.5*20,000 = 40,000 -> 85% tier -> $9,600 taxable.
+    FAILS before the fix: provisional 20,000 < base -> $0 taxable."""
+    extracts = [
+        _pension(10000.0),
+        _ssa(20000.0),
+        FormExtract(form_code="1099-INT", jurisdiction="US",
+                    fields={"tax_exempt_interest": 20000.0}),
+    ]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["taxable_social_security"] == 9600.0
+    # the muni interest itself is NOT added to taxable income
+    assert draft.line_items["interest_income"] == 0.0
