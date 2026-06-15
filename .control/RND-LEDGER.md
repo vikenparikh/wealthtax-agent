@@ -1247,7 +1247,7 @@ CWB/GST (engine scope); <100% FPL exceptions (new input); IN surcharge marginal 
 
 ## Cycle 52 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | add Canada Workers Benefit (CWB, Schedule 6) as a refundable credit | the CA engine modelled only non-refundable credits + TDS-style withholding; the CWB is a REFUNDABLE credit claimed ON the T1 (unlike GST/CCB which CRA pays separately) that increases the return refund -> low-income workers' refund was understated by up to $1,518 (single) / $2,616 (family) | fail: no 'canada_workers_benefit' line_item (KeyError) — pass: $15k working income -> full $1,518; $30k -> $940.35 (partial phaseout); $2,500 below floor -> $0; $40k fully phased out -> $0; family flag -> $2,616; refundable (refund = CWB − residual tax) | gated? N | PR #TBD
+MATRIX | add Canada Workers Benefit (CWB, Schedule 6) as a refundable credit | the CA engine modelled only non-refundable credits + TDS-style withholding; the CWB is a REFUNDABLE credit claimed ON the T1 (unlike GST/CCB which CRA pays separately) that increases the return refund -> low-income workers' refund was understated by up to $1,518 (single) / $2,616 (family) | fail: no 'canada_workers_benefit' line_item (KeyError) — pass: $15k working income -> full $1,518; $30k -> $940.35 (partial phaseout); $2,500 below floor -> $0; $40k fully phased out -> $0; family flag -> $2,616; refundable (refund = CWB − residual tax) | gated? N | PR #89
 
 **MAINTAIN:** #88 merged to main (HEAD 1c5539f); baseline suite green at 1049. Rebase-before-push held.
 
