@@ -955,3 +955,16 @@ on the sub-population (here, itemizers in high-tax states).
 Suite (branch) 1005. NOT converged — re-audit other "niche"-tagged captured-but-unused fields
 (dependent_care_benefits, excess SS/medicare withholding -> multi-employer refund, allocated/SS tips)
 for any with a non-trivial sub-population next cycle.
+## Cycle 34 — FULL LIFECYCLE (2026-06-14)
+
+MATRIX | credit excess Social Security tax from multiple employers | W-2 box 4 SS tax withheld captured but unread; 2+ employers over the wage base over-withhold and the excess is a refundable credit (Sch 3 line 11) -> multi-job filers lost a material refund | fail: excess_social_security_tax KeyError — pass: 2 W-2s $14,880 -> $4,426.80 credit | gated? N | PR #74
+
+**MAINTAIN:** #72 merged; #73 rebased onto main + MERGEABLE after merge-train conflict (ledger union,
+lease-pushed). main green at 1005. Adopted ALWAYS-rebase-before-push (git fetch + git rebase
+origin/main just before each push) to stop the shared-ledger collisions — this PR pushed conflict-free.
+
+**Angle (continue niche-revisit):** excess SS tax credit — sub-population (multiple jobs over the
+wage base) is real, amount material. Gated on 2+ W-2s (single-employer over-withholding is the
+employer's to fix). Suite -> 1007. Remaining niche captured-but-unused: dependent_care_benefits
+(needs the dependent-care credit, complex), allocated/SS tips (extraction nuance). NOT converged but
+the captured-but-unused vein is nearly exhausted of clean items.

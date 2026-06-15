@@ -383,3 +383,24 @@ def test_salt_prefers_schedule_a_total_over_w2_no_double_count():
     ]
     draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
     assert draft.line_items["salt_deduction_capped"] == 7000.0  # Sch A total, not 7000+9000
+def test_excess_social_security_tax_credited_for_multiple_employers():
+    """Two employers each withhold SS tax on wages near the cap; combined SS tax
+    withheld exceeds the annual maximum (6.2% * 168,600 = 10,453.20). The excess
+    is a refundable credit. Captured (W-2 box 4) but never applied before.
+
+    FAILS before the fix: excess Social Security tax not credited."""
+    w2 = lambda w, ss: FormExtract(form_code="W-2", jurisdiction="US",
+                                   fields={"wages": w, "social_security_tax_withheld": ss})
+    extracts = [w2(120000.0, 7440.0), w2(120000.0, 7440.0)]  # 14,880 withheld
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["excess_social_security_tax"] == round(14880.0 - 0.062 * 168600, 2)  # 4,426.80
+    assert any("Excess Social Security" in n for n in draft.notes)
+
+
+def test_excess_social_security_tax_not_credited_for_single_employer():
+    """Guard: a single employer's over-withholding is the employer's to correct,
+    not a refundable credit — no excess SS credit with one W-2."""
+    extracts = [FormExtract(form_code="W-2", jurisdiction="US",
+                            fields={"wages": 250000.0, "social_security_tax_withheld": 15000.0})]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["excess_social_security_tax"] == 0.0
