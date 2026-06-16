@@ -1819,3 +1819,33 @@ ca_netfile 6-components #121, in_itr ScheduleBP (this). Combined with the credit
 line19/20 #119, in_itr 80CCD2 #118, ca_netfile CWB #114) and tax-balance reconciliation (#113/#114/#117) -> the
 engine<->serializer completeness sweep is COMPLETE. Next non-colliding work needs a NEW surface or an engine PR to merge
 (US 1099-R §72(t) / IN §80DD-80U await us_engine/in_engine freeing). Expect HOLD next cycle unless queue drains.
+
+## Cycle 90 — HONEST HOLD (2026-06-16) [5-primitive: all non-colliding surfaces converged; 4 engine PRs block the rest]
+
+**MAINTAIN:** origin/main HEAD 29105d3 (#122 in_itr ScheduleBP merged); #116/#111/#105/#102 OPEN (all 4 engine/config feature-adds, stuck — operator has not merged); suite green 1148.
+
+**DECISION: HOLD (no PR, no padding).** RESEARCH audited FOUR fresh non-colliding angles (distinct from the now-complete
+completeness sweep) and found all clean; I independently spot-verified the two load-bearing claims.
+
+- **Serializer VALUE-correctness / mis-mapping** (us_mef/ca_netfile/in_itr/ca_540/quarterly/pdf_fill): every line reads
+  the correct engine key with correct sign, no double-count. Verified NOT double-counts: in_itr TotalChapterVIA +=
+  section_80ccd_2 (engine excludes it from chapter_via_total, #118); ca_540 total_tax=state_tax already folds MHS
+  surcharge (us_engine:865); us_mef line2b=interest_income is taxable-only (tax-exempt correctly excluded).
+- **corrections/intake.py NL→extract field names**: every emitted field matches the engine's read. SELF-VERIFIED:
+  intake emits MEDICAL-80D/self_premium (intake:183) == in_engine:379 _sum_field read. Lakh/crore/k/m magnitudes correct.
+- **ingest/dedupe.py**: SELF-VERIFIED form_fingerprint = jurisdiction:form_code:_payer_of:key_sum (dedupe:63), _payer_of
+  falls back to source_filename (dedupe:31) -> two W-2s from different files = different fingerprints = both kept. No
+  over-aggressive income-dropping. The only collision (empty payer + identical filename + identical wages) is an
+  intentional true-duplicate skip.
+- **optimize.py / reason_tax.py**: optimize.py is ADVISORY-only (ranked OptimizationSuggestion hints; never feeds values
+  into engine or artifacts) -> a suggestion-quality imperfection is not a filing-correctness bug. Nothing shippable.
+
+**ENGINE<->SERIALIZER + PIPELINE-NODE SWEEP COMPLETE.** Completeness (3 sub-veins × 3 jurisdictions, #113-#122),
+value-correctness (this cycle), intake field-mapping, dedupe fingerprinting, extractor box-maps, residency, cross_border,
+state/province configs — ALL verified clean. The non-colliding surface is genuinely converged.
+
+**Remaining backlog ALL blocked on a contended engine file:** US 1099-R box7 §72(t) early-withdrawal penalty (us_engine.py
+vs #105); IN §80DD/§80U disability + §80EEB EV-loan (in_engine.py vs #116); HoH->single state-bracket mapping (us_engine.py
+vs #105); IN surcharge marginal relief (risky-entangled). **UNBLOCK:** any of #116/#111/#105/#102 merges -> frees its
+engine file -> the queued engine-side fixes become shippable. Until the queue drains -> honest HOLD. (4 PRs stuck open ~all
+session; this is the 4th HOLD: cycles 81/83/90 + this — convergence under the current PR-blocked state.)
