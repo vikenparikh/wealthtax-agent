@@ -50,6 +50,19 @@ ptc:
     - [3.00, 0.060]
     - [4.00, 0.085]
   cap_applicable_pct: 0.085
+# Education credits (Form 8863): American Opportunity (AOTC) + Lifetime
+# Learning (LLC). Phase-outs are statutory/fixed (§25A(d)), not indexed.
+education_credits:
+  aotc_max: 2500
+  aotc_100pct_threshold: 2000
+  aotc_25pct_threshold: 2000
+  aotc_refundable_pct: 0.40
+  llc_rate: 0.20
+  llc_expense_cap: 10000
+  phaseout_start_single: 80000
+  phaseout_end_single: 90000
+  phaseout_start_mfj: 160000
+  phaseout_end_mfj: 180000
 amt:
   exemption:
     single: 85700

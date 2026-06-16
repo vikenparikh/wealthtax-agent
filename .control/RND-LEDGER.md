@@ -1625,3 +1625,17 @@ Suite 1102 -> 1104.
 advance-tax-26AS #108, CA T4A lump-sum #75(this). REMAINING = only low-value/cosmetic: 1099-DIV box5 §199A REIT
 dividends (QBI, ~20% of a niche field); §80D add-both harmonization (double-count risk, no current test triggers it);
 T4RIF box22 (sign-ambiguous). The captured-but-unused VEIN IS NOW ESSENTIALLY EXHAUSTED -> expect HOLD/low-value next.
+
+## Cycle 76 — FULL LIFECYCLE (2026-06-16) [5-primitive: federal-completeness pivot -> worktree -> PR]
+
+MATRIX | US education credits (AOTC + Lifetime Learning, Form 8863) | the 1098-T extractor captured box 1 tuition + box 5 scholarships but NO US engine code ever read them -> a real federal credit worth up to $2,500/student (40% refundable) was entirely absent | fail-before: line_items has no 'education_credit_chosen' key (KeyError) -> pass-after: single MAGI $50k, $4k tuition -> AOTC $2,500 (nonref $1,500 cuts federal_tax, refundable $1,000 cuts balance); MAGI $85k -> 0.5 phaseout -> $1,250; $4k less $1,500 scholarship -> net $2,500 -> $2,125 | gated? N | PR #110
+
+**MAINTAIN:** origin/main HEAD 3b656d3 (#109 T4A merged); base == HEAD, no rebase needed; baseline suite green at 1104.
+
+**Pivot OFF the (now-exhausted) captured-but-unused vein into FEDERAL COMPLETENESS.** Take-the-better v1: compute
+both AOTC and LLC, pick the larger, apply MAGI phaseout ($80-90k single / $160-180k MFJ), split refundable
+(40% AOTC only) from non-refundable. One YAML block (fixed across 2023/24/25), one helper
+(`_compute_education_credits`), two one-token edits to the tax/balance lines, 6 new line_items.
+Sharp edge handled: structured extractor emits `qualified_tuition_payments` while NL intake emits
+`qualified_tuition_paid`/`qualified_education_expense` -> engine sums all spellings or NL tuition yields $0.
+Confidence: fixed-statutory thresholds (>=90%); MFS guard is defensive (engine maps MFS->single). Suite 1104 -> 1113.
