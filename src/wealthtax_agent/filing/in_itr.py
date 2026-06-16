@@ -43,6 +43,14 @@ def serialize_itr(
                 "Section24bSelfOccupied": _f("section_24b_self_occupied"),
                 "NetIncome": _f("income_house_property"),
             },
+            # Profits & Gains of Business or Profession (PGBP). The engine folds
+            # business_income into slab_income (and thus taxable_income), but the ITR
+            # had no Business schedule — so the income was invisible in the artifact
+            # even though it was taxed. Placed between House Property and Capital Gains
+            # to match the ITR head ordering.
+            "ScheduleBP_Business": {
+                "NetIncome": _f("business_income"),
+            },
             "ScheduleCG_CapitalGains": {
                 "STCGEquityTotal": _f("stcg_equity_total"),
                 "LTCGEquityTotal": _f("ltcg_equity_total"),
