@@ -355,6 +355,7 @@ def _compute_one_regime(
     sec_80e = 0.0
     sec_80g = 0.0
     sec_80tta_ttb = 0.0
+    sec_80gg = 0.0
 
     if regime == "old":
         # 80C — PPF, ELSS, LIC, principal home loan, EPF
@@ -431,7 +432,36 @@ def _compute_one_regime(
                 float(deductions.get("section_80tta_savings_interest_cap", 10000)),
             )
 
-    chapter_via_total = sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80tta_ttb
+        # 80GG — rent paid by a filer who receives NO HRA (self-employed, gig
+        # workers, employees whose package has no HRA line). Old regime only
+        # (§115BAC disallows it) and mutually exclusive with the §10(13A) HRA
+        # exemption, so it is gated on hra_received == 0. Deduction = least of:
+        #   (a) ₹5,000/month = ₹60,000/year,
+        #   (b) 25% of adjusted total income,
+        #   (c) rent paid − 10% of adjusted total income.
+        # "Adjusted total income" for §80GG excludes the §80GG deduction itself and
+        # special-rate capital gains; slab_income already excludes the latter (they
+        # live in the `cg` dict), so slab_income net of the other Chapter VI-A
+        # deductions is the correct, conservative base.
+        if hra_received == 0 and rent_paid > 0:
+            gg = deductions.get("section_80gg", {}) or {}
+            gg_annual_cap = float(gg.get("monthly_cap", 5000)) * 12
+            gg_income_pct = float(gg.get("income_pct", 0.25))
+            gg_excess_pct = float(gg.get("rent_excess_pct", 0.10))
+            other_via = sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80tta_ttb
+            adj_total_income = max(0.0, slab_income - other_via)
+            sec_80gg = max(0.0, min(
+                gg_annual_cap,
+                gg_income_pct * adj_total_income,
+                rent_paid - gg_excess_pct * adj_total_income,
+            ))
+            if sec_80gg > 0:
+                notes.append(
+                    f"§80GG deduction of ₹{sec_80gg:,.0f} for rent paid with no HRA "
+                    "(least of ₹60,000, 25% of income, or rent − 10% of income)."
+                )
+
+    chapter_via_total = sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80tta_ttb + sec_80gg
 
     # 80CCD(2): the employer's NPS contribution is deductible under BOTH regimes
     # (the one Chapter VI-A item not disallowed in the new regime), up to 10% of
@@ -556,6 +586,7 @@ def _compute_one_regime(
         "section_80e": sec_80e,
         "section_80g": sec_80g,
         "section_80tta_or_80ttb": sec_80tta_ttb,
+        "section_80gg": sec_80gg,
         "chapter_via_total": chapter_via_total,
         "gross_total_income": gross_total_income,
         "slab_tax": slab_tax,

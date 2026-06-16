@@ -66,6 +66,11 @@ deductions:
   # AY 2025-26 — old regime ₹15,000; new regime raised to ₹25,000 (Budget 2024).
   section_57_family_pension_old: 15000
   section_57_family_pension_new: 25000
+  # §80GG rent-paid-with-no-HRA: least of ₹5,000/mo, 25% of income, rent − 10% of income.
+  section_80gg:
+    monthly_cap: 5000
+    income_pct: 0.25
+    rent_excess_pct: 0.10
 
 # Capital gains regime change effective Jul 23 2024.
 # Pre-change rates apply to transfers before that date; post-change rates after.
