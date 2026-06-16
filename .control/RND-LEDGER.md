@@ -1448,3 +1448,21 @@ read for the informational voucher lines. Corrected 2 fixtures + 1 new credit-ne
 
 **Table values verified correct C62, engine logic C59, this closes the last unaudited computation surface
 (quarterly vouchers). Remaining ALL design/input/data/risky/rare. EXPECT HOLD next.**
+
+## Cycle 64 — FULL LIFECYCLE (2026-06-15) [dependency-security axis; cross-fleet CVE recon, operator-approved pilot]
+
+MATRIX | remediate application-dependency CVEs — bump starlette + cryptography | a fleet-wide pip-audit recon (across sibling repos) found this repo's venv carried starlette 1.2.1 (CVE-2026-54282/54283, DoS — transitive via fastapi 0.136.3, which permits >=0.46.0) and cryptography 48.0.0 (GHSA-537c-gmf6-5ccf); requirements pinned `cryptography>=42` (floor permitted the patch but the installed version was stale) and had NO explicit starlette floor | fail: pip-audit reports 10 known vulns across 2 APP packages (starlette x3 + cryptography x1; ignoring pip/setuptools toolchain) — pass: add `starlette>=1.3.1` floor + raise `cryptography>=48.0.1` in requirements.txt; venv upgraded to starlette 1.3.1 / cryptography 49.0.0; pip-audit app-dep vulns = 0; 1083 tests green + scripts/validate.sh ✅ (Streamlit boot smoke) | gated? N | PR #98
+
+**Axis note:** this is the dependency-SECURITY axis, orthogonal to the tax-computation lane the cron normally
+works (which is converged — C63 said "EXPECT HOLD next"). Found by a cross-fleet CVE recon run from the
+ai-agents-platform R&D loop; operator approved a single-repo pilot here (most-exposed of the fleet).
+
+**Out of scope (flagged, not fixed):** the venv's `pip` 23.0.1 + `setuptools` 66.1.1 carry their own CVEs,
+but they are the venv BOOTSTRAP toolchain — not declared in requirements.txt, not shipped with the app, and
+low real risk (they affect installing untrusted packages, not the running tax app). Correct fix is the
+Dockerfile/base-image layer, not app requirements; pinning pip in app requirements is non-standard. Left for
+a base-image hygiene pass.
+
+**Change:** requirements.txt — `cryptography>=42`→`cryptography>=48.0.1`, new `starlette>=1.3.1` (explicit
+security floor for the fastapi-transitive dep). No code change (a dep bump has no unit test; the audit delta
++ green suite + boot smoke is the proof). Additive + revertible.
