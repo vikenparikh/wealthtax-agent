@@ -2260,3 +2260,30 @@ NOTE: #143 merged mid-cycle (main 0d39938) -> #144 now DIRTY on ledger; rebase s
 missing-whole-feature angle keeps producing — and routing each new feature to a DIFFERENT jurisdiction/file avoids the
 us_engine pile-up. Next CA/IN candidates still absent: IN §80EE (₹50k home-loan interest, fixed), CA volunteer-firefighter
 ($3,000->$450) + search-and-rescue amounts (fixed).
+
+---
+
+## Cycle 154 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — IN §80GGC political-donation deduction] (PR #146)
+
+MATRIX | add IN §80GGC deduction for donations to political parties / electoral trusts | in_engine had NO §80GGC (grep 0 hits engine/config/serializer). Non-cash donation to a registered political party got $0 (reproduced: ₹50k -> tax delta 0). §80GGC = 100% deductible, NO cap, NO sunset, old-regime only (§115BAC disallows), available to ALL residency incl NR (unlike resident-only §80U/DD/DDB). | fail-before: section_80ggc absent/KeyError -> pass-after: old/ROR ₹50k -> 50000 folded into chapter_via_total, tax strictly lower; new regime -> 0; NR -> 50000 (not resident-gated); no input -> 0 | gated? N | PR #146
+
+Statutory §80GGC ITA 1961, 100% no cap no sunset (non-cash mode = filer's responsibility). Reachability confirmed (IT Dept
+advisory AY2022-25; §80EE/EEA REJECTED on lapsed windows). Conf 90%. Clone of §80G/§80GG: key section_80ggc_political_donation
++ config section_80ggc_percent:1.00, regime=="old" no-residency-gate, chapter_via_total + line_item + ScheduleVIA Section80GGC
+display row (NOT in TotalChapterVIA, #139 rule). GOTCHA: compute_in_return regime= is keyword (default auto); FORM-16 hyphenated.
+
+---
+
+## Cycle 155 — FULL LIFECYCLE (2026-06-16) [PROCESS CHANGE: ledger-free feature PRs + NEW FEATURE CA volunteer amounts] (PR #147)
+
+PROCESS: per user steer, feature PRs now touch ONLY engine+tests+config — NEVER this ledger — to kill the serial RND-LEDGER
+conflict/rebase churn. Ledger is updated via a SEPARATE periodic chore(ledger) PR (this entry batches 154+155). Transition:
+rebased the last ledger-editing PR #146 and dropped its ledger hunk (checkout --ours) -> ledger-free. Light-batch related
+credits (approach a) when natural.
+
+MATRIX | add CA Volunteer Firefighters' Amount (line 31220, s.118.06) + Search-and-Rescue Volunteers' Amount (line 31240, s.118.07) | ca_engine had no volunteer credit (grep 0 hits). A volunteer (200+ hrs) claiming the federal amount got $0. FIXED $3,000 -> 15% = $450 non-refundable, non-indexed. VFA OR SRVA not both -> combined cap min(vfa+srva, 3000). | fail-before: volunteer_amount_credit absent/KeyError -> pass-after: VFA 3000 -> credit 450, fed tax drops exactly 450; SRVA 3000 -> 450; both 3000 -> eligible 3000 credit 450 (mutual-exclusivity); 5000 -> capped 3000; no input -> 0; non-refundable (0-income -> fed tax 0) | gated? N | PR #147
+
+Conf 90%. Clone of home_buyers/property_tax pattern (cap, lowest-rate, fold into fed_non_refundable). Keys
+volunteer_firefighter_amount/search_rescue_volunteer_amount; 200hr eligibility = filer's responsibility. Suite 1277->1283.
+#146 + #147 both CLEAN and mutually NON-conflicting -> proves the ledger-free process. NOTE: Cycle 151 was honest
+NOTHING-HIGH-VALUE (recorded in memory only); 152=#144 US energy, 153=#145 CA HBA (both already on main).
