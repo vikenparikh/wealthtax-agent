@@ -2020,3 +2020,19 @@ correct (in/2025.yaml:15). I re-verified §80GG absence myself before building.
 **ZERO collision:** in_engine.py + in/2024.yaml + in/2025.yaml; none of #111(ca_engine)/#105(us_engine+us-tables)/
 #102(ca/2024.yaml+us/states/ca). Next IN candidates (genuinely absent, smaller pop): §80DD/§80U disability (₹75k/₹1.25L),
 §80EEB EV-loan (₹1.5L). After #105 lands: US 1099-R §72(t).
+
+## Cycle 136 — FULL LIFECYCLE (2026-06-16) [5-primitive: IN §80U/§80DD disability deductions; UNBLOCKED by #116 merge -> worktree -> PR]
+
+MATRIX | add IN §80U (own) + §80DD (dependent) flat disability deductions | in_engine Chapter VI-A had no §80U/§80DD (grep 80u/80dd/disab empty). §80U (resident's own disability) + §80DD (disabled dependent) are FLAT ₹75,000 (≥40%) / ₹1,25,000 (severe ≥80%), expense-independent, old-regime-only, resident-only -> a disabled filer / one maintaining a disabled dependent was over-taxed. Common (~2%+ filers). MERGE-TRAIN cleared #116 (§80GG) -> Chapter VI-A region free | fail-before: ROR old salary ₹12L taxpayer_disability=severe -> section_80u $0, taxable unchanged -> pass-after: ₹1,25,000 (taxable -₹1,25,000); NR barred; RNOR keeps; new regime $0; §80U+§80DD both claimable | gated? N | PR #130
+
+**MAINTAIN:** origin/main HEAD 90a733f (merge-train CLEARED — #102/#105/#111/#116 all landed; 0 open PRs); base==HEAD; baseline 1199.
+
+**First NEW ship after the merge-train cleared.** Flat fixed-statutory amounts (₹75k/₹1.25L, unchanged since AY2016-17),
+two user_answers flags (taxpayer_disability / dependent_disability ∈ none/normal/severe). Gated regime=="old" + resident
+(residency_status != "NR", mirroring §87A; RNOR keeps). §80U + §80DD are DISTINCT sections -> both claimable, not a
+double-count. CRITICAL §80GG-INTERACTION (research caught): the new deductions feed BOTH chapter_via_total AND §80GG's
+other_via base (in_engine:451) — §80GG adjusted-total-income nets all other Chapter-VIA deductions; computed BEFORE the
+§80GG block so they're in scope. +config section_80u_80dd{normal,severe} in in/2024+2025.yaml. +2 line_items. Confidence 92%. Suite 1199->1208.
+
+**ZERO collision (0 open PRs).** RESEARCH rejected US 199A-REIT-box5 alt (entangles with QBI overall-limitation min()) ->
+next-cycle candidate. The per-hunk merge-train discipline paid off: all 4 stuck PRs rebased with ledger-only conflicts.

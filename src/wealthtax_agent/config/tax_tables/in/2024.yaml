@@ -75,6 +75,10 @@ deductions:
     monthly_cap: 5000
     income_pct: 0.25
     rent_excess_pct: 0.10
+  # §80U (own) / §80DD (dependent) flat disability deductions — unchanged since AY 2016-17.
+  section_80u_80dd:
+    normal: 75000     # disability >= 40%
+    severe: 125000    # severe disability >= 80%
 
 # Capital gains (FY 2023-24 — entire year is pre-Jul 23 2024 regime)
 capital_gains:
