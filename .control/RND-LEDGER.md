@@ -1745,3 +1745,23 @@ MATRIX | federal 1040 PDF showed COMBINED fed+state refund/owing, contradicting 
 **Found by a RESEARCH subagent (operator-directed artifact-gen scope).** Suite 1131 green + scripts/validate.sh ✅ (Streamlit boot). No code change to any serializer/engine.
 
 **ZERO collision:** confined to build_return.py's federal-PDF mapping dict — a surface C63 explicitly probed but left (the cron works *_engine.py + the JSON/XML serializers). Ledger-race only; rebase-defensive.
+## Cycle 86 — FULL LIFECYCLE (2026-06-16) [5-primitive: US MeF credits-schedule completeness -> worktree -> PR]
+
+MATRIX | surface ODC on 1040 line 19 + education/PTC non-refundable credits on line 20 | filing/us_mef.py showed line19_child_tax_credit = ONLY credits["child_tax_credit"]. But Form 1040 line 19 is "Child tax credit OR credit for other dependents" (Sch 8812) = CTC + ODC; and the engine nets ODC, education_credit_nonrefundable, AND premium_tax_credit into federal_tax (us_engine: federal_tax = before_credits - ctc - odc - ptc - education_nonref + ptc_repayment). Those 3 credits were INVISIBLE in the artifact -> line19 understated for any filer w/ non-child dependents; a hand-filer recomputing line22 from the shown credits over-states tax | fail-before: ODC $500 -> line19 $2000 (CTC only), no line20 -> pass-after: line19_ctc_or_odc $2500, line20_schedule3_nonrefundable_credits surfaces education+PTC, line21_total_credits sums all | gated? N | PR #119
+
+**MAINTAIN:** origin/main HEAD 78f060c (stuck 2 cycles — queue NOT draining, 6 PRs open #118/#117/#116/#111/#105/#102); base==HEAD, no rebase; baseline 1130.
+
+**Same credits-schedule completeness class as in_itr §80CCD2 (#118), now on the US MeF 1040.** us_mef's tax-balance
+(line24 vs line33) reconciles (fixed #113), but the CREDITS schedule between line16 (gross tax) and line22 (net tax)
+hid every non-refundable credit except CTC. The actual 1040 line 19 = CTC + ODC; ODC was dropped. Education-nonref +
+net-PTC (Schedule-3) were entirely absent. Fix renames line19_child_tax_credit -> line19_ctc_or_odc (=CTC+ODC), adds
+line20_schedule3_nonrefundable_credits (education_nonref + ptc_credit) + line21_total_credits. Engine read-only; all
+keys already emitted (us_engine 977/978/981/987). Did NOT claim line16-line21==line22 (AMT/NIIT/floor/ptc_repayment make
+it inexact) — surfaced credit VALUES only. Confidence 90%. Suite 1130->1134.
+
+**ZERO collision:** only filing/us_mef.py (+ its test); engine read-only. us_mef.py is FREE (#113 merged). Serializer
+credits/deductions-schedule completeness vein: in_itr 80CCD2 #118 + us_mef line19/20 (this) shipped; ca_netfile has no
+itemized-credits total (BPA informational only) -> nothing analogous there. Verified non-CA state/province configs +
+residency + cross_border clean (last cycle). After engine PRs merge -> US 1099-R §72(t) / IN §80DD-80U next.
+
+**REBASED onto origin/main ebd9044 (#117 parallel-lane PDF fix merged mid-cycle); ledger union. No code conflict — ledger-only.**
