@@ -127,3 +127,39 @@ def test_no_ca_540_artifact_for_non_ca_resident():
     arts = build_return_node(_state({"US": draft},
                                     user_answers={"state_of_residence": "NY"})).filing_artifacts
     assert "ca_540_json" not in arts
+
+
+def test_us_1040_pdf_refund_is_federal_only_and_reconciles_with_mef(monkeypatch):
+    # A state-taxed filer: combined balance_owing/refund (the engine nets only
+    # federal payments against fed+state tax) differs from the federal-only figure.
+    # The federal 1040 PDF and its MeF JSON are two views of the SAME federal return
+    # and must agree. Here: federal tax 9000, withholding 10000 -> federal refund
+    # 1000; state_tax 3000 makes the COMBINED total 12000 -> combined owing 2000.
+    # Capture the values fed to the 1040 PDF (template renders to opaque bytes).
+    calls = []
+    real_fill = br.fill_form
+
+    def _capturing_fill(jur, year, form, values):
+        calls.append((form, dict(values)))
+        return real_fill(jur, year, form, values)
+
+    monkeypatch.setattr(br, "fill_form", _capturing_fill)
+
+    draft = DraftReturn(
+        jurisdiction="US",
+        line_items={"federal_tax": 9000.0, "self_employment_tax": 0.0,
+                    "tax_withheld": 10000.0, "state_tax": 3000.0},
+        totals={"total_income": 90000.0, "agi": 85000.0, "taxable_income": 70000.0,
+                "total_tax": 12000.0, "balance_owing": 2000.0, "refund": 0.0},
+    )
+    arts = build_return_node(_state({"US": draft})).filing_artifacts
+    mef = json.loads(_decode(arts["us_mef_json"]))["ReturnData"]["IRS1040"]
+    vals_1040 = next(v for (f, v) in calls if f == "1040")
+
+    # The PDF is fed the FEDERAL-ONLY figure (refund 1000 / owe 0), not the combined
+    # (owe 2000). Fails before the fix, which fed draft.totals (combined) to the PDF.
+    assert vals_1040["refund"] == "1000.00"
+    assert vals_1040["balance_owing"] == "0.00"
+    # ...and it reconciles exactly with the federal MeF JSON for the same return.
+    assert vals_1040["refund"] == f"{mef['line34_overpayment']:.2f}"
+    assert vals_1040["balance_owing"] == f"{mef['line37_amount_you_owe']:.2f}"

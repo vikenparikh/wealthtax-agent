@@ -76,14 +76,25 @@ def _ca_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int) ->
 def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, user_answers: Dict[str, str]) -> Dict[str, FilingArtifact]:
     artifacts: Dict[str, FilingArtifact] = {}
 
+    # The federal 1040 PDF and the MeF JSON are two artifacts of the SAME federal
+    # return, so they must show the SAME headline refund/owe figure. serialize_1040
+    # computes the FEDERAL-ONLY reconciliation (line34 overpayment / line37 amount
+    # owed; #86/#87), whereas draft.totals['balance_owing'/'refund'] are COMBINED
+    # federal+state (us_engine nets only federal payments against fed+state tax). For
+    # a state-taxed (e.g. CA) filer those differ, so feeding the combined totals into
+    # the federal PDF made it contradict its own JSON. Drive the PDF from the MeF
+    # federal-only figures so the two artifacts reconcile by construction.
+    mef_dict = serialize_1040(draft, extracts, year, user_answers)
+    _fed_1040 = mef_dict["ReturnData"]["IRS1040"]
+
     pdf_bytes = fill_form("us", year, "1040", {
         "total_income": f"{draft.totals.get('total_income', 0.0):.2f}",
         "agi": f"{draft.totals.get('agi', 0.0):.2f}",
         "taxable_income": f"{draft.totals.get('taxable_income', 0.0):.2f}",
         "federal_tax": f"{draft.line_items.get('federal_tax', 0.0):.2f}",
         "self_employment_tax": f"{draft.line_items.get('self_employment_tax', 0.0):.2f}",
-        "balance_owing": f"{draft.totals.get('balance_owing', 0.0):.2f}",
-        "refund": f"{draft.totals.get('refund', 0.0):.2f}",
+        "balance_owing": f"{_fed_1040['line37_amount_you_owe']:.2f}",
+        "refund": f"{_fed_1040['line34_overpayment']:.2f}",
         "filing_status": user_answers.get("filing_status", "single"),
     })
     artifacts["us_1040_pdf"] = FilingArtifact(
@@ -94,7 +105,6 @@ def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, us
         content_b64=_b64(pdf_bytes),
     )
 
-    mef_dict = serialize_1040(draft, extracts, year, user_answers)
     mef_json = json.dumps(mef_dict, indent=2)
     artifacts["us_mef_json"] = FilingArtifact(
         jurisdiction="US",

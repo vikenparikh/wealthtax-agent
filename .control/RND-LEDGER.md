@@ -1733,3 +1733,15 @@ identical. Confidence 92%. Suite 1130->1133.
 open PRs — #116 (nearest, IN) edits in_engine.py+in/yamls for §80GG, different file. Serializer-recon vein now: us_mef
 #113 + ca_netfile #114 + in_itr 80CCD2 (this) shipped; ca_540/quarterly/pdf_fill verified clean; build_return is #117.
 RESEARCH also audited us/states ny/tx/fl/wa + ca/provinces ab/bc/on/qc (BPAs/brackets all CORRECT) + residency + cross_border (clean).
+
+## Cycle 83 — FULL LIFECYCLE (2026-06-16) [ARTIFACT-GENERATION axis; research subagent -> worktree -> PR]
+
+MATRIX | federal 1040 PDF showed COMBINED fed+state refund/owing, contradicting its own federal-only MeF JSON | build_return._us_artifacts fed the federal `us_1040_pdf` from draft.totals['balance_owing'/'refund'], which are COMBINED (us_engine: total_tax=fed+state+se, then nets only FEDERAL payments against it). The federal `us_mef_json` was refactored federal-only in #86/#87 (line24=fed+se; line34/37=reconciled). So for any state-taxed (e.g. CA) filer the two FEDERAL artifacts of the SAME return disagreed on the headline figure, and the human-readable PDF — what the filer reads — overstated federal amount-owed. This is the tracked "federal-vs-combined" PDF note (C63), genuinely unfixed | fail-before: CA filer fed_tax 9000/withholding 10000 (federal refund 1000) + state_tax 3000 (combined owing 2000) -> PDF refund "0.00"/balance_owing "2000.00" (≠ MeF) -> pass-after: PDF refund "1000.00"/balance_owing "0.00", == MeF line34/line37 by construction | gated? N | PR #117
+
+**Axis:** operator-directed ARTIFACT-GENERATION scope (real filing SUBMISSION stays operator-gated — untouched here; pure draft-artifact display fix; `transmissible=False` invariant unchanged). Distinct from the cron's per-credit/per-line engine+serializer vein.
+
+**The fix (single-source, no third copy):** serialize_1040 is already called in _us_artifacts and already computes the federal-only line34_overpayment/line37_amount_you_owe. Reordered to compute the MeF dict FIRST, then drive the PDF's refund/balance_owing from `mef_dict[...]["IRS1040"]["line34_overpayment"/"line37_amount_you_owe"]` -> PDF and JSON identical by construction. ONLY build_return.py touched (NOT the cron-hot us_mef.py) -> zero code-collision; no engine/serializer/submission change.
+
+**Found by a RESEARCH subagent (operator-directed artifact-gen scope).** Suite 1131 green + scripts/validate.sh ✅ (Streamlit boot). No code change to any serializer/engine.
+
+**ZERO collision:** confined to build_return.py's federal-PDF mapping dict — a surface C63 explicitly probed but left (the cron works *_engine.py + the JSON/XML serializers). Ledger-race only; rebase-defensive.
