@@ -1962,3 +1962,23 @@ added a direct CA-2024-std-deduction=$5,540 test. No other test depended on the 
 are the 2024 values; the true CA 2025 figure is higher but I do not have it to FTB confidence — left, flagged).
 Deferred bigger items (complex, not table edits): HoH->single state mapping over-taxes CA/NY HoH filers (CA/NY
 have wider HoH schedules + HoH std deduction); NY tax-benefit recapture (supplemental tax) for >$107,650 earners.
+## Cycle 71 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | tax 1099-DIV special-rate LTCG (§1250 25%, collectibles 28%) at their max rates, not 0/15/20% | the 1099-DIV extractor captured box 2b (unrecaptured §1250) + 2d (collectibles) but the engine ignored them -> these subsets of box 2a were taxed at the ordinary 0/15/20% LTCG rate, UNDER-taxing holders (REIT/real-estate-fund §1250; precious-metal-fund collectibles) | fail: no 'special_rate_tax' key; §1250 $10k at $250k income taxed 15% ($1,500) — pass: 25% capped -> $2,500; collectibles -> $2,800; low-bracket ($40k) §1250 -> min(25%,12%)=$1,200 (cap binds) | gated? N | PR #TBD
+
+**MAINTAIN:** #104 merged (HEAD 7658949); #102 (CA std) open; baseline suite green at 1093. Rebase-before-push held.
+
+**Federal-correctness pivot (operator-endorsed after the state-coverage milestone):** classic captured-but-unused
+under-taxation. RESEARCH subagent confirmed boxes 2b/2c/2d captured-ignored; SHIP v1 = §1250 25% + collectibles
+28% (DEFER §1202 box 2c — its 50/75/100% exclusion needs an acquisition date absent from the 1099-DIV). The CRUX:
+these are MAX rates -> tax at min(special_rate, ordinary_marginal_rate) so low-bracket holders aren't over-taxed
+(naive flat 25/28% would over-tax a 12%-bracket holder by $1,300).
+
+**Change:** `_marginal_rate(taxable, brackets)` helper (top-dollar ordinary rate); carve box 2b+2d out of the
+regular-LTCG pool (long_gain_regular into _qualified_dividend_tax); special_rate_tax = 2b*min(.25,ord) +
+2d*min(.28,ord) added to federal_tax_before_credits; line_items unrecaptured_1250_gain/collectibles_28_gain/
+special_rate_tax. KEPT long_term_capital_gain line_item GROSS (carve only for tax) -> existing box-2a test green.
+Simplification flagged: one top-dollar marginal rate per slice, not the full Sch D worksheet stacking. Suite 1093->1098.
+
+**Flagged follow-up:** §1202 box 2c (QSBS exclusion needs acquisition date); full Sch D worksheet bracket-straddle
+precision (current uses single marginal rate). Federal correctness lane otherwise converged.
