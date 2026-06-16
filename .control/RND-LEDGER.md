@@ -1944,3 +1944,24 @@ provincial_cpp_ei_credit / provincial_medical_credit exactly. Table-driven prov_
 **ZERO collision:** ca_engine.py edits at 406/423/525 all clear of #111's hunks (donations ~296, line_items ~497 — my line_item
 at 525 is ~28 lines below). No #105/#102/#116 file overlap. (NOTE: this contradicts cycle-98/99 "converged" — the convergence
 was conditional on no merges; #128 merging reopened the tuition follow-on, exactly the predicted UNBLOCK mechanism.)
+
+## Cycle 104 — HONEST HOLD (2026-06-16) [investigated CA-HoH structural corroboration; remains held on confidence bar]
+
+**MAINTAIN:** origin/main HEAD 7f4e943 UNCHANGED (4th cycle); #116/#111/#105/#102 OPEN; suite 1183.
+
+**DECISION: HOLD.** NEW ANALYSIS this cycle (not a bare steady-state): probed whether the held CA HoH state brackets
+(the only NON-hard-blocked item — us/states/ca/2025.yaml is free of #102) could be unblocked via the STRUCTURAL
+corroboration that worked for NY (#124). RESULT: it CANNOT reach the confidence bar.
+- NY worked because HoH rungs sat cleanly BETWEEN single and MFJ at every rung (verifiable from the repo's own
+  single/MFJ), and NY is statutorily FIXED.
+- CA does NOT fit that clean pattern: the prior subagent's proposed 2025 HoH rung-1 threshold (22,173) is ABOVE the
+  repo's CA-2025 MFJ rung-1 (21,512). That is PLAUSIBLE for CA (its Schedule-Z HoH sits slightly above MFJ at the bottom,
+  between single & MFJ at the top) but is NOT structurally verifiable — and CA brackets are INDEXED annually, so the exact
+  2025 thresholds can't be confirmed to FTB confidence from here (single source: a subagent web-scrape).
+- Shipping unverifiable indexed brackets (with a test asserting them) would bake a possibly-wrong number in with false
+  confidence — worse than the current known-approximate single fallback. Per the pre-registered-gates / confidence-bar
+  discipline: HOLD. (Records that this avenue was investigated and exhausted, not merely skipped.)
+
+**Everything else unchanged from cycle-101:** captured-but-unused EXHAUSTED; IN §80DD/§80U collide #116; US §199A collides
+#105; serializers/withholding/residency/cross-border/configs all converged. UNBLOCK = a stuck PR merges, OR confirmed CA
+FTB Schedule-Z data (multi-source), OR new form/requirement.
