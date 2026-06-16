@@ -1610,3 +1610,18 @@ value than §80E (old-regime-only deduction). Completes the #88 advance-tax work
 
 **Remaining C72 backlog:** CA T4A.lump_sum_payments box 018 (dropped taxable income); 1099-DIV box5 §199A REIT
 dividends (QBI, low); §80D add-both harmonization (in_engine:371-372 sums form+manual -> double-count risk).
+
+## Cycle 75 — FULL LIFECYCLE (2026-06-16) [5-primitive: C72-audit backlog -> worktree -> PR]
+
+MATRIX | include T4A box 018 lump-sum payments in CA income | the T4A extractor captured lump_sum_payments (box 018) but the engine read only T4A boxes 016/020/048/022 -> taxable lump-sum income (retiring allowance, DPSP/RPP commutation; line 13000 other income) was fully DROPPED, under-taxing recipients | fail: T4A lump $20k -> no 'lump_sum_income' key; total_income excludes it — pass: $20,000 into total_income (tax +$5,930); correctly NOT pension-income-amount-eligible (credit $0) | gated? N | PR #TBD
+
+**MAINTAIN:** #108 merged (HEAD 2c2841b); #102 + #105 open; baseline suite green at 1102. Rebase-before-push held.
+
+**4th item from the C72 captured-but-unused audit = the last clean MONEY-DROP.** Added box 018 to total_income +
+line_items['lump_sum_income']; correctly excluded from pension_income (lump-sum isn't pension-income-amount-eligible).
+Suite 1102 -> 1104.
+
+**C72 audit backlog now substantially closed:** genuine money-drops shipped = 1098 mortgage #106, IN §80E #107, IN
+advance-tax-26AS #108, CA T4A lump-sum #75(this). REMAINING = only low-value/cosmetic: 1099-DIV box5 §199A REIT
+dividends (QBI, ~20% of a niche field); §80D add-both harmonization (double-count risk, no current test triggers it);
+T4RIF box22 (sign-ambiguous). The captured-but-unused VEIN IS NOW ESSENTIALLY EXHAUSTED -> expect HOLD/low-value next.

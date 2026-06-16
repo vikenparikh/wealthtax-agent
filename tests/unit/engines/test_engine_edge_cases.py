@@ -1075,3 +1075,27 @@ def test_in_ltcg_equity_post_only_gets_full_annual_exemption():
         _f("STOCK-GAIN", "IN", ltcg_equity_post_change=200000),
     ], 2025, regime="new", user_answers={"age": "30"})
     assert d.line_items["ltcg_equity_taxable"] == 75000.0  # 200,000 - 125,000
+
+
+# --- CA: T4A box 018 lump-sum payments are taxable income ---
+
+def test_ca_t4a_lump_sum_payments_included_in_income():
+    """T4A box 018 (lump-sum payments — retiring allowance, DPSP/RPP commutation)
+    is taxable other income (line 13000). It was captured by the extractor but the
+    engine read only T4A boxes 016/020/048, so it was dropped from income.
+
+    FAILS before the fix: no 'lump_sum_income' key; total income excludes the
+    $20,000."""
+    base = compute_ca_return([_f("T4", "CA", employment_income=60000)], 2024, province="ON")
+    d = compute_ca_return([_f("T4", "CA", employment_income=60000),
+                           _f("T4A", "CA", lump_sum_payments=20000)], 2024, province="ON")
+    assert d.line_items["lump_sum_income"] == 20000.0
+    assert d.totals["total_income"] == round(base.totals["total_income"] + 20000.0, 2)
+
+
+def test_ca_t4a_lump_sum_not_eligible_for_pension_income_amount():
+    """Guard: lump-sum payments are NOT eligible pension income, so they don't
+    generate the $2,000 pension income amount credit."""
+    d = compute_ca_return([_f("T4", "CA", employment_income=60000),
+                           _f("T4A", "CA", lump_sum_payments=20000)], 2024, province="ON")
+    assert d.line_items["pension_income_credit"] == 0.0
