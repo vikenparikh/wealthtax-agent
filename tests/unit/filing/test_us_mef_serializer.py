@@ -227,3 +227,68 @@ def test_payload_is_json_serializable_and_keeps_false_flag():
     dumped = json.dumps(payload)
     assert '"transmissible": false' in dumped
     assert json.loads(dumped)["ReturnData"]["IRS1040"]["line1a_wages"] == 84000.0
+
+
+def test_line33_includes_refundable_aotc():
+    """The refundable American Opportunity Credit (Form 8863, 1040 line 29) is a
+    payment. The engine credits education_credit_refundable in its balance, but the
+    serializer previously dropped it from line 33 — understating the refund.
+
+    $0 tax, $200 withheld, $1,000 refundable AOTC.
+
+    FAILS before: line33 = $200 (withholding only); line34 = $200."""
+    draft = _draft(
+        line_items={"federal_tax": 0.0, "self_employment_tax": 0.0, "tax_withheld": 200.0,
+                    "education_credit_refundable": 1000.0},
+        totals={"total_tax": 0.0, "refund": 1200.0, "balance_owing": 0.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line29_refundable_education_credit"] == 1000.0
+    assert f["line33_total_payments"] == 1200.0
+    assert f["line34_overpayment"] == 1200.0
+
+
+def test_line33_includes_additional_medicare_withheld():
+    """W-2 box-6 additional-Medicare over-withholding (Form 8959 Part IV, Sch 3
+    line 11) is a payment. The engine credits additional_medicare_tax_withheld in
+    its balance; the serializer previously dropped it from line 33.
+
+    $5,000 tax, $5,000 withheld, $450 additional-Medicare over-withheld.
+
+    FAILS before: line33 = $5,000; line34 = $0 (the $450 refund vanished)."""
+    draft = _draft(
+        line_items={"federal_tax": 5000.0, "self_employment_tax": 0.0, "tax_withheld": 5000.0,
+                    "additional_medicare_tax_withheld": 450.0},
+        totals={"total_tax": 5000.0, "refund": 450.0, "balance_owing": 0.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line25c_additional_medicare_tax_withheld"] == 450.0
+    assert f["line33_total_payments"] == 5450.0
+    assert f["line34_overpayment"] == 450.0
+
+
+def test_line33_sums_all_five_refundable_payment_items():
+    """All five refundable items + withholding land in line 33:
+    withholding $300 + ACTC $1,700 + excess SS $500 + addl-Medicare $120 +
+    refundable AOTC $1,000 = $3,620."""
+    draft = _draft(
+        line_items={"federal_tax": 0.0, "self_employment_tax": 0.0, "tax_withheld": 300.0,
+                    "additional_child_tax_credit": 1700.0, "excess_social_security_tax": 500.0,
+                    "additional_medicare_tax_withheld": 120.0, "education_credit_refundable": 1000.0},
+        totals={"total_tax": 0.0, "refund": 3620.0, "balance_owing": 0.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line33_total_payments"] == 3620.0
+    assert f["line34_overpayment"] == 3620.0
+
+
+def test_line33_reconciles_with_engine_refund_for_aotc_filer():
+    """End-to-end: the artifact's federal refund must match the engine's computed
+    refund for a refundable-AOTC filer (no state tax in play)."""
+    draft = _draft(
+        line_items={"federal_tax": 0.0, "self_employment_tax": 0.0, "tax_withheld": 200.0,
+                    "education_credit_refundable": 1000.0},
+        totals={"total_tax": 0.0, "refund": 1200.0, "balance_owing": 0.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line34_overpayment"] == draft.totals["refund"]

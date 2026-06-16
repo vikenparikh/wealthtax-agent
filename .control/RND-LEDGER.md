@@ -1656,3 +1656,23 @@ single-jurisdiction population untouched. Confidence 92% (single statutory gate,
 **ZERO collision:** lands entirely in in_engine.py rebate block (427-448); #111=ca_engine.py, #105=us_engine.py+US tables,
 #102=ca/2024.yaml. The IN prepaid-tax work (#88/#108) is a different region (459-481) -> negligible merge risk.
 RESEARCH next-best deferred: US 1099-R box 7 §72(t) penalty (clean but contends us_engine.py w/ #105).
+
+## Cycle 79 — FULL LIFECYCLE (2026-06-16) [5-primitive: filing-serializer reconciliation -> worktree -> PR]
+
+MATRIX | include refundable AOTC + additional-Medicare-withheld in 1040 line 33 (total payments) | filing/us_mef.py line33_total_payments summed only withholding + ACTC + EITC + excess-SS, DROPPING two refundable items the engine already credits in its balance (us_engine:919): education_credit_refundable (refundable AOTC, up to $1,000/student, Form 8863->1040 L29) and additional_medicare_tax_withheld (W-2 box-6 over-withholding, Form 8959 Part IV->Sch3 L11). The filing artifact's line34_overpayment/line37_amount_you_owe thus CONTRADICTED the engine's own totals['refund']/['balance_owing'] -> filer shown owing more / refunded less by up to $1,000/student + box-6 surplus | fail-before: $0 tax/$200 wh/$1,000 refundable-AOTC -> line33 $200, line34 $200 -> pass-after: line33 $1,200, line34 $1,200 (matches engine refund) | gated? N | PR #113
+
+**MAINTAIN:** origin/main HEAD eb6e993 (#110 merged); #112/#111/#105/#102 OPEN; base==HEAD, no rebase; baseline 1113.
+
+**Filing-serializer reconciliation bug (engine read-only).** The refundable AOTC key only exists because #110 (education
+credits) merged -> its refundable portion landed in the engine balance but the MeF serializer was never updated to
+pay it out. Pure addition of two existing line_items keys into the existing line-33 sum; mirrors the shipped
+ACTC/EITC/excess-SS pattern. Also surfaced explicit line25c (addl-Medicare) + line29 (refundable education) for form
+fidelity. Net PTC stays EXCLUDED (already netted into federal_tax/L24 — pinned by test_net_ptc_not_double_counted).
+Key-name gotchas: additional_medicare_tax_withheld (NOT addl_), education_credit_refundable (NOT education_refundable
+local var). Confidence 92%. Suite 1113->1117.
+
+**ZERO collision:** primary+only edit is filing/us_mef.py (+ its test); engine is read-only. #112=in_engine.py,
+#111=ca_engine.py, #105=us_engine.py+US tables, #102=ca/2024.yaml -> none overlap. RESEARCH picked this specifically
+to keep the cycle non-colliding while the 4-PR queue drains. Next-best US 1099-R §72(t) still deferred (contends us_engine.py w/ #105).
+
+**REBASED onto origin/main 7888b3a (#112 merged mid-cycle); ledger union (Cycle 78 then 79). No code conflict — ledger-only.**

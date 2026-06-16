@@ -22,11 +22,20 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
     # net Premium Tax Credit is intentionally NOT in line 33 — the engine already
     # nets it into federal_tax (line 24), so adding it here would double-count it.
     line24_total_tax = round(line_items.get("federal_tax", 0.0) + line_items.get("self_employment_tax", 0.0), 2)
+    # Total payments must include EVERY refundable item the engine credits in its
+    # balance (us_engine: balance = total_tax - withholding - excess_ss - addl_medicare
+    # - actc - eitc - education_refundable). Omitting the additional-Medicare
+    # over-withholding (Form 8959 Part IV, Sch 3 line 11) or the refundable AOTC
+    # (Form 8863, 1040 line 29) understates line34_overpayment / overstates
+    # line37_amount_you_owe, contradicting the engine's own refund/balance_owing.
+    # Net PTC stays EXCLUDED (already netted into federal_tax / line 24).
     line33_total_payments = round(
         line_items.get("tax_withheld", 0.0)
         + line_items.get("additional_child_tax_credit", 0.0)
         + line_items.get("earned_income_credit", 0.0)
-        + line_items.get("excess_social_security_tax", 0.0),
+        + line_items.get("excess_social_security_tax", 0.0)
+        + line_items.get("additional_medicare_tax_withheld", 0.0)
+        + line_items.get("education_credit_refundable", 0.0),
         2,
     )
 
@@ -64,10 +73,14 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
                 # income tax belongs on a state artifact, not the federal 1040).
                 "line24_total_tax": line24_total_tax,
                 "line25a_federal_income_tax_withheld": line_items.get("tax_withheld", 0.0),
+                "line25c_additional_medicare_tax_withheld": line_items.get("additional_medicare_tax_withheld", 0.0),
                 "line27_earned_income_credit": line_items.get("earned_income_credit", 0.0),
                 "line28_additional_child_tax_credit": line_items.get("additional_child_tax_credit", 0.0),
-                # Total payments = withholding + ACTC (line 28) + excess SS (Sch 3
-                # line 11). Net PTC is excluded (already netted into line 24).
+                "line29_refundable_education_credit": line_items.get("education_credit_refundable", 0.0),
+                # Total payments = withholding + ACTC (line 28) + EITC (line 27) +
+                # excess SS + additional-Medicare over-withholding (line 25c) +
+                # refundable AOTC (line 29). Net PTC is excluded (already netted into
+                # line 24).
                 "line33_total_payments": line33_total_payments,
                 "line34_overpayment": round(max(0.0, line33_total_payments - line24_total_tax), 2),
                 "line37_amount_you_owe": round(max(0.0, line24_total_tax - line33_total_payments), 2),
