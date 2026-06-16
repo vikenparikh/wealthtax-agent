@@ -374,10 +374,14 @@ def _compute_one_regime(
         sec_80d = min(sec_80d_self + sec_80d_parents + sec_80d_declared, self_cap + parents_cap)
 
         # 80E — student loan interest (uncapped, only for first 8 years).
-        # Cross-border guardrail handles double-claim with US/CA.
+        # Prefer the Form-16-declared amount (captured but previously unread, so a
+        # Form-16 upload silently lost the deduction), else the manual entry. This
+        # also restores the cross-border single-claim guardrail, which keys on
+        # line_items["section_80e"].
         years_since_first = _to_float(user_answers.get("years_since_first_80e", 0))
         if years_since_first <= 8:
-            sec_80e = _to_float(user_answers.get("student_loan_interest_in", 0))
+            _form_80e = _sum_field(extracts, "FORM-16", "section_80e_declared")
+            sec_80e = _form_80e if _form_80e > 0 else _to_float(user_answers.get("student_loan_interest_in", 0))
 
         sec_80g = _to_float(user_answers.get("section_80g_donations", 0)) * float(
             deductions.get("section_80g_percent_default", 0.5)

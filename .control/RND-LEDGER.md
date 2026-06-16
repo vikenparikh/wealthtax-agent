@@ -1582,3 +1582,18 @@ income); 1099-DIV box 5 section_199A_dividends (REIT QBI, low value). 1098-T tui
 (missing feature, not a clean add). $750k acquisition-debt mortgage limit still not modelled (matches Sch A).
 
 Suite 1095 -> 1097.
+
+## Cycle 73 — FULL LIFECYCLE (2026-06-16) [5-primitive: backlog from C72 audit -> worktree -> PR]
+
+MATRIX | read §80E student-loan interest from Form 16 (was manual-only) | the Form-16 extractor captured section_80e_declared but the engine read §80E only from user_answers["student_loan_interest_in"] -> a Form-16 upload silently dropped the (uncapped, old-regime) student-loan-interest deduction AND blinded the cross-border single-claim guardrail (which keys on line_items["section_80e"]) | fail: Form-16 with §80E ₹50k -> section_80e ₹0 — pass: ₹50,000; form preferred over manual (no double-count); manual-only still ₹40k | gated? N | PR #TBD
+
+**MAINTAIN:** #106 (1098 mortgage) merged (HEAD f3c19d0); #102 + #105 open; baseline suite green at 1097. Rebase-before-push held.
+
+**2nd item from the C72 captured-but-unused audit backlog.** Form-then-manual FALLBACK (prefer form, else manual)
+— safer than §80D's add-both pattern (no double-count). Restores the cross-border §80E guardrail (the product's
+differentiator). Suite 1097 -> 1100.
+
+**Remaining audit-backlog drops (clean, prioritized):** IN FORM-26AS.advance_tax_paid (form-captured advance tax,
+key-mismatch w/ #88 user_answers — any regime, direct $ on balance); CA T4A.lump_sum_payments box 018 (dropped
+taxable income); 1099-DIV box5 §199A REIT dividends (QBI, low). §80D add-both pattern (in_engine:371-372) could
+double-count form+manual — a harmonization follow-up (use fallback like §80E/SALT/1098).
