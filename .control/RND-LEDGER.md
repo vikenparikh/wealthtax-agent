@@ -1359,3 +1359,27 @@ Suite 1069 -> 1072. Zero other edits needed (the string-keyed branches do the re
 **Remaining (design/risky/niche/data — likely HOLD next):** US state artifact (design); IN surcharge
 marginal relief (narrow+risky, CG-cap entangled); <100% FPL (input); 2025 CWB values (CRA data); IN
 §234B/C interest; full MFS support (low value). The clean distinct-bug vein is now very thin.
+
+## Cycle 57 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | cap the IRA and HSA above-the-line deductions at their statutory contribution limits | the engine took user-entered HSA/IRA amounts at FACE VALUE with no cap (student-loan interest WAS capped); an over-limit entry under-states AGI AND under-taxes Social Security (provisional income) -> double under-payment. The IRA limit even already sat in the YAML, IGNORED | fail: $20k IRA entry -> $20k deduction — pass: capped $7,000 (age 40) / $8,000 (50+ catch-up); HSA $10k -> $8,300 family / $4,150 self; within-limit $5k unchanged | gated? N | PR #94
+
+**MAINTAIN:** #93 merged to main (HEAD 1394b07); baseline suite green at 1072. Rebase-before-push held.
+
+**"Table exists but ignored" pattern (like #83 AMT / #84 PTC):** the `ira: {contribution_limit, catchup_
+50_plus}` block was in all 3 YAMLs but never read; HSA had no block. RESEARCH subagent confirmed the limits
+(IRA 6500/7000/7000 +1000 catch-up @50; HSA self 3850/4150/4300, family 7750/8300/8550, +1000 @55), gave a
+SHIP-both verdict (genuine: feeds AGI + SS provisional = double under-pay, not just a data-entry guardrail),
+and flagged the catch-up key name (catchup_50_plus / catchup_55_plus) + that taxpayer_age was parsed BELOW
+the deduction site (hoisted it).
+
+**Change:** read fed_tables ira/hsa; IRA cap = limit + (catch-up if age>=50); HSA cap = (family default |
+self) limit + (catch-up if age>=55); min() the deduction, note the excess. Added hsa YAML block x3 (IRA
+needed no YAML change). hsa_coverage input defaults 'family' (errs toward the higher cap -> never wrongly
+denies a family filer's legit deduction). Hoisted taxpayer_age above line 506 (removed the duplicate EITC
+parse). Suite 1072 -> 1077.
+
+**Flagged out of scope (notes):** IRA MAGI deduction phase-out for employer-plan participants; the
+ira_401k_contributions key conflates IRA + 401(k) (401k is pre-tax, not a separate deduction) — left as-is.
+Remaining tracked: US state artifact (design); IN surcharge marginal relief (risky); <100% FPL; 2025 CWB
+(CRA data); IN §234B/C. Vein thinning -> likely HOLD next.
