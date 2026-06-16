@@ -1408,7 +1408,7 @@ charitable 60%-AGI / mortgage $750k limits (rarer). Vein thinning -> likely HOLD
 
 ## Cycle 59 — FULL LIFECYCLE (2026-06-15) [5-primitive: broad-sweep subagent -> worktree -> PR]
 
-MATRIX | credit the Additional Medicare tax withheld in W-2 box 6 (Form 8959 Part IV) | the engine adds the 0.9% Additional Medicare tax to the liability (via _compute_fica) but never credited the employer's matching box-6 withholding -> every high-wage W-2 employee was double-charged the 0.9% surtax they already paid via paycheck | fail: no 'additional_medicare_tax_withheld' key; $300k single owes $900 more — pass: box 6 $5,250 -> $900 credit cancels the $900 liability; box 6 at exactly 1.45% -> $0 credit (guard) | gated? N | PR #TBD
+MATRIX | credit the Additional Medicare tax withheld in W-2 box 6 (Form 8959 Part IV) | the engine adds the 0.9% Additional Medicare tax to the liability (via _compute_fica) but never credited the employer's matching box-6 withholding -> every high-wage W-2 employee was double-charged the 0.9% surtax they already paid via paycheck | fail: no 'additional_medicare_tax_withheld' key; $300k single owes $900 more — pass: box 6 $5,250 -> $900 credit cancels the $900 liability; box 6 at exactly 1.45% -> $0 credit (guard) | gated? N | PR #96
 
 **MAINTAIN:** #95 merged to main (HEAD cb5e671); baseline suite green at 1080. Rebase-before-push held.
 
