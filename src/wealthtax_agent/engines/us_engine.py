@@ -43,6 +43,16 @@ def _to_float(value, default: float = 0.0) -> float:
         return default
 
 
+def _to_int(value, default: int = 0) -> int:
+    """Parse a user-typed answer into a non-negative int, tolerantly.
+
+    `user_answers` values arrive as raw strings (the corrections set-user_answer
+    path stores str(new_value) uncoerced; clarifying questions are free-text), so
+    a bare int(...) on one raised ValueError and killed the whole US return.
+    Mirror _to_float/_num_dependents: a worded/blank value degrades to default."""
+    return max(0, int(_to_float(value, default)))
+
+
 def _sum_field(extracts: Iterable[FormExtract], form_code: str, field: str) -> float:
     return float(sum(
         e.fields.get(field, 0.0)
@@ -887,11 +897,11 @@ def compute_us_return(
     # both spellings are summed or NL-entered tuition would silently yield $0 credit.
     edu_tuition = (_sum_field(extracts, "1098-T", "qualified_tuition_payments")
                    + _sum_field(extracts, "1098-T", "qualified_tuition_paid")
-                   + float(user_answers.get("qualified_education_expense", 0) or 0))
+                   + _to_float(user_answers.get("qualified_education_expense", 0)))
     edu_scholarships = _sum_field(extracts, "1098-T", "scholarships_or_grants")
     edu_net_expense = max(0.0, edu_tuition - edu_scholarships)
     if user_answers.get("num_students") not in (None, ""):
-        edu_num_students = int(user_answers.get("num_students") or 0)
+        edu_num_students = _to_int(user_answers.get("num_students"))
     else:
         edu_num_students = sum(1 for e in extracts if e.form_code == "1098-T" and e.jurisdiction == "US") or (1 if edu_net_expense > 0 else 0)
     edu_aotc_eligible = bool(user_answers.get("aotc_eligible", True))
@@ -913,7 +923,7 @@ def compute_us_return(
     # (the spouse term defaults to 0, zeroing the credit if not supplied); for other
     # statuses the spouse term is +inf so only the taxpayer's earned income binds.
     care_expenses = _to_float(user_answers.get("dependent_care_expenses", 0))
-    num_care_persons = int(user_answers.get("num_dependent_care_persons", 0) or 0)
+    num_care_persons = _to_int(user_answers.get("num_dependent_care_persons", 0))
     dcb = _sum_field(extracts, "W-2", "dependent_care_benefits")
     taxpayer_earned = wages + max(0.0, self_employment_income)
     if status == "married_filing_jointly":
