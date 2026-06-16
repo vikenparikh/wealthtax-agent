@@ -467,11 +467,11 @@ def compute_ca_return(
 
     # Pension income splitting with spouse (line 21000 / 11600 reciprocal)
     pension_split_pct = _to_float(user_answers.get("pension_split_pct", 0))
-    if pension_split_pct > 0 and pensionable > 0:
+    if pension_split_pct > 0 and eligible_pension > 0:
         # Up to 50% of eligible pension income can be split.
         pension_split_pct = min(pension_split_pct, 50.0)
         notes.append(
-            f"Pension income splitting at {pension_split_pct:.0f}% of ${pensionable:,.0f} "
+            f"Pension income splitting at {pension_split_pct:.0f}% of ${eligible_pension:,.0f} "
             "may further reduce tax (not modelled in this estimate)."
         )
 
