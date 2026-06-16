@@ -939,8 +939,39 @@ def compute_us_return(
             "(Form 2441, non-refundable)."
         )
 
+    # Residential energy credits (Form 5695): §25D clean-energy (30% of cost, NO
+    # dollar cap) and §25C efficient-home-improvement (30% of cost, with a fixed
+    # $1,200 general annual cap PLUS a separate $2,000 annual cap for heat pumps /
+    # heat-pump water heaters / biomass). Rates and caps are fixed by IRA-2022
+    # through 2032 (non-indexed). Both non-refundable; §25D excess carries forward
+    # (noted, not modelled). §25C per-item sub-limits ($600/item, $250/$500 doors)
+    # are modelled at the aggregate cap level — a correct upper bound and the
+    # dominant binding constraint.
+    energy_cfg = fed_tables.get("residential_energy", {})
+    clean_cost = _to_float(user_answers.get("residential_clean_energy_cost", 0))
+    sec_25d = round(clean_cost * float(energy_cfg.get("clean_energy_rate", 0.30)), 2)
+    eff_rate = float(energy_cfg.get("efficient_rate", 0.30))
+    efficient_cost = _to_float(user_answers.get("energy_efficient_improvements", 0))
+    heat_pump_cost = _to_float(user_answers.get("heat_pump_cost", 0))
+    sec_25c = round(
+        min(efficient_cost * eff_rate, float(energy_cfg.get("efficient_general_cap", 1200)))
+        + min(heat_pump_cost * eff_rate, float(energy_cfg.get("efficient_heat_pump_cap", 2000))),
+        2,
+    )
+    if sec_25d > 0:
+        notes.append(
+            f"Residential Clean Energy Credit (§25D) of ${sec_25d:,.2f} = 30% of "
+            "qualified clean-energy cost (Form 5695, non-refundable; excess carries forward)."
+        )
+    if sec_25c > 0:
+        notes.append(
+            f"Energy Efficient Home Improvement Credit (§25C) of ${sec_25c:,.2f} "
+            "(Form 5695, non-refundable; $1,200 general + $2,000 heat-pump annual caps)."
+        )
+
     federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit
-                      - education_nonref - dependent_care_credit) + ptc_repayment
+                      - education_nonref - dependent_care_credit
+                      - sec_25d - sec_25c) + ptc_repayment
 
     # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
     # When a family's tax liability is too low to absorb the full non-refundable
@@ -1164,6 +1195,8 @@ def compute_us_return(
         "education_credit_nonrefundable": education_nonref,
         "education_credit_refundable": education_refundable,
         "dependent_care_credit": dependent_care_credit,
+        "residential_clean_energy_credit": sec_25d,
+        "energy_efficient_home_credit": sec_25c,
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
