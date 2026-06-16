@@ -101,6 +101,8 @@ eitc:
     "2": {credit_rate: 0.4, earned_income_amount: 16510, max_credit: 6604, phaseout_rate: 0.2106, phaseout_start: 21560, phaseout_start_mfj: 28120}
     "3": {credit_rate: 0.45, earned_income_amount: 16510, max_credit: 7430, phaseout_rate: 0.2106, phaseout_start: 21560, phaseout_start_mfj: 28120}
 # Health Savings Account contribution/deduction limits (Form 8889).
+schedule_a:
+  medical_agi_floor_rate: 0.075   # §213: medical deductible only above 7.5% of AGI
 hsa:
   self_limit: 3850
   family_limit: 7750

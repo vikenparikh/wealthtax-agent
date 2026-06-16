@@ -253,6 +253,41 @@ def test_us_actc_uses_qualifying_children_not_other_dependents():
     assert d.line_items["additional_child_tax_credit"] == 1700.0
 
 
+# --- US: Schedule A medical expenses are deductible only above 7.5% of AGI (§213) ---
+
+def test_us_medical_expenses_apply_7_5pct_agi_floor():
+    """Medical/dental expenses are deductible only to the extent they exceed 7.5%
+    of AGI (§213). The engine added them at face value, over-deducting. Wages
+    $80,000 (AGI $80,000), $10,000 medical, $20,000 mortgage interest → floor
+    $6,000, deductible medical $4,000, so the itemized total is $24,000 (not the
+    buggy $30,000).
+
+    FAILS before the fix: no 'medical_expense_deductible' key; sch_a total $30,000."""
+    d = compute_us_return([_f("W-2", "US", wages=80000),
+                           _f("SCH-A", "US", medical_expenses=10000, mortgage_interest=20000)],
+                          2024, user_answers={"filing_status": "single"})
+    assert d.line_items["medical_expense_deductible"] == 4000.0
+    assert d.line_items["itemized_deduction_sch_a"] == 24000.0
+
+
+def test_us_medical_below_floor_deducts_nothing():
+    """Medical below 7.5% of AGI contributes nothing. AGI $80,000, $5,000 medical
+    < $6,000 floor → $0 deductible medical."""
+    d = compute_us_return([_f("W-2", "US", wages=80000),
+                           _f("SCH-A", "US", medical_expenses=5000, mortgage_interest=20000)],
+                          2024, user_answers={"filing_status": "single"})
+    assert d.line_items["medical_expense_deductible"] == 0.0
+
+
+def test_us_medical_floor_uses_post_above_line_agi():
+    """The 7.5% floor uses post-above-line AGI: a $7,000 IRA contribution lowers AGI
+    to $73,000, so the floor is $5,475 and $10,000 medical → $4,525 deductible."""
+    d = compute_us_return([_f("W-2", "US", wages=80000),
+                           _f("SCH-A", "US", medical_expenses=10000, mortgage_interest=20000)],
+                          2024, user_answers={"filing_status": "single", "ira_401k_contributions": "7000"})
+    assert d.line_items["medical_expense_deductible"] == 4525.0
+
+
 # --- US: IRA and HSA deductions are capped at their statutory contribution limits ---
 
 def test_us_ira_deduction_capped_at_contribution_limit():

@@ -1383,3 +1383,25 @@ parse). Suite 1072 -> 1077.
 ira_401k_contributions key conflates IRA + 401(k) (401k is pre-tax, not a separate deduction) — left as-is.
 Remaining tracked: US state artifact (design); IN surcharge marginal relief (risky); <100% FPL; 2025 CWB
 (CRA data); IN §234B/C. Vein thinning -> likely HOLD next.
+
+## Cycle 58 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | apply the §213 7.5%-of-AGI floor to Schedule A medical expenses | the engine added SCH-A medical_expenses to the itemized total at FACE VALUE; §213 only allows the excess over 7.5% of AGI -> over-deduction that can wrongly tip itemizing past the standard deduction and under-tax | fail: no 'medical_expense_deductible' key; sch_a total $30,000 ($10k medical + $20k mortgage at $80k AGI) — pass: floor $6,000 -> deductible $4,000 -> sch_a $24,000; $5k medical < floor -> $0; IRA $7k lowers AGI to $73k -> floor $5,475 -> $4,525 | gated? N | PR #95
+
+**MAINTAIN:** #94 merged to main (HEAD 2e870c8); baseline suite green at 1077. Rebase-before-push held.
+
+**Over-deduction lens, 2nd US instance (after #94 IRA/HSA):** swept other jurisdictions' deduction caps —
+IN §80C/80CCD/80D are properly capped (line 337 etc.); CA RRSP is uncapped but its cap needs prior-year
+NOA room (input-blocked, skipped). The clean high-value US item: SCH-A medical had NO 7.5% AGI floor.
+RESEARCH subagent confirmed 7.5% (permanent since CAA 2021, all years), AGI base is post-above-line (so
+the #94 IRA/HSA caps flow through correctly), and CRITICALLY verified NO existing test encodes the unfloored
+behavior (the sch_a fixture has medical $4,200 but its consumers only assert extraction, not totals) -> zero
+regression risk. SHIP.
+
+**Change:** medical_deductible = max(0, medical_raw - 0.075*agi), table-driven via schedule_a.medical_agi_
+floor_rate (0.075 default) in us/{2023,2024,2025}.yaml; surfaced line_items['medical_expense_deductible'] +
+a §213 note. Floor uses the post-above-line AGI (block sits after agi=line 615). Suite 1077 -> 1080.
+
+**Remaining (design/risky/niche/input/data):** US state artifact (design); CA RRSP room cap (NOA input);
+IN surcharge marginal relief (risky); <100% FPL (input); 2025 CWB (CRA data); IN §234B/C; full MFS;
+charitable 60%-AGI / mortgage $750k limits (rarer). Vein thinning -> likely HOLD next.
