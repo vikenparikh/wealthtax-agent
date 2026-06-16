@@ -2168,3 +2168,16 @@ overpayment so the excess isn't double-counted as credit AND refund; single-empl
 full credit). Guard cpp_max>0 so unknown years (no cpp table) don't refund everything. QC QPP has its own max -> noted as
 under-modelled (uses federal CPP/EI maxima). Confidence 90% (maxima are read from existing config, no new magic numbers).
 Suite 1245->1249. ZERO collision (0 open PRs). §72(t) candidate REJECTED by RESEARCH — already shipped (#123).
+
+---
+
+## Cycle 146 — FULL LIFECYCLE (2026-06-16) [5-primitive: surface §80U/80DD/80DDB/80EEB/80GG into draft ITR ScheduleVIA]
+
+MATRIX | IN serialize §80U/§80DD/§80DDB/§80EEB/§80GG into the draft ITR ScheduleVIA | in_engine computes all five (shipped #130 80u/80dd, #132 80ddb, #133 80eeb, #116 80gg) and folds them into chapter_via_total (in_engine:531) + emits each as a line_item (657-661), but filing/in_itr.py ScheduleVIA_Deductions (70-86) read only 80c/80ccd1b/80ccd2/80d/80e/80g/80tta_ttb — the per-section rows for a disability (₹75k/₹1.25L), specified-disease treatment (₹40k/₹1L), EV-loan interest (₹1.5L) or no-HRA rent (₹60k) were INVISIBLE in the draft ITR artifact a hand-filer transcribes. Same display-completeness class as #118 (80CCD2) / #122 (ScheduleBP). | fail-before: KeyError Section80U (3 failed) -> pass-after: 80u 125000 + 80ddb 100000 surfaced, TotalChapterVIA stays 415000 (NOT touched — total already includes them, unlike #118); 80eeb 150000/80gg 60000/80dd 75000 surfaced; absent -> all 0.0, total unchanged | gated? N | PR #139
+
+DISPLAY/filing-fidelity fix (engine tax number + TotalChapterVIA already correct), HONEST about that — value is artifact
+completeness, squarely in the accepted #118/#122 pattern. Critically did NOT add the 5 to TotalChapterVIA: chapter_via_total
+ALREADY counts them, so adding would double-count (the OPPOSITE of #118's 80CCD2, which was EXCLUDED from the total). Pure
+surfacing — no statutory constant introduced. Confidence 93%. Suite 1249->1252. ZERO collision (#138 was in ca_engine; merged
+mid-cycle). RESEARCH rejected: QBI net_capital_gain "bug" (FALSE POSITIVE — long_gain already clamped >=0); IN surcharge
+marginal relief (repeatedly-deferred HOLD, ~15 cycles). The ledger had explicitly QUEUED "IN §80DD-80U" as a next candidate.

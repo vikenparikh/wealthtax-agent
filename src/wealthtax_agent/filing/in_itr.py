@@ -82,6 +82,19 @@ def serialize_itr(
                 "Section80E": _f("section_80e"),
                 "Section80G": _f("section_80g"),
                 "Section80TTAor80TTB": _f("section_80tta_or_80ttb"),
+                # §80U (self disability), §80DD (dependant disability), §80DDB
+                # (specified-disease treatment), §80EEB (EV-loan interest) and
+                # §80GG (no-HRA rent) are computed by the engine and ALREADY folded
+                # into chapter_via_total, but were never serialized — so the draft
+                # ITR's ScheduleVIA hid the per-section attribution a hand-filer
+                # needs. Surface them as display rows only; do NOT add them to
+                # TotalChapterVIA (the total already counts them — adding here would
+                # double-count, unlike §80CCD(2) which was excluded from the total).
+                "Section80U": _f("section_80u"),
+                "Section80DD": _f("section_80dd"),
+                "Section80DDB": _f("section_80ddb"),
+                "Section80EEB": _f("section_80eeb"),
+                "Section80GG": _f("section_80gg"),
                 "TotalChapterVIA": _f("chapter_via_total") + _f("section_80ccd_2_employer_nps"),
             },
             "PartB_TI": {
