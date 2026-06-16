@@ -1639,3 +1639,20 @@ both AOTC and LLC, pick the larger, apply MAGI phaseout ($80-90k single / $160-1
 Sharp edge handled: structured extractor emits `qualified_tuition_payments` while NL intake emits
 `qualified_tuition_paid`/`qualified_education_expense` -> engine sums all spellings or NL tuition yields $0.
 Confidence: fixed-statutory thresholds (>=90%); MFS guard is defensive (engine maps MFS->single). Suite 1104 -> 1113.
+
+## Cycle 78 — FULL LIFECYCLE (2026-06-16) [5-primitive: residency-gate correctness -> worktree -> PR]
+
+MATRIX | deny §87A rebate to non-residents (NR); resident-only relief | in_engine.py rebate block (427-448) gated ONLY on income threshold with NO residency check -> a non-resident with India-source income at/under the rebate threshold wrongly received up to ₹25,000 (new) / ₹12,500 (old) of rebate + 4% cess they are statutorily barred from, UNDER-stating the draft balance owing. Common for NRIs with Indian rental/FD-interest/part-year salary. RNOR is a RESIDENT under the Act and correctly KEEPS the rebate | fail-before: NR ₹6L India-salary new regime -> rebate ₹12,500, tax ₹0 -> pass-after: rebate ₹0, tax ₹13,000 (12,500 slab + 4% cess); RNOR + ROR unchanged (rebate ₹12,500, tax ₹0) | gated? N | PR #112
+
+**MAINTAIN:** origin/main HEAD eb6e993 (#110 education credits merged); #111/#105/#102 still OPEN; base==HEAD, no rebase; baseline suite 1113.
+
+**Residency-correctness gate (not captured-but-unused).** §87A is resident-only; the discriminator (residency_status)
+was already plumbed through _compute_one_regime but the rebate block ignored it. Gate on the LITERAL "NR" (not
+is_nr_or_rnor) so RNOR — a resident whose only distinction is foreign-income exemption — keeps the rebate. The fix
+sets rebate=0 for NR; everything downstream (surcharge->cess->balance) already consumes `rebate`, so no income-side
+recompute, no serializer change (in_itr.py already reads rebate_87a). Default residency_status="ROR" -> dominant
+single-jurisdiction population untouched. Confidence 92% (single statutory gate, no data/constants). Suite 1113->1117.
+
+**ZERO collision:** lands entirely in in_engine.py rebate block (427-448); #111=ca_engine.py, #105=us_engine.py+US tables,
+#102=ca/2024.yaml. The IN prepaid-tax work (#88/#108) is a different region (459-481) -> negligible merge risk.
+RESEARCH next-best deferred: US 1099-R box 7 §72(t) penalty (clean but contends us_engine.py w/ #105).

@@ -429,14 +429,18 @@ def _compute_one_regime(
     threshold = float(rebate_cfg.get("income_threshold", 0))
     max_credit = float(rebate_cfg.get("max_credit", 0))
     rebate = 0.0
-    if total_income <= threshold:
+    # §87A is a resident-only relief: a non-resident (NR) is statutorily barred.
+    # RNOR is a *resident* under the Act (only its foreign income is exempt), so it
+    # keeps the rebate — gate on the literal "NR", NOT is_nr_or_rnor.
+    is_resident_for_87a = residency_status != "NR"
+    if is_resident_for_87a and total_income <= threshold:
         # §87A rebates tax on normal income only — it never offsets tax on
         # capital gains taxed at special rates (e.g. equity LTCG u/s 112A). Base
         # it on slab_tax, consistent with the marginal-relief branch below; using
         # tax_before_rebate let the rebate wrongly zero out LTCG tax for
         # low-income filers with capital gains.
         rebate = min(slab_tax, max_credit)
-    elif regime == "new" and threshold > 0:
+    elif is_resident_for_87a and regime == "new" and threshold > 0:
         # Marginal relief: just above the threshold the normal tax (no rebate)
         # would exceed the income earned above the threshold — the cliff. Cap
         # the slab tax payable at that excess by rebating the difference.
@@ -445,6 +449,10 @@ def _compute_one_regime(
         # no longer exceeds the excess, so higher incomes are unaffected.
         excess = total_income - threshold
         rebate = max(0.0, slab_tax - excess)
+    if not is_resident_for_87a and total_income <= threshold:
+        notes.append(
+            "Section 87A rebate not available to a non-resident (NR); rebate set to ₹0."
+        )
     tax_after_rebate = max(0.0, tax_before_rebate - rebate)
 
     # Surcharge on income tax
