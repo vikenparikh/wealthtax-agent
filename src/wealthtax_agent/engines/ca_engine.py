@@ -357,6 +357,22 @@ def compute_ca_return(
             "credit computed on the first $10,000."
         )
 
+    # Volunteer Firefighters' Amount (line 31220, s.118.06) / Search and Rescue
+    # Volunteers' Amount (line 31240, s.118.07): a volunteer with 200+ eligible
+    # hours claims a FIXED $3,000 amount, credited at the lowest federal rate
+    # (15% -> $450). The $3,000 is non-indexed. A filer may claim the VFA OR the
+    # SRVA but NOT both, so the combined eligible amount is capped at $3,000. The
+    # 200-hour eligibility is the filer's responsibility. Non-refundable.
+    raw_volunteer = (_to_float(user_answers.get("volunteer_firefighter_amount", 0))
+                     + _to_float(user_answers.get("search_rescue_volunteer_amount", 0)))
+    volunteer_amount_eligible = min(max(0.0, raw_volunteer), 3000.0)
+    volunteer_amount_credit = volunteer_amount_eligible * float(lowest_rate)
+    if raw_volunteer > 3000.0:
+        notes.append(
+            "Volunteer firefighter / search-and-rescue amount is a single $3,000 "
+            "claim (the VFA and SRVA cannot both be claimed); credit computed on $3,000."
+        )
+
     # Excess CPP/EI from multiple employers (T1 lines 44800/45000): each employer
     # withholds CPP and EI independently, so a job-switcher's combined contributions
     # routinely exceed the annual employee maximum. That excess is a REFUNDABLE
@@ -417,6 +433,7 @@ def compute_ca_return(
         + student_loan_credit
         + property_tax_credit
         + home_buyers_credit
+        + volunteer_amount_credit
         + tuition_credit
     )
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
@@ -549,6 +566,8 @@ def compute_ca_return(
         "home_buyers_amount": raw_home_buyers,
         "home_buyers_eligible": home_buyers_eligible,
         "home_buyers_credit": home_buyers_credit,
+        "volunteer_amount_eligible": volunteer_amount_eligible,
+        "volunteer_amount_credit": volunteer_amount_credit,
         "eligible_tuition_fees": tuition_fees,
         "tuition_credit": tuition_credit,
         "interest_income": interest_income,
