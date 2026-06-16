@@ -2000,3 +2000,23 @@ jurisdiction). Picked specifically to avoid rebase landmines vs the 3 open PRs. 
 §72(t) 10% early-withdrawal penalty as next-best (clean statutory) but it lands in the contended us_engine.py zone -> deferred.
 
 **REBASED onto origin/main eb6e993 (#110 education credits merged mid-cycle); ledger union (Cycle 76 then 77). Post-rebase suite 1113 -> 1118.**
+## Cycle 84 — FULL LIFECYCLE (2026-06-16) [5-primitive: India Chapter VI-A completeness -> worktree -> PR]
+
+MATRIX | §80GG deduction (rent paid with no HRA), old regime only | in_engine.py computed §80C/80CCD1B/80D/80E/80G/80TTA-TTB but had NO §80GG (grep 80gg src/+tests/ = empty). A filer paying rent who receives NO HRA (self-employed, gig workers, salaried w/ no HRA component) got ZERO rent relief — §10(13A) HRA exemption structurally can't apply to them. Common population, old-regime over-taxed | fail-before: gross ₹10L old regime, rent ₹2.4L, no HRA -> section_80gg ₹0 -> pass-after: ₹60,000 (annual cap binds); gross ₹6L rent ₹84k -> ₹29,000 (rent−10% binds); new regime / HRA-present / no-rent -> ₹0 | gated? N | PR #116
+
+**MAINTAIN:** origin/main HEAD 78f060c (#115 family-pension merged); #111/#105/#102 OPEN; base==HEAD, no rebase; baseline 1130.
+
+**in_engine.py freshly UN-contended (#115 merged) -> India Chapter VI-A completeness.** §80GG = least of (a) ₹5k/mo
+=₹60k/yr, (b) 25% of adjusted total income, (c) rent − 10% of adj income. Old regime ONLY (§115BAC disallows), gated on
+hra_received==0 (mutually exclusive w/ HRA). Adjusted total income = slab_income − other Chapter-VIA deductions
+(excludes special-rate CG, which live in the cg dict — conservative/correct base). Reuses existing annual_rent_paid key
+(no new input). +1 line_item section_80gg. Config section_80gg{monthly_cap,income_pct,rent_excess_pct} added to
+in/2024.yaml + in/2025.yaml (fixed statutory constants, ₹60k cap unchanged across years). Confidence 88%. Suite 1130->1137.
+
+**RIGOR (heeded cycle-83 lesson):** RESEARCH grep-verified absence before proposing AND grep-rejected duplicates:
+§80CCD(2) employer-NPS ALREADY implemented (in_engine 425-436, both regimes); new-regime salary std ₹75k ALREADY
+correct (in/2025.yaml:15). I re-verified §80GG absence myself before building.
+
+**ZERO collision:** in_engine.py + in/2024.yaml + in/2025.yaml; none of #111(ca_engine)/#105(us_engine+us-tables)/
+#102(ca/2024.yaml+us/states/ca). Next IN candidates (genuinely absent, smaller pop): §80DD/§80U disability (₹75k/₹1.25L),
+§80EEB EV-loan (₹1.5L). After #105 lands: US 1099-R §72(t).
