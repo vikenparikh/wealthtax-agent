@@ -51,7 +51,9 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
         },
         "ReturnData": {
             "IRS1040": {
-                "line1a_wages": line_items.get("wages", 0.0),
+                # W-2 box 8 allocated tips are not in box 1 wages; the engine counts
+                # them as a separate income component, so line 1a must add them back.
+                "line1a_wages": round(line_items.get("wages", 0.0) + line_items.get("allocated_tips", 0.0), 2),
                 "line2b_taxable_interest": line_items.get("interest_income", 0.0),
                 "line3a_qualified_dividends": line_items.get("qualified_dividends", 0.0),
                 "line3b_ordinary_dividends": line_items.get("ordinary_dividends", 0.0),
@@ -59,7 +61,26 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
                 "line5b_taxable_pensions": line_items.get("taxable_pension", 0.0),
                 "line6b_taxable_social_security": line_items.get("taxable_social_security", 0.0),
                 "line7_capital_gain_loss": line_items.get("short_term_capital_gain", 0.0) + line_items.get("long_term_capital_gain", 0.0),
-                "line8_other_income": line_items.get("other_misc_income", 0.0),
+                # Form 1040 line 8 is the Schedule 1 catch-all. The engine folds many
+                # income components into total_income (line 9) but the serializer
+                # surfaced only other_misc_income here — so the breakdown silently
+                # under-displayed self-employment (Sch C/1099-NEC/K-1/1099-K), rental
+                # and royalty (1099-MISC), Schedule E supplemental, unemployment
+                # (1099-G), taxable state refunds, taxable grants, and gambling
+                # winnings. line 9 stays engine-truth, so this completes the display
+                # without changing the bottom line. NOTE: 1099_k_payments is NOT added
+                # separately — it is already inside self_employment_income (engine:
+                # self_employment_income = nec + sch_c + k1 + k_payments).
+                "line8_other_income": round(
+                    line_items.get("other_misc_income", 0.0)
+                    + line_items.get("self_employment_income", 0.0)
+                    + line_items.get("rental_income", 0.0)
+                    + line_items.get("royalty_income", 0.0)
+                    + line_items.get("supplemental_income_sch_e", 0.0)
+                    + line_items.get("unemployment_compensation", 0.0)
+                    + line_items.get("state_tax_refund_taxable", 0.0)
+                    + line_items.get("taxable_grants", 0.0)
+                    + line_items.get("gambling_winnings", 0.0), 2),
                 "line9_total_income": totals.get("total_income", 0.0),
                 "line10_adjustments": line_items.get("student_loan_interest_deduction", 0.0),
                 "line11_agi": line_items.get("agi", totals.get("agi", 0.0)),
