@@ -356,6 +356,8 @@ def _compute_one_regime(
     sec_80g = 0.0
     sec_80tta_ttb = 0.0
     sec_80gg = 0.0
+    sec_80u = 0.0
+    sec_80dd = 0.0
 
     if regime == "old":
         # 80C — PPF, ELSS, LIC, principal home loan, EPF
@@ -432,6 +434,36 @@ def _compute_one_regime(
                 float(deductions.get("section_80tta_savings_interest_cap", 10000)),
             )
 
+        # 80U (own disability) / 80DD (maintenance of a disabled dependent): FLAT
+        # deductions of ₹75,000 (disability ≥40%) or ₹1,25,000 (severe ≥80%),
+        # independent of actual expense. Resident-only — a non-resident (NR) is
+        # barred; RNOR is a resident under the Act and keeps them (gate on the literal
+        # "NR", mirroring §87A). §80U and §80DD are distinct sections (self vs
+        # dependent) and both claimable in the same year. Computed BEFORE §80GG so
+        # they reduce its adjusted-total-income base.
+        _disab = deductions.get("section_80u_80dd", {}) or {}
+        _disab_normal = float(_disab.get("normal", 75000))
+        _disab_severe = float(_disab.get("severe", 125000))
+
+        def _disability_amount(flag: str) -> float:
+            f = (flag or "").strip().lower()
+            if f == "severe":
+                return _disab_severe
+            if f == "normal":
+                return _disab_normal
+            return 0.0
+
+        if residency_status != "NR":
+            sec_80u = _disability_amount(user_answers.get("taxpayer_disability", "none"))
+            sec_80dd = _disability_amount(user_answers.get("dependent_disability", "none"))
+            if sec_80u > 0:
+                notes.append(f"§80U disability deduction of ₹{sec_80u:,.0f} (flat, resident taxpayer).")
+            if sec_80dd > 0:
+                notes.append(f"§80DD dependent-disability deduction of ₹{sec_80dd:,.0f} (flat).")
+        elif (str(user_answers.get("taxpayer_disability", "none")).strip().lower() not in ("none", "")
+              or str(user_answers.get("dependent_disability", "none")).strip().lower() not in ("none", "")):
+            notes.append("§80U/§80DD not available to a non-resident (NR); set to ₹0.")
+
         # 80GG — rent paid by a filer who receives NO HRA (self-employed, gig
         # workers, employees whose package has no HRA line). Old regime only
         # (§115BAC disallows it) and mutually exclusive with the §10(13A) HRA
@@ -448,7 +480,8 @@ def _compute_one_regime(
             gg_annual_cap = float(gg.get("monthly_cap", 5000)) * 12
             gg_income_pct = float(gg.get("income_pct", 0.25))
             gg_excess_pct = float(gg.get("rent_excess_pct", 0.10))
-            other_via = sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80tta_ttb
+            other_via = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
+                         + sec_80tta_ttb + sec_80u + sec_80dd)
             adj_total_income = max(0.0, slab_income - other_via)
             sec_80gg = max(0.0, min(
                 gg_annual_cap,
@@ -461,7 +494,8 @@ def _compute_one_regime(
                     "(least of ₹60,000, 25% of income, or rent − 10% of income)."
                 )
 
-    chapter_via_total = sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80tta_ttb + sec_80gg
+    chapter_via_total = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
+                         + sec_80tta_ttb + sec_80gg + sec_80u + sec_80dd)
 
     # 80CCD(2): the employer's NPS contribution is deductible under BOTH regimes
     # (the one Chapter VI-A item not disallowed in the new regime), up to 10% of
@@ -587,6 +621,8 @@ def _compute_one_regime(
         "section_80g": sec_80g,
         "section_80tta_or_80ttb": sec_80tta_ttb,
         "section_80gg": sec_80gg,
+        "section_80u": sec_80u,
+        "section_80dd": sec_80dd,
         "chapter_via_total": chapter_via_total,
         "gross_total_income": gross_total_income,
         "slab_tax": slab_tax,
