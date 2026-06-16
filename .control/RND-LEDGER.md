@@ -1783,3 +1783,22 @@ keys) -> surfaced VALUES only, line9 stays engine-truth. Confidence 90%. Suite 1
 SAME income-schedule class in in_itr (business_income/PGBP has no ScheduleBP line) + ca_netfile (rrif_income/self_emp_t4a/
 foreign_property/lump_sum dropped from <Income>) -> BOTH queued NEXT cycles (convergence NOT reached). After engine PRs
 merge -> US 1099-R §72(t) / IN §80DD-80U.
+## Cycle 88 — FULL LIFECYCLE (2026-06-16) [5-primitive: CA NETFILE income-schedule completeness -> worktree -> PR]
+
+MATRIX | surface 6 dropped income components in the NETFILE <Income> block | filing/ca_netfile.py <Income> emitted Employment/Interest/EligibleDiv/NonEligibleDiv/CapitalGains/NetRental/NetBusiness/Pension but DROPPED 6 components ca_engine folds into total_income (240-256): other_self_employment (T4A fees/commissions), rrsp_withdrawals (T4RSP), rrif_income (T4RIF), lump_sum_income (T4A box018), trust_other_income (T3), foreign_property_income (T1135). TotalIncome = totals['total_income'] (engine truth) so summing visible lines fell SHORT of TotalIncome -> breakdown under-displays income (display-completeness, income-side analog of us_mef #120) | fail-before: T4A self-emp $12k/RRIF $15k/etc -> elements absent -> pass-after: 6 new elements; visible-sum == TotalIncome reconciles | gated? N | PR #121
+
+**MAINTAIN:** origin/main HEAD 2c4b172 (#120 income-schedule us_mef OPEN); base==HEAD, no rebase; baseline 1138. Open: #120/#116/#111/#105/#102.
+
+**Income-schedule completeness vein, CA side (queued from cycle-87 research).** ca_netfile <Income> dropped 6 of
+ca_engine's total_income components. Engine read-only; all 6 keys at ca_engine line_items 477/478/482/483/484/489.
+**DOUBLE-COUNT GUARD:** t5013_rental + t5013_business are in total_income too, but line_items["net_rental_income"] =
+net_rental + t5013_rental (475) and ["net_business_income"] = net_business + t5013_business (476) -> already inside the
+existing NetRentalIncome/NetBusinessIncome elements -> deliberately NOT repeated (verified before building, same
+discipline as the cycle-87 1099-K catch). Reconciliation test confirms visible-sum == TotalIncome for a clean return.
+Confidence 92%. Suite 1138->1141.
+
+**ZERO collision:** only filing/ca_netfile.py (+ test); engine read-only; ca_netfile FREE (#114 merged). #111 edits
+ca_engine.py (read-only for me). Income-schedule vein: us_mef #120 + ca_netfile (this) shipped; in_itr business_income/PGBP
+(no ScheduleBP line) still QUEUED next cycle. After engine PRs merge -> US 1099-R §72(t) / IN §80DD-80U.
+
+**REBASED onto origin/main 9ed998e (#120 income-schedule us_mef merged mid-cycle); ledger union (Cycle 87 then 88). No code conflict — ledger-only.**

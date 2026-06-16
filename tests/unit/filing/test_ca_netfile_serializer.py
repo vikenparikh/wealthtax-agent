@@ -156,3 +156,57 @@ def test_canada_workers_benefit_defaults_to_zero_when_absent():
     # No CWB key (non-resident / year without a cwb table) → 0.00, no regression.
     tax = ET.fromstring(serialize_t1(_draft(), [], 2025)).find("Tax")
     assert tax.find("CanadaWorkersBenefit").text == "0.00"
+
+
+def test_income_section_surfaces_dropped_income_components():
+    """The <Income> block previously omitted several components the engine folds into
+    total_income (RRSP/RRIF withdrawals, T4A self-employment + lump-sum, T3 trust
+    income, foreign-property income), so summing the visible lines fell short of
+    <TotalIncome>. They must now appear; TotalIncome stays engine-truth."""
+    draft = _draft(
+        line_items={
+            "employment_income": 50000.0,
+            "other_self_employment": 12000.0,
+            "rrsp_withdrawals": 8000.0,
+            "rrif_income": 15000.0,
+            "lump_sum_income": 20000.0,
+            "trust_other_income": 3000.0,
+            "foreign_property_income": 4000.0,
+        },
+        totals={"total_income": 112000.0},
+    )
+    inc = ET.fromstring(serialize_t1(draft, [], 2025)).find("Income")
+    assert inc.find("SelfEmploymentIncome").text == "12000.00"
+    assert inc.find("RRSPIncome").text == "8000.00"
+    assert inc.find("RRIFIncome").text == "15000.00"
+    assert inc.find("LumpSumIncome").text == "20000.00"
+    assert inc.find("TrustIncome").text == "3000.00"
+    assert inc.find("ForeignPropertyIncome").text == "4000.00"
+
+
+def test_income_breakdown_reconciles_to_total_income():
+    """Once the dropped lines are surfaced, the sum of the visible income elements
+    equals <TotalIncome> for a return with no other components."""
+    draft = _draft(
+        line_items={
+            "employment_income": 50000.0,
+            "rrif_income": 15000.0,
+            "foreign_property_income": 4000.0,
+        },
+        totals={"total_income": 69000.0},
+    )
+    inc = ET.fromstring(serialize_t1(draft, [], 2025)).find("Income")
+    visible = sum(float(inc.find(tag).text) for tag in (
+        "EmploymentIncome", "InterestIncome", "TaxableEligibleDividends",
+        "TaxableNonEligibleDividends", "TaxableCapitalGains", "NetRentalIncome",
+        "NetBusinessIncome", "PensionIncome", "SelfEmploymentIncome", "RRSPIncome",
+        "RRIFIncome", "LumpSumIncome", "TrustIncome", "ForeignPropertyIncome",
+    ))
+    assert round(visible, 2) == float(inc.find("TotalIncome").text)
+
+
+def test_new_income_lines_default_to_zero_no_regression():
+    inc = ET.fromstring(serialize_t1(_draft(), [], 2025)).find("Income")
+    for tag in ("SelfEmploymentIncome", "RRSPIncome", "RRIFIncome", "LumpSumIncome",
+                "TrustIncome", "ForeignPropertyIncome"):
+        assert inc.find(tag).text == "0.00"
