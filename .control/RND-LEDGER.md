@@ -1765,3 +1765,21 @@ itemized-credits total (BPA informational only) -> nothing analogous there. Veri
 residency + cross_border clean (last cycle). After engine PRs merge -> US 1099-R §72(t) / IN §80DD-80U next.
 
 **REBASED onto origin/main ebd9044 (#117 parallel-lane PDF fix merged mid-cycle); ledger union. No code conflict — ledger-only.**
+
+## Cycle 87 — FULL LIFECYCLE (2026-06-16) [5-primitive: US MeF income-schedule completeness -> worktree -> PR]
+
+MATRIX | surface dropped income components on 1040 line 8 (Schedule 1) + allocated tips on line 1a | filing/us_mef.py line8_other_income = ONLY other_misc_income; line1a = ONLY wages. But us_engine total_income (608-632) folds in self_employment_income (NEC/SchC/K-1/1099-K), rental, royalty, Sch-E supplemental, unemployment, taxable state refund, taxable grants, gambling -> all dropped from the 1040 income breakdown; allocated_tips (W-2 box 8, separate from box-1 wages) dropped from line 1a. line9_total_income = totals['total_income'] (engine truth) so BOTTOM line correct -> display-completeness gap (breakdown under-shows income), same class as the credits-schedule fixes | fail-before: gig worker self_emp $40k -> line8 $0 -> pass-after: line8 sums all Sch-1 components ($67k in the 9-component test); line1a adds tips | gated? N | PR #120
+
+**MAINTAIN:** origin/main HEAD 2c4b172 (#117/#118/#119 all merged — queue drained 3); base==HEAD, no rebase; baseline 1138. Open: #116/#111/#105/#102 (all engine files).
+
+**Income-schedule completeness — the analog of the credits/deductions-schedule vein, on the income side.** us_mef
+showed only other_misc on line8 + only wages on line1a. Engine read-only; all 12 keys already emitted (us_engine 938-958).
+**DOUBLE-COUNT CAUGHT:** research proposed adding BOTH self_employment_income AND 1099_k_payments to line8, but
+self_employment_income = nec+sch_c+k1+k_payments (us_engine:547) ALREADY includes k_payments -> excluded 1099_k_payments
+from the sum (explicit no-double-count test). Did NOT claim line8==line9-others (feie_total/ordinary_offset have no clean
+keys) -> surfaced VALUES only, line9 stays engine-truth. Confidence 90%. Suite 1138->1142.
+
+**ZERO collision:** only filing/us_mef.py (+ test); engine read-only; us_mef FREE (#113/#119 merged). RESEARCH found the
+SAME income-schedule class in in_itr (business_income/PGBP has no ScheduleBP line) + ca_netfile (rrif_income/self_emp_t4a/
+foreign_property/lump_sum dropped from <Income>) -> BOTH queued NEXT cycles (convergence NOT reached). After engine PRs
+merge -> US 1099-R §72(t) / IN §80DD-80U.

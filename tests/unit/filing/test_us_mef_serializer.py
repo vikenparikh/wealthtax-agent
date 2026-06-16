@@ -334,3 +334,48 @@ def test_no_credits_lines_are_zero_no_regression():
     assert f["line19_ctc_or_odc"] == 0.0
     assert f["line20_schedule3_nonrefundable_credits"] == 0.0
     assert f["line21_total_credits"] == 0.0
+
+
+def test_line8_aggregates_schedule1_income_components():
+    """1040 line 8 (Schedule 1 catch-all) must surface the income the engine folds
+    into total_income: self-employment, rental, royalty, Sch E, unemployment, taxable
+    state refund, taxable grants, gambling. Previously it showed only other_misc."""
+    draft = _draft(line_items={
+        "other_misc_income": 500.0,
+        "self_employment_income": 40000.0,
+        "rental_income": 12000.0,
+        "royalty_income": 3000.0,
+        "supplemental_income_sch_e": 2000.0,
+        "unemployment_compensation": 6000.0,
+        "state_tax_refund_taxable": 800.0,
+        "taxable_grants": 1500.0,
+        "gambling_winnings": 1200.0,
+    })
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    # 500 + 40000 + 12000 + 3000 + 2000 + 6000 + 800 + 1500 + 1200 = 67000
+    assert f["line8_other_income"] == 67000.0
+
+
+def test_line8_does_not_double_count_1099k_inside_self_employment():
+    """1099-K gross payments are already inside self_employment_income (engine:
+    nec + sch_c + k1 + k_payments). line 8 must NOT add 1099_k_payments again."""
+    draft = _draft(line_items={
+        "self_employment_income": 50000.0,  # already includes any k_payments
+        "1099_k_payments": 20000.0,         # subset of self_employment_income
+    })
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line8_other_income"] == 50000.0  # NOT 70000
+
+
+def test_line1a_includes_allocated_tips():
+    """W-2 box 8 allocated tips are not in box 1 wages; the engine counts them
+    separately, so line 1a must add them back."""
+    draft = _draft(line_items={"wages": 30000.0, "allocated_tips": 2000.0})
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line1a_wages"] == 32000.0
+
+
+def test_income_schedule_zero_when_only_wages_no_regression():
+    f = serialize_1040(_draft(line_items={"wages": 50000.0}), [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line1a_wages"] == 50000.0
+    assert f["line8_other_income"] == 0.0
