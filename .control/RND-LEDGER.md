@@ -1909,3 +1909,27 @@ K-1 form_code scopes _sum_field (no bleed w/ 1099-DIV same field name); box2 != 
 
 **ZERO collision:** us_engine.py edits at 551/556/636/849/996 all clear of #105's hunks (175, 688-733, 892-939). Test in
 NEW file (not test_us_engine.py which #102 touches). No #116/#111/#102 file overlap.
+
+## Cycle 98 — HONEST HOLD (2026-06-16) [5-primitive: sole clean candidate duplicates open PR #111; captured-but-unused vein exhausted]
+
+**MAINTAIN:** origin/main HEAD 7e115f2 (#127 K-1 merged; ledger on main through Cycle 96, Cycle 97/#128 open); #128/#116/#111/#105/#102 OPEN; suite green 1175.
+
+**DECISION: HOLD (no PR, no padding).** RESEARCH (strict-bar scan for any remaining clean fix) surfaced ONE candidate —
+"credit T4 box 46 charitable donations from the slip" — but VERIFIED via `gh pr diff 111`: that is EXACTLY open PR #111
+(its literal title + identical ca_engine edit, and #111 uses max(slip,manual) which is BETTER than the subagent's
+additive version that would double-count). The subagent fell into the cycle-83 trap (checked #111's hunk LINES but not
+that #111's TITLE is this fix). DUPLICATE -> rejected.
+
+**The subagent's own honesty note confirms CONVERGENCE of the captured-but-unused vein:**
+- ALL withholding/tax-paid aggregations COMPLETE: US fed_withheld sums W-2/1099-INT/DIV/MISC/R/NEC/K/G/SSA/W-2G (503-535);
+  CA sums T4/T4RSP/T4RIF/T4A tax-deducted (127-176); IN credits Form-16/16A TDS + 26AS total_tds + advance_tax (217-516).
+- Remaining unread fields all CORRECTLY excluded: T4A box105 scholarships (conditional exemption), 1099-INT box2 (already
+  read), AIS fields (reconciliation), DIV 2b/2c/2d/3/5 (subsets/return-of-capital), T4 box52 (RRSP room not income), etc.
+- "The T4 box 46 donations gap is the ONE genuinely clean... captured-but-unread field remaining" — and that IS #111.
+
+**STATE: captured-but-unused vein EXHAUSTED.** Combined with prior convergence (serializers complete, residency/cross_border
+/intake/dedupe/box-maps/configs clean, value-correctness clean), the engine surface is converged EXCEPT items already
+rejected on merit (1099-Q/SA conditional taxability, 5498 roth basis, §199A QBI-combine+collision, IN professional_fees
+classification) or BLOCKED behind the 4 long-stuck PRs. **UNBLOCK:** #111/#116/#105/#102 merging frees those regions for
+the next round (e.g. CA HoH brackets need #102; new IN Chapter-VIA needs #116); OR a new form/feature/requirement. Until
+then -> honest HOLD. (Engine-side per-hunk vein produced 6 ships #123-#128; now drained of clean one-field items.)
