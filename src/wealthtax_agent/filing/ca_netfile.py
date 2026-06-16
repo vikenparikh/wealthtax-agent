@@ -64,6 +64,12 @@ def serialize_t1(draft: DraftReturn, extracts: List[FormExtract], year: int) -> 
         f"    <ProvincialTax>{_fmt(line_items.get('provincial_tax', 0.0))}</ProvincialTax>\n"
         f"    <BasicPersonalAmount>{_fmt(credits.get('basic_personal_amount', 0.0))}</BasicPersonalAmount>\n"
         f"    <TaxWithheld>{_fmt(line_items.get('tax_withheld', 0.0))}</TaxWithheld>\n"
+        # Refundable Canada Workers Benefit (Schedule 6) is credited as a payment in
+        # the engine balance (ca_engine: balance = total_tax - tax_withheld - cwb), so
+        # it must appear on the payment side here or the artifact's visible lines
+        # (FederalTax + ProvincialTax - TaxWithheld - CWB) won't reconcile with the
+        # emitted BalanceOwing/Refund. Defaults to 0.00 when no CWB applies — no regression.
+        f"    <CanadaWorkersBenefit>{_fmt(line_items.get('canada_workers_benefit', 0.0))}</CanadaWorkersBenefit>\n"
         f"    <BalanceOwing>{_fmt(totals.get('balance_owing', 0.0))}</BalanceOwing>\n"
         f"    <Refund>{_fmt(totals.get('refund', 0.0))}</Refund>\n"
         "  </Tax>\n"

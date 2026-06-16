@@ -114,3 +114,45 @@ def test_special_chars_in_slip_attributes_stay_valid_xml():
     # The dangerous ampersand/angle brackets are entity-escaped in the raw payload.
     assert "&amp;" in xml
     assert "T4 & <Co>" not in xml
+
+
+def test_tax_section_includes_canada_workers_benefit():
+    """The refundable Canada Workers Benefit (Schedule 6) is credited as a payment in
+    the engine balance, but the NETFILE Tax block previously omitted it — so a reader
+    summing the artifact's own lines could not reconcile to the emitted Refund.
+
+    $1,200 fed + $400 prov tax, $1,500 withheld, $1,400 CWB → refund $1,700.
+
+    FAILS before: no <CanadaWorkersBenefit> element."""
+    draft = _draft(
+        line_items={"federal_tax": 800.0, "provincial_tax": 400.0, "tax_withheld": 1500.0,
+                    "canada_workers_benefit": 1400.0},
+        totals={"balance_owing": 0.0, "refund": 1700.0},
+    )
+    tax = ET.fromstring(serialize_t1(draft, [], 2025)).find("Tax")
+    assert tax.find("CanadaWorkersBenefit").text == "1400.00"
+    # Visible-line reconciliation: tax - withheld - cwb = -refund
+    total_tax = float(tax.find("FederalTax").text) + float(tax.find("ProvincialTax").text)
+    withheld = float(tax.find("TaxWithheld").text)
+    cwb = float(tax.find("CanadaWorkersBenefit").text)
+    assert round(total_tax - withheld - cwb, 2) == -float(tax.find("Refund").text)
+
+
+def test_canada_workers_benefit_reconciles_when_still_owing():
+    # $3,000 tax, $0 withheld, $600 CWB → still owes $2,400; visible lines reconcile.
+    draft = _draft(
+        line_items={"federal_tax": 2000.0, "provincial_tax": 1000.0, "tax_withheld": 0.0,
+                    "canada_workers_benefit": 600.0},
+        totals={"balance_owing": 2400.0, "refund": 0.0},
+    )
+    tax = ET.fromstring(serialize_t1(draft, [], 2025)).find("Tax")
+    assert tax.find("CanadaWorkersBenefit").text == "600.00"
+    total_tax = float(tax.find("FederalTax").text) + float(tax.find("ProvincialTax").text)
+    cwb = float(tax.find("CanadaWorkersBenefit").text)
+    assert round(total_tax - 0.0 - cwb, 2) == float(tax.find("BalanceOwing").text)
+
+
+def test_canada_workers_benefit_defaults_to_zero_when_absent():
+    # No CWB key (non-resident / year without a cwb table) → 0.00, no regression.
+    tax = ET.fromstring(serialize_t1(_draft(), [], 2025)).find("Tax")
+    assert tax.find("CanadaWorkersBenefit").text == "0.00"
