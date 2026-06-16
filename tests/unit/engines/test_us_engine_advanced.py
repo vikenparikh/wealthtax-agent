@@ -331,6 +331,46 @@ def test_1099div_capital_gain_distributions_taxed_as_ltcg():
     assert draft.line_items["ordinary_dividends"] == 2000.0
 
 
+# --- 1099-DIV special-rate long-term gains (§1250 25%, collectibles 28%) ---
+
+def test_unrecaptured_1250_gain_taxed_at_25pct_max():
+    """1099-DIV box 2b (unrecaptured §1250 gain, e.g. from REIT/real-estate-fund
+    distributions) is a subset of box 2a taxed at a MAX 25% rate, not the 0/15/20%
+    LTCG rate. Captured by the extractor but ignored. Wages $250k (32% ordinary
+    marginal) + box 2a $10k all §1250 → 10,000 × min(25%, 32%) = $2,500 (vs the
+    $1,500 it got at the 15% LTCG rate).
+
+    FAILS before the fix: no 'special_rate_tax' key; §1250 taxed at 15%."""
+    extracts = [_w2(250000.0), FormExtract(form_code="1099-DIV", jurisdiction="US", fields={
+        "capital_gain_distributions": 10000.0, "unrecaptured_section_1250_gain": 10000.0})]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["special_rate_tax"] == 2500.0
+    assert draft.line_items["unrecaptured_1250_gain"] == 10000.0
+    # the line item stays gross (full box 2a), only the tax computation carves it out
+    assert draft.line_items["long_term_capital_gain"] == 10000.0
+
+
+def test_collectibles_gain_taxed_at_28pct_max():
+    """1099-DIV box 2d (collectibles, e.g. precious-metal ETFs) is taxed at a MAX
+    28%. Wages $250k (32% marginal) + box 2a $10k all collectibles → $2,800."""
+    extracts = [_w2(250000.0), FormExtract(form_code="1099-DIV", jurisdiction="US", fields={
+        "capital_gain_distributions": 10000.0, "collectibles_28_pct": 10000.0})]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["special_rate_tax"] == 2800.0
+
+
+def test_special_rate_gain_capped_at_ordinary_marginal_for_low_bracket():
+    """The 25%/28% are MAXIMUMS — a low-bracket holder pays their ordinary marginal
+    rate, not 25%/28%. Wages $40k (12% marginal) + box 2a $10k §1250 → 10,000 ×
+    min(25%, 12%) = $1,200, NOT a naive $2,500. (§1250 still doesn't get the 0%
+    LTCG rate, so this is higher than the buggy LTCG treatment — the correct
+    direction — but capped at the ordinary 12%.)"""
+    extracts = [_w2(40000.0), FormExtract(form_code="1099-DIV", jurisdiction="US", fields={
+        "capital_gain_distributions": 10000.0, "unrecaptured_section_1250_gain": 10000.0})]
+    draft = compute_us_return(extracts, year=2024, user_answers={"filing_status": "single"})
+    assert draft.line_items["special_rate_tax"] == 1200.0
+
+
 def test_early_withdrawal_penalty_is_above_line_deduction():
     """1099-INT box 2 (penalty on early withdrawal of savings, e.g. cashing a CD
     early) is an above-the-line deduction (Schedule 1 line 18). It was captured

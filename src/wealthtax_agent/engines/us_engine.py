@@ -191,6 +191,19 @@ def _additional_std_boxes(user_answers: Dict[str, str], status: str) -> int:
     return boxes
 
 
+def _marginal_rate(taxable: float, brackets: List[Dict[str, Any]]) -> float:
+    """Ordinary marginal rate on the top dollar of `taxable` — the rate of the
+    first bracket whose ceiling is at or above it (the top, null-ceiling bracket
+    otherwise). Used to cap special-rate gains at the ordinary rate."""
+    rate = 0.0
+    for b in brackets:
+        rate = float(b.get("rate", 0.0))
+        up_to = b.get("up_to")
+        if up_to is not None and taxable <= float(up_to):
+            return rate
+    return rate
+
+
 def _qualified_dividend_tax(qualified_dividends: float, long_term_gain: float, ordinary_taxable_income: float,
                             status: str, fed_tables: Dict[str, Any]) -> float:
     """Tax preferential income (qualified divs + LTCG) using LTCG brackets,
@@ -768,8 +781,33 @@ def compute_us_return(
 
     brackets = fed_tables.get("brackets_by_status", {}).get(status, [])
     ordinary_tax = compute_progressive_tax(ordinary_taxable, brackets)
-    preferential_tax = _qualified_dividend_tax(qualified_dividends, long_gain, ordinary_taxable, status, fed_tables)
-    federal_tax_before_credits = ordinary_tax + preferential_tax
+
+    # Special-rate long-term gains (1099-DIV boxes 2b/2d) are subsets of box 2a
+    # (already in long_gain). They get MAXIMUM rates — 25% for unrecaptured §1250
+    # gain, 28% for collectibles — not the 0/15/20% LTCG rates. Carve them out of
+    # the regular-LTCG pool and tax each at min(special_rate, ordinary marginal
+    # rate) so a low-bracket holder isn't over-taxed. (Simplification: one top-dollar
+    # marginal rate per slice rather than the full Schedule D worksheet stacking.
+    # §1202 box 2c is deferred — its exclusion needs an acquisition date.)
+    sec1250_gain = max(0.0, _sum_field(extracts, "1099-DIV", "unrecaptured_section_1250_gain"))
+    collectibles_gain = max(0.0, _sum_field(extracts, "1099-DIV", "collectibles_28_pct"))
+    special_gain = min(max(0.0, long_gain), sec1250_gain + collectibles_gain)
+    # Clamp the components so their sum can't exceed the available long_gain.
+    sec1250_gain = min(sec1250_gain, special_gain)
+    collectibles_gain = min(collectibles_gain, special_gain - sec1250_gain)
+    long_gain_regular = max(0.0, long_gain) - sec1250_gain - collectibles_gain
+    _ord_marginal = _marginal_rate(ordinary_taxable, brackets)
+    special_rate_tax = round(
+        sec1250_gain * min(0.25, _ord_marginal) + collectibles_gain * min(0.28, _ord_marginal), 2)
+
+    preferential_tax = _qualified_dividend_tax(qualified_dividends, long_gain_regular, ordinary_taxable, status, fed_tables)
+    federal_tax_before_credits = ordinary_tax + preferential_tax + special_rate_tax
+    if special_rate_tax > 0:
+        notes.append(
+            f"Special-rate long-term gains taxed above the 0/15/20% rates: §1250 unrecaptured "
+            f"${sec1250_gain:,.0f} (max 25%) + collectibles ${collectibles_gain:,.0f} (max 28%) "
+            f"= ${special_rate_tax:,.2f}."
+        )
 
     # Split dependents: children under 17 get the CTC, the rest get the ODC.
     num_other_deps = _num_other_dependents(user_answers)
@@ -1016,6 +1054,9 @@ def compute_us_return(
         "agi": agi,
         "ordinary_tax": ordinary_tax,
         "preferential_tax": preferential_tax,
+        "unrecaptured_1250_gain": sec1250_gain,
+        "collectibles_28_gain": collectibles_gain,
+        "special_rate_tax": special_rate_tax,
         "amt_tax": amt_tax,
         "niit": niit,
         "early_distribution_penalty": early_distribution_penalty,
