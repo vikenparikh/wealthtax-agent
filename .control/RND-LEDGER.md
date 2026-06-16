@@ -2232,3 +2232,19 @@ mirroring _to_float/_num_dependents; routed all 3 sites through _to_float/_to_in
 reproduce a crash (not reached in tested paths) — shipped only what reproduces. LESSON (3rd time): the corrections:269
 uncoerced-str root means EVERY bare int()/float() on a user_answers key is a latent engine crash; sweep+route through
 tolerant helpers per-consumer.
+
+---
+
+## Cycle 152 — FULL LIFECYCLE (2026-06-16) [5-primitive: NEW FEATURE — US residential energy credits §25D/§25C, Form 5695]
+
+MATRIX | add US residential energy credits (Form 5695): §25D clean-energy + §25C efficient-home-improvement | the engine had NO residential-energy credit at all (grep: 0 hits for 5695/25D/25C/solar/heat_pump across src). A solar/heat-pump filer supplying residential_clean_energy_cost / energy_efficient_improvements / heat_pump_cost had the inputs SILENTLY IGNORED, losing up to $6,000+ (§25D) and up to $3,200/yr (§25C) off the bottom line. NEW-FEATURE angle (not a tweak) after 2 convergence cycles — fixed-value tweak + coercion-crash veins exhausted. | fail-before: $20k clean-energy input -> residential_clean_energy_credit absent/$0 (4 failed) -> pass-after: §25D 30% no cap ($20k->$6,000, federal_tax drops exactly $6k); §25C general cap binds ($10k->30%=$3k capped $1,200); §25C heat-pump SEPARATE cap ($1k gen->$300 + $8k HP->$2,400 capped $2,000 = $2,300); non-refundable (low income -> federal_tax 0, full credit still reported) | gated? N | PR #144
+
+Statutory: §25D 30% NO cap (clean energy: solar/wind/geothermal/battery); §25C 30% with FIXED $1,200 general + separate $2,000
+heat-pump annual caps. Both fixed by IRA-2022 through 2032 (NON-indexed) -> confidence 90%. New residential_energy config block
+in us/{2023,2024,2025}.yaml (mirrors education_credits/dependent_care fixed-statutory blocks). 3 NEW user_answers keys
+(manual-intake; no IRS slip carries them — Form 5695 self-reported), read via existing _to_float. Non-refundable, subtracted
+in the line-932 max(0,...) assembly. §25C per-item sub-limits ($600/item, $250/$500 doors) modelled at aggregate cap level
+(correct UPPER BOUND + dominant binding constraint) — per-item matrix deferred. §25D carryforward noted not modelled.
+Suite 1262->1267. Collision-free vs #143 (helper ~36-50 + education ~888-918; this is ~932 + ~1187 + config). LESSON: after
+crash/tweak veins converge, the MISSING-WHOLE-FEATURE angle (a statutory credit not modeled at all, fixed params) reopens
+real bottom-line value.

@@ -62,6 +62,12 @@ education_credits:
   phaseout_end_single: 90000
   phaseout_start_mfj: 160000
   phaseout_end_mfj: 180000
+# Form 5695 Residential Energy Credits — fixed-statutory (§25D/§25C, IRA-2022, non-indexed through 2032).
+residential_energy:
+  clean_energy_rate: 0.30        # §25D clean energy (solar/wind/geothermal/battery), no dollar cap
+  efficient_rate: 0.30           # §25C efficient home improvement
+  efficient_general_cap: 1200    # §25C general annual aggregate cap
+  efficient_heat_pump_cap: 2000  # §25C separate annual cap: heat pumps / HP water heaters / biomass
 amt:
   exemption:
     single: 81300
