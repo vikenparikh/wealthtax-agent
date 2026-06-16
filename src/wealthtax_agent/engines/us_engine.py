@@ -718,9 +718,21 @@ def compute_us_return(
     # deduction (Schedule 1, line 18). It was captured but never deducted.
     early_withdrawal_penalty = _sum_field(extracts, "1099-INT", "early_withdrawal_penalty")
 
+    # Self-employed health insurance deduction (§162(l), Schedule 1 line 17): premiums
+    # for medical/dental/qualified-LTC coverage for the self-employed taxpayer, spouse,
+    # and dependents are deductible above the line, but only up to the net SE earnings
+    # from the business (net profit less the deductible half of SE tax). Not available
+    # for any month the taxpayer was eligible for an employer-subsidized plan — that
+    # eligibility condition is the filer's responsibility (not captured here). SE
+    # retirement-plan contributions, which would further reduce the limit, are not
+    # modelled, so the limit is self_employment_income − se_tax_deduction.
+    se_health_premiums = _to_float(user_answers.get("self_employed_health_insurance", 0))
+    se_earned_limit = max(0.0, self_employment_income - se_tax_deduction)
+    se_health_deduction = min(max(0.0, se_health_premiums), se_earned_limit)
+
     above_line = (
         student_loan_interest + hsa_deduction + ira_deduction + se_tax_deduction
-        + early_withdrawal_penalty
+        + early_withdrawal_penalty + se_health_deduction
     )
 
     # Social Security taxability — IRS provisional-income worksheet (Pub 915),
@@ -1110,6 +1122,7 @@ def compute_us_return(
         "hsa_deduction": hsa_deduction,
         "ira_401k_adjustment": ira_deduction,
         "se_tax_deduction": se_tax_deduction,
+        "self_employed_health_insurance_deduction": se_health_deduction,
         "early_withdrawal_penalty": early_withdrawal_penalty,
         "standard_deduction": std_deduction,
         "medical_expense_deductible": medical_deductible,

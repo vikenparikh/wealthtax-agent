@@ -2099,3 +2099,19 @@ new user_answers: dependent_care_expenses, num_dependent_care_persons, spouse_ea
 
 **ZERO collision (0 open PRs).** us_engine.py + us yamls free. RESEARCH-flagged fixed-vs-indexed distinction was decisive.
 Remaining high-value US: 8880 (indexed-blocked), 1099-Q/SA (conditional), 5498 roth (basis) — thinning toward convergence.
+## Cycle 141 — FULL LIFECYCLE (2026-06-16) [5-primitive: US self-employed health insurance deduction -> worktree -> PR]
+
+MATRIX | add US §162(l) self-employed health insurance deduction | us_engine above_line sum (686) had student-loan/HSA/IRA/SE-tax/early-withdrawal but NO self-employed health insurance. §162(l): premiums for the SE taxpayer/spouse/dependents deductible above-the-line, capped at net SE earnings (SE income − deductible half of SE tax). Common (self-employed buying their own coverage), real $ (premiums $5k-15k -> $1k-4k tax). Fixed-rule (no statutory constant, just min(premium, SE-net)) | fail-before: SE $50k + $8k premium -> deduction $0 -> pass-after: $8,000 (under limit); SE $10k + $12k premium -> capped at SE-net $9,293.52; wages-only -> $0 (no SE income); reduces AGI | gated? N | PR #135
+
+**MAINTAIN:** origin/main HEAD 8e91c47 (#134 Form2441 OPEN, us_engine — DIFFERENT REGION); base==HEAD; baseline 1228.
+
+**Above-the-line adjustment (Schedule 1 line 17).** se_health_deduction = min(premiums, max(0, self_employment_income −
+se_tax_deduction)), added to above_line -> reduces AGI. The SE-net limit uses se_tax_deduction (the deductible half of SE
+tax) per §162(l); SE retirement contributions (which further reduce the limit) not modelled; employer-plan-eligibility
+condition is the filer's responsibility (noted). user_answers: self_employed_health_insurance. No config (no statutory
+constant). +1 line_item. Confidence 90%. Suite 1228->1233.
+
+**INDEPENDENT of #134 (not a conflicting pair).** Both touch us_engine.py but DIFFERENT regions: #134 = helper ~223 /
+wiring ~890 / credit line_item ~1143; this = above_line ~686 / deduction line_item ~1054. No shared lines -> both
+mergeable, no interdependency (like #131/#132 across files). Picked SE-health over educator-expenses ($300, low-$) and
+Form 8880 (indexed-blocked). RESEARCH heuristic: fixed-rule > indexed; value > tiny.
