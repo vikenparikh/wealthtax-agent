@@ -24,3 +24,4 @@ brackets_by_status:
 standard_deduction:
   single: 8000
   married_filing_jointly: 16050
+  head_of_household: 11200   # NY IT-201 HoH standard deduction (statutory, R&TC §614; fixed, not indexed)

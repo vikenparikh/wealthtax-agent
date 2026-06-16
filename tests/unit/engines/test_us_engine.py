@@ -79,6 +79,28 @@ def test_ca_single_state_treatment_unchanged_by_hoh_fix():
     assert draft.line_items["state_taxable_income"] == 84637.0
 
 
+def test_ny_hoh_gets_its_own_standard_deduction():
+    """NY's standard deduction has a distinct head-of-household tier ($11,200,
+    statutory/fixed) — but the NY table only had single ($8,000) + MFJ, so HoH
+    filers fell back to the single $8,000 and were over-taxed. (NY HoH correctly
+    uses the single rate brackets — only the deduction differed.) AGI $90,000 HoH →
+    NY deduction $11,200, taxable $78,800 (was $8,000 / $82,000).
+
+    FAILS before the fix: state_standard_deduction is $8,000 (single fallback)."""
+    draft = compute_us_return([FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 90000.0})],
+                              year=2024, state="NY", user_answers={"filing_status": "hoh"})
+    assert draft.line_items["state_standard_deduction"] == 11200.0
+    assert draft.line_items["state_taxable_income"] == 78800.0
+
+
+def test_ny_single_state_treatment_unchanged():
+    """Regression guard: NY single filers keep the $8,000 single deduction."""
+    draft = compute_us_return([FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 90000.0})],
+                              year=2024, state="NY", user_answers={"filing_status": "single"})
+    assert draft.line_items["state_standard_deduction"] == 8000.0
+    assert draft.line_items["state_taxable_income"] == 82000.0
+
+
 def test_ca_mental_health_surcharge_above_1m():
     """CA levies a 1% Mental Health Services Tax (R&TC §17043) on taxable income
     over $1M, separate from the 12.3%-topping brackets. Wages $2,005,363 (AGI minus
