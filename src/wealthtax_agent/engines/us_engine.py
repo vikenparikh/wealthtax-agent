@@ -548,8 +548,17 @@ def compute_us_return(
     k1_qdiv = _sum_field(extracts, "K-1", "qualified_dividends")
     k1_st_gain = _sum_field(extracts, "K-1", "net_short_term_capital_gain")
     k1_lt_gain = _sum_field(extracts, "K-1", "net_long_term_capital_gain")
+    # K-1 box 2 (net rental real-estate income) and box 6a (total ordinary
+    # dividends) were captured by the extractor but never read. Box 6a is
+    # especially important: box 6b (qualified) was added to qualified_dividends
+    # and then backed out of the ordinary base at the preferential rate — but
+    # without 6a in ordinary_dividends, that back-out subtracted income that was
+    # never added, under-taxing the dividend. Mirror the 1099-DIV 1a/1b handling.
+    k1_rental = _sum_field(extracts, "K-1", "net_rental_real_estate_income")
+    k1_ord_div = _sum_field(extracts, "K-1", "ordinary_dividends")
 
     interest_income += k1_interest
+    ordinary_dividends += k1_ord_div
     qualified_dividends += k1_qdiv
     short_gain += k1_st_gain
     long_gain += k1_lt_gain
@@ -632,6 +641,7 @@ def compute_us_return(
         + misc_royalties
         + misc_other
         + sch_e_supplemental
+        + k1_rental
         + pension_taxable
         + short_gain
         + long_gain
@@ -845,6 +855,7 @@ def compute_us_return(
         interest_income + ordinary_dividends
         + max(0.0, long_gain) + max(0.0, short_gain)
         + misc_royalties + misc_rents + sch_e_supplemental
+        + k1_rental  # passive rental real estate from a K-1 is net investment income
     )
     # NIIT is keyed off MAGI, which adds the foreign earned income exclusion back
     # to AGI (§1411(d)(1)). Using AGI alone would let FEIE filers (Form 2555)
@@ -982,6 +993,7 @@ def compute_us_return(
         "royalty_income": misc_royalties,
         "other_misc_income": misc_other,
         "supplemental_income_sch_e": sch_e_supplemental,
+        "k1_rental_real_estate": k1_rental,
         "taxable_pension": pension_taxable,
         "taxable_social_security": taxable_ssa,
         "unemployment_compensation": unemployment,

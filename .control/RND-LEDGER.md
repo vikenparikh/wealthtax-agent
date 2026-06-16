@@ -1893,3 +1893,19 @@ read ~141, sum ~250, line_item ~469. Confidence 95%. Suite 1165->1169.
 
 **ZERO collision:** ca_engine.py edits at 141/250/469 all clear of #111's hunks (287-302 donations, 489-497 line_items —
 my line_item at 469 is ~20 lines above 489). No #105/#102/#116/#125 file overlap.
+
+## Cycle 96 — FULL LIFECYCLE (2026-06-16) [5-primitive: US K-1 box 2 + 6a captured-but-unused -> worktree -> PR]
+
+MATRIX | read US K-1 box 2 rental real-estate + box 6a ordinary dividends | k1.py captures 7 boxes; us_engine read only 5 (1/5/6b/8/9a). Box 2 net_rental_real_estate_income DROPPED from income. Box 6a ordinary_dividends DROPPED — and WORSE: box 6b (qualified) WAS added to qualified_dividends then backed out of the ordinary base at preferential rate, but w/o 6a in ordinary_dividends that back-out subtracted income never added -> PHANTOM SUBTRACTION under-taxing the dividend (negative-tax bug, not just a drop). Common (real-estate syndications, family LPs, brokerage PTPs) | fail-before: K-1 box2 $20k -> dropped; box6a=6b=$4k all-qualified -> tax DECREASES (phantom backout) -> pass-after: rental +$20k into total_income+NIIT; ordinary_dividends +6a so qualified back-out is correct (tax increases) | gated? N | PR #127
+
+**MAINTAIN:** origin/main HEAD 742e53f (#126 T3-box25 merged); #116/#111/#105/#102 OPEN; base==HEAD; baseline 1169.
+
+**Captured-but-unused (US), from the systematic forms-vs-engine audit.** Box 2 mirrors sch_e_supplemental (income +
+NIIT investment_income, passive). Box 6a mirrors 1099-DIV 1a/1b: 6a->ordinary_dividends (already in income sum + NIIT),
+6b stays in qualified_dividends (backed out at preferential). The phantom-backout was an active UNDER-TAX, not just a
+dropped field — confirmed by fail-before (adding a qualified K-1 dividend DECREASED tax before the fix). Overlap checked:
+K-1 form_code scopes _sum_field (no bleed w/ 1099-DIV same field name); box2 != SCH-E sch_e_supplemental (distinct form).
+5 edits: reads ~551, ordinary_dividends roll-up ~556, income sum ~636, NIIT ~849, line_item ~996. Confidence 92%. Suite 1169->1175.
+
+**ZERO collision:** us_engine.py edits at 551/556/636/849/996 all clear of #105's hunks (175, 688-733, 892-939). Test in
+NEW file (not test_us_engine.py which #102 touches). No #116/#111/#102 file overlap.
