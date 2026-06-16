@@ -249,6 +249,12 @@ def compute_ca_return(
     # provincial tuition credit is left out to keep this minimal).
     tuition_fees = _sum_field(extracts, "T2202", "eligible_tuition_fees")
 
+    # Old Age Security benefits (T4A(OAS) box 18, supplied via user_answers) are fully
+    # taxable income (T1 line 11300). The engine previously read the OAS amount only to
+    # cap the recovery-tax clawback (#136); it is now also included in total income so
+    # an OAS recipient is taxed on it (and so net income — which drives the clawback
+    # threshold — reflects it).
+    oas_benefits = _to_float(user_answers.get("oas_benefits", 0))
     total_income = round(
         employment_income_after_t2200
         + interest_income
@@ -266,7 +272,8 @@ def compute_ca_return(
         + t5013_business
         + t5013_rental
         + foreign_property_income
-        + lump_sum_income,
+        + lump_sum_income
+        + oas_benefits,
         2,
     )
 
@@ -392,9 +399,8 @@ def compute_ca_return(
     # box 18) must be supplied — previously the engine used pension + RRIF income as
     # a proxy, which (a) spuriously clawed back from seniors with pension/RRIF income
     # but no OAS, and (b) capped at the full pension rather than the OAS received. A
-    # filer with no OAS owes no recovery tax. (OAS is itself taxable income; that
-    # income-side capture is a separate, unmodelled item — this fixes only the cap.)
-    oas_benefits = _to_float(user_answers.get("oas_benefits", 0))
+    # filer with no OAS owes no recovery tax. (oas_benefits is read above and is
+    # included in total/net income; net income is what crosses the threshold here.)
     if oas_benefits > 0 and net_income > oas_threshold:
         clawback = round(min(oas_benefits, (net_income - oas_threshold) * 0.15), 2)
         federal_tax += clawback
@@ -517,6 +523,7 @@ def compute_ca_return(
         "rrsp_withdrawals": rrsp_withdrawals,
         "rrif_income": rrif_income,
         "pension_income": pension_income,
+        "oas_income": oas_benefits,
         "pension_income_credit": pension_income_credit,
         "age_amount_credit": age_amount_credit,
         "other_self_employment": self_emp_t4a,

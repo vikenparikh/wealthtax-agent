@@ -2132,3 +2132,27 @@ cap doesn't bind) + 2 NEW bug-demonstrating tests (no-OAS->$0, capped-at-OAS). C
 
 **ZERO collision (0 open PRs).** LESSON: a convergence/NOTHING-HIGH-VALUE scan can still surface a real miscompute it
 deems "deferred" — re-examine flagged defects; a test asserting buggy behavior is a fix opportunity, not a lock.
+
+---
+
+## Cycle 144 — DEVELOP (2026-06-16)
+
+### Shipped: CA OAS benefits are taxable income (T1 line 11300), not clawback-only
+
+**What:** `user_answers["oas_benefits"]` (T4A(OAS) box 18) was read ONLY to size the OAS
+recovery-tax clawback cap (#136). The actual OAS amount was never added to `total_income`,
+so a pensioner's federal/provincial tax was computed on an income base that excluded a fully
+taxable benefit — understating tax. OAS is reported on T1 line 11300 and is fully taxable
+(distinct from the line-23500 recovery-tax clawback, which is a separate already-modelled item).
+
+**Fix:** read `oas_benefits` once before the `total_income` sum and add `+ oas_benefits` to it;
+removed the now-redundant re-read at the clawback site; added an `oas_income` line_item.
+
+**TDD:** fail-before proven — removing `+ oas_benefits` → "3 failed, 4 passed" (new OAS-income
+test + 2 threshold tests). NEW test `test_oas_benefits_included_in_total_income` (oas_income ==
+8500, total_income +8500, estimated_tax rises). 3 threshold tests in test_engine_edge_cases.py
+re-baselined: pension lowered by $8,500 each (89000->80500, 92000->83500, 95000->86500) so
+net_income stays constant and the 313.20 / 0.0 / 600.45 clawback assertions are preserved.
+
+**Confidence 93%.** Suite 1244->1245. Follow-on to #136 (queued behind it in Cycle 143).
+ZERO collision (0 open PRs). HARD GUARD honoured: artifact/calc only, no filing-submission path.
