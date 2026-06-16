@@ -1488,3 +1488,18 @@ engine/federal-artifact change. Suite 1083 -> 1089.
 
 **Flagged (v1 scope):** CA-only (the one state w/ real income tax in the engine's tables); simple summary
 JSON (not a full Form 540 line layout); no CA-specific credits/AMT (uses the engine's state_tax from AGI).
+
+## Cycle 66 — FULL LIFECYCLE (2026-06-15) [5-primitive: in-scope completion of the operator-approved CA-540 artifact]
+
+MATRIX | add a human-readable CA Form 540 PDF alongside the #99 JSON | the CA-540 artifact (shipped #99) emitted ONLY JSON, while every other jurisdiction emits a human-readable PDF (federal 1040 PDF, CA T1 PDF) -> the state tax had no PDF deliverable, an inconsistency | fail: only 'ca_540_json' for a CA filer, no 'ca_540_pdf' — pass: ca_540_pdf present, mime application/pdf, valid %PDF- bytes, transmissible False; same CA-residence gate | gated? N | PR #TBD
+
+**MAINTAIN:** #99 (CA-540 JSON) merged to main (HEAD 344e66f); baseline suite green at 1089. Rebase-before-push held.
+
+**Note:** the wakeup re-fired the "build CA artifact" prompt AFTER #99 already merged — recognized the stale
+re-fire, did NOT rebuild the JSON; instead did the natural in-scope completion: a CA-540 PDF via the existing
+fill_form("us", year, "CA-540", {...}) pattern (no template -> fill_form's plain-text draft-PDF fallback, same
+as the 1040/T1 PDFs). Mirrors the federal-1040 PDF block exactly; same CA-residence gate. Purely additive.
+Suite stays 1089 (extended the existing CA-540 build_return test with PDF assertions rather than a new test).
+
+**CA state-tax artifact now COMPLETE (JSON #99 + PDF #66), consistent with the 1040 (PDF+JSON) and T1 (PDF+XML)
+pairings. Further state work (other states, CA credits/AMT, real 540 template) is a fresh operator scope call.**
