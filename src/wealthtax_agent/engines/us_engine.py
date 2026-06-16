@@ -96,6 +96,22 @@ def _num_other_dependents(user_answers: Dict[str, str]) -> int:
         return 0
 
 
+def _num_eitc_qualifying_children(user_answers: Dict[str, str], num_deps: int) -> int:
+    """EITC qualifying children — under 19 (or under 24 if a full-time student, or
+    any age if disabled), and NOT a parent/grandparent. This is a different test
+    than the CTC's under-17, so it is an independent input from num_other_dependents
+    (a 17-18yo is an EITC child but a CTC 'other dependent'). Defaults to num_deps
+    so, with no input, every dependent is treated as an EITC qualifying child (the
+    prior behaviour) → no regression; capped at the total dependent count."""
+    raw = user_answers.get("num_eitc_qualifying_children")
+    if raw is None or str(raw).strip() == "":
+        return num_deps
+    try:
+        return max(0, min(int(raw), num_deps))
+    except (TypeError, ValueError):
+        return num_deps
+
+
 def _compute_eitc(earned: float, agi: float, num_children: int, status: str, taxpayer_age: float,
                   investment_income: float, feie_claimed: bool, fed_tables: Dict[str, Any]) -> float:
     """Earned Income Tax Credit (refundable, Form 1040 line 27), federal v1.
@@ -734,16 +750,18 @@ def compute_us_return(
 
     # Earned Income Tax Credit (refundable, Form 1040 line 27). The §32(i)
     # investment-income cliff adds tax-exempt interest to the NIIT investment total
-    # (which omits it). num_deps approximates the qualifying-children count, which
-    # can over-credit non-qualifying dependents — flagged in the note.
+    # (which omits it). EITC qualifying children (under 19, not a parent/relative)
+    # use a different age test than the CTC, so they have their own input that
+    # defaults to the full dependent count.
+    eitc_children = _num_eitc_qualifying_children(user_answers, num_deps)
     eitc_earned = wages + max(0.0, self_employment_income)
     taxpayer_age = _to_float(user_answers.get("taxpayer_age", 0))
-    eitc = _compute_eitc(eitc_earned, agi, num_deps, status, taxpayer_age,
+    eitc = _compute_eitc(eitc_earned, agi, eitc_children, status, taxpayer_age,
                          investment_income + tax_exempt_interest, feie_excluded > 0, fed_tables)
     if eitc > 0:
         notes.append(
             f"Earned Income Tax Credit of ${eitc:,.2f} (refundable, Form 1040 line 27) credited as "
-            f"a payment, assuming all {num_deps} dependent(s) are EITC-qualifying children."
+            f"a payment, based on {eitc_children} EITC-qualifying child(ren)."
         )
 
     balance = round(total_tax - fed_withheld - excess_ss_tax - actc - eitc, 2)
