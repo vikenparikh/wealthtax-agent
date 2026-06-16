@@ -92,3 +92,47 @@ def test_no_corrections_is_no_op():
     state = _state_with_t4()
     new = apply_corrections(state)
     assert new is state  # short-circuit returns the same object
+
+
+def test_add_form_with_non_numeric_value_does_not_crash():
+    """A correction adding a form with a worded amount (e.g. the LLM echoing
+    "four hundred") must not raise. The add-form path called float() directly on
+    the coerced value with no guard, so a non-numeric value raised ValueError and
+    killed the entire correction pass. It must degrade gracefully like the
+    set-extract path: add the form, skip the bad value, warn."""
+    state = _state_with_t4()
+    state.corrections = [Correction(kind="chat", user_prompt="add a 1099-INT for four hundred dollars", changes=[
+        FieldChange(op="add", target="form", form_code="1099-INT",
+                    jurisdiction="US", field="interest_income", new_value="four hundred"),
+    ])]
+    new = apply_corrections(state)  # before fix: ValueError
+    # The form is still added (graceful degradation, not a hard drop).
+    new_int = [e for e in new.extracts if e.form_code == "1099-INT"]
+    assert len(new_int) == 1
+    # The unparseable field is skipped, not stored as a string.
+    assert "interest_income" not in new_int[0].fields
+    assert any("expects numeric" in w for w in new.warnings)
+
+
+def test_add_form_with_numeric_string_value_still_parses():
+    # Regression guard: a numeric string ("400", "$1,200") must still coerce.
+    state = _state_with_t4()
+    state.corrections = [Correction(kind="chat", changes=[
+        FieldChange(op="add", target="form", form_code="1099-INT",
+                    jurisdiction="US", field="interest_income", new_value="$1,200"),
+    ])]
+    new = apply_corrections(state)
+    new_int = [e for e in new.extracts if e.form_code == "1099-INT"][0]
+    assert new_int.fields["interest_income"] == 1200.0
+
+
+def test_add_form_with_plain_numeric_value_unchanged():
+    # Regression guard: the existing numeric path is untouched.
+    state = _state_with_t4()
+    state.corrections = [Correction(kind="chat", changes=[
+        FieldChange(op="add", target="form", form_code="1099-INT",
+                    jurisdiction="US", field="interest_income", new_value=400),
+    ])]
+    new = apply_corrections(state)
+    new_int = [e for e in new.extracts if e.form_code == "1099-INT"][0]
+    assert new_int.fields["interest_income"] == 400.0

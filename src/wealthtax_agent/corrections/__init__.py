@@ -273,7 +273,19 @@ def _apply_change(state: GraphState, change: FieldChange) -> None:
 
     if change.target == "form":
         if change.op == "add" and change.form_code and change.jurisdiction:
-            fields = {change.field: float(_coerce_value(change.new_value))} if change.field and change.new_value is not None else {}
+            # Coerce the value with the same numeric guard the set-extract path
+            # uses below: a non-numeric value (e.g. the LLM echoing "four hundred")
+            # must degrade gracefully — add the form, skip the bad field, warn —
+            # rather than crashing the whole correction pass on float(str).
+            fields = {}
+            if change.field and change.new_value is not None:
+                coerced = _coerce_value(change.new_value)
+                if isinstance(coerced, (int, float)):
+                    fields[change.field] = float(coerced)
+                else:
+                    state.warnings.append(
+                        f"Correction skipped: {change.field} expects numeric, got {coerced!r}"
+                    )
             state.extracts.append(FormExtract(
                 form_code=change.form_code,
                 jurisdiction=change.jurisdiction,

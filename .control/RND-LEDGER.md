@@ -2194,3 +2194,16 @@ $125k thresholds) REJECTED — MFS unreachable (_resolve_filing_status maps it t
 it; no MFS config tables), narrow fix a no-op, full MFS support an unsafe multi-site feature (SALT $5k, cap-loss $1.5k,
 AMT, brackets/std/LTCG all MFS-halved). Second probe found NO clean fixed-value miscompute (engine well-mined, 139 PRs)
 but reproduced THIS crash. Suite 1252->1256. ZERO collision (0 open PRs).
+
+---
+
+## Cycle 148 — FULL LIFECYCLE (2026-06-16) [5-primitive: fix reachable ValueError crash in correction add-form path]
+
+MATRIX | correction "add form" with a non-numeric value crashes the whole correction pass (ValueError) | corrections/__init__.py:276 built fields via `float(_coerce_value(change.new_value))` with NO numeric guard. new_value is Optional[float|str] (LLM correction parser explicitly allows string values per its system prompt). A NL correction like "add a 1099-INT for four hundred dollars" yields new_value="four hundred"; _validate_change only checks form_code/jurisdiction for add-form, so it reaches line 276 -> _coerce_value returns the string unchanged -> float("four hundred") raises ValueError -> apply_corrections node dies, user gets NO updated draft. The set-extract path (298-303) ALREADY guards with isinstance(coerced,(int,float)) + a skip-warning; add-form was asymmetric. | fail-before: apply_corrections w/ add-form new_value="four hundred" -> ValueError could not convert string to float (1 failed) -> pass-after: no crash, form still appended, interest_income skipped (not stored as string), "expects numeric" warning; numeric string "$1,200" -> 1200.0; plain numeric 400 -> 400.0 | gated? N | PR #141
+
+#140-CLASS latent crash (reachable unhandled exception destroys whole draft), found by a dedicated crash-hunt probe.
+Fix mirrors the existing set-path guard exactly -> symmetric graceful degradation. Confidence 90% (deterministically
+reproduced; trigger is the less-common worded-amount wording but fully reachable via the LLM parser). Suite 1256->1259.
+ZERO collision (#140 merged mid-cycle; this is corrections/__init__.py, untouched since foundation commit #4). LESSON:
+audit guard SYMMETRY — when one branch (set) coerces defensively, sibling branches (add) doing the same coercion need
+the same guard; an unguarded float(str) on any LLM/user-supplied value is a latent crash.
