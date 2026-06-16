@@ -1819,3 +1819,18 @@ ca_netfile 6-components #121, in_itr ScheduleBP (this). Combined with the credit
 line19/20 #119, in_itr 80CCD2 #118, ca_netfile CWB #114) and tax-balance reconciliation (#113/#114/#117) -> the
 engine<->serializer completeness sweep is COMPLETE. Next non-colliding work needs a NEW surface or an engine PR to merge
 (US 1099-R §72(t) / IN §80DD-80U await us_engine/in_engine freeing). Expect HOLD next cycle unless queue drains.
+
+## Cycle 91 — STEADY-STATE HOLD (2026-06-16) [no state change since cycle-90; 4 engine PRs still block]
+
+**MAINTAIN:** origin/main HEAD 29105d3 UNCHANGED since cycle-90; #116/#111/#105/#102 still OPEN (same 4 engine PRs); 0 new commits, 0 new PRs; suite green 1148.
+
+**DECISION: STEADY-STATE HOLD (no PR, no padding, no re-research).** Repo state is byte-identical to cycle-90's
+comprehensive convergence HOLD — re-dispatching a research subagent would re-derive the same result (~67k tokens for no
+new information). Cycle-90 verified the ENTIRE non-colliding surface clean: serializer completeness (3 sub-veins × 3
+jurisdictions, #113-#122) + serializer value-correctness + intake field-mapping + dedupe fingerprinting + extractor
+box-maps + residency + cross_border + state/province configs. Nothing has changed since.
+
+**2nd consecutive HOLD under the identical PR-blocked state.** All remaining backlog needs a contended engine file freed:
+US 1099-R §72(t) (us_engine.py vs #105); IN §80DD/§80U/§80EEB (in_engine.py vs #116); HoH->single state mapping
+(us_engine.py vs #105); IN surcharge (risky). UNBLOCK = operator merges any of #116/#111/#105/#102. Until the queue
+drains, further identical cycles are steady-state HOLDs requiring no new analysis beyond this marker.
