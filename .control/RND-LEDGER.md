@@ -1696,3 +1696,22 @@ Confidence 92%. Suite 1117->1120.
 us_mef (#113) + ca_netfile (this) shipped; in_itr verified clean; ca_540/quarterly not yet swept (next candidates).
 
 **REBASED onto origin/main d503d6c (#113 merged mid-cycle); ledger union (Cycle 79 then 80). No code conflict — ledger-only.**
+
+## Cycle 82 — FULL LIFECYCLE (2026-06-16) [5-primitive: India income-head completeness -> worktree -> PR]
+
+MATRIX | §57(iia) standard deduction on family pension (Income from Other Sources) | in_engine.py Other Sources block (262-272) aggregated only bank interest + dividends + generic other_income; NO family-pension handling and NO §57 deduction anywhere (verified: grep family_pension/section_57 in src/ = empty). A filer entering family pension via the other_income key was taxed in FULL, over-taxing by up to ₹15,000 (old) / ₹25,000 (new). §57(iia) is one of the few deductions §115BAC does NOT disallow -> applies under BOTH regimes (default new-regime filer too). Common population (widows/dependants of deceased employees) | fail-before: ₹90k family pension new regime AY25 -> taxable ₹90k, no deduction line_item -> pass-after: deduction ₹25,000 (min(30k,25k)), taxable ₹65k into total_income | gated? N | PR #115
+
+**MAINTAIN:** origin/main HEAD d503d6c (#113 merged); #114/#111/#105/#102 OPEN; base==HEAD, no rebase; baseline 1121.
+
+**NOT a HOLD — in_engine.py freshly UN-contended (its §87A PR #112 merged) reopened the India surface.** Last cycle's
+HOLD was scoped to the exhausted serializer vein, not whole-repo convergence. Family pension is a genuine missing
+income-head deduction with FIXED statutory constants (1/3 fraction + ₹15k/₹25k caps), no guessed per-year market data.
+Deduction = min(family_pension/3, cap); cap regime-specific via tables.get("deductions") (₹15k old; ₹25k new AY25,
+but ₹15k new in 2024.yaml since the Budget-2024 bump starts AY2025-26 — per-year correct). Net flows into other_income
+(so NR/RNOR foreign-exclusion + slab_income paths apply automatically). +3 line_items. Confidence 88%. Suite 1121->1127.
+
+**ZERO collision:** in_engine.py + in/2024.yaml + in/2025.yaml; none of #114(ca_netfile)/#111(ca_engine)/#105(us_engine+US
+tables)/#102(ca/2024.yaml). VERIFIED absence first (grep) before building — heeded the cycle-81 lesson (read the
+target before trusting a "missing" claim). RESEARCH next-best after #105 lands: US 1099-R §72(t) early-withdrawal penalty.
+
+**REBASED onto origin/main 03b66e1 (#114 merged mid-cycle); ledger union (Cycle 80 then 82; Cycle 81 was a HOLD on its own unmerged branch). No code conflict — ledger-only.**
