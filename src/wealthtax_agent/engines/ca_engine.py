@@ -241,6 +241,13 @@ def compute_ca_return(
     # Student loan interest (line 31900). 15% federal credit on the interest
     # paid on Canada Student Loans. Cross-border guardrail can zero this out.
     student_loan_interest_ca = _to_float(user_answers.get("student_loan_interest_ca", 0))
+    # Federal tuition amount (line 32300): a lowest-rate non-refundable credit on the
+    # student's OWN eligible tuition fees (T2202), captured but previously never read.
+    # The student must claim it against their own tax first; transfer (up to $5,000) or
+    # carry-forward of the UNUSED portion is a separate optimization (see optimize.py),
+    # not the own-year claim modelled here. Only the federal credit is added (the
+    # provincial tuition credit is left out to keep this minimal).
+    tuition_fees = _sum_field(extracts, "T2202", "eligible_tuition_fees")
 
     total_income = round(
         employment_income_after_t2200
@@ -352,6 +359,7 @@ def compute_ca_return(
         age_amount = max(0.0, age_max - age_reduction * max(0.0, net_income - age_threshold))
         age_amount_credit = round(age_amount * float(lowest_rate), 2)
 
+    tuition_credit = tuition_fees * float(lowest_rate)
     fed_non_refundable = (
         (bpa + employment_amount) * float(lowest_rate)
         + cpp_ei_credit
@@ -361,6 +369,7 @@ def compute_ca_return(
         + medical_credit
         + student_loan_credit
         + property_tax_credit
+        + tuition_credit
     )
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
     federal_tax = max(0.0, federal_tax_before_credits - fed_non_refundable - federal_dtc)
@@ -471,6 +480,8 @@ def compute_ca_return(
         "property_tax_paid": raw_property_tax,
         "property_tax_eligible": property_tax_eligible,
         "property_tax_credit": property_tax_credit,
+        "eligible_tuition_fees": tuition_fees,
+        "tuition_credit": tuition_credit,
         "interest_income": interest_income,
         "trust_foreign_non_business_income": t3_foreign_income,
         "taxable_eligible_dividends": taxable_eligible,
