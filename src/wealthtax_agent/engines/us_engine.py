@@ -647,8 +647,19 @@ def compute_us_return(
             f"capped at $10,000 (Schedule A)."
         )
 
+    # §213: medical/dental expenses are deductible only to the extent they exceed
+    # 7.5% of AGI (a permanent floor since 2021). The engine added them at face
+    # value, over-deducting. The floor uses the post-above-line AGI (line 615).
+    medical_raw = _sum_field(extracts, "SCH-A", "medical_expenses")
+    _medical_floor_rate = float(fed_tables.get("schedule_a", {}).get("medical_agi_floor_rate", 0.075))
+    medical_deductible = round(max(0.0, medical_raw - _medical_floor_rate * agi), 2)
+    if medical_raw > 0:
+        notes.append(
+            f"Medical expenses ${medical_raw:,.0f} reduced by the {_medical_floor_rate:.1%}-of-AGI floor "
+            f"(${_medical_floor_rate * agi:,.0f}) → ${medical_deductible:,.0f} deductible (§213)."
+        )
     sch_a_total = (
-        _sum_field(extracts, "SCH-A", "medical_expenses")
+        medical_deductible
         + salt_deduction
         + _sum_field(extracts, "SCH-A", "mortgage_interest")
         + _sum_field(extracts, "SCH-A", "charitable_gifts")
@@ -843,6 +854,7 @@ def compute_us_return(
         "se_tax_deduction": se_tax_deduction,
         "early_withdrawal_penalty": early_withdrawal_penalty,
         "standard_deduction": std_deduction,
+        "medical_expense_deductible": medical_deductible,
         "itemized_deduction_sch_a": sch_a_total,
         "state_local_property_tax": raw_property_tax_us,
         "salt_deduction_capped": salt_deduction,
