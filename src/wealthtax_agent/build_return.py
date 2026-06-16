@@ -9,6 +9,7 @@ import base64
 import json
 from typing import Dict, List
 
+from wealthtax_agent.filing.ca_540 import serialize_ca540
 from wealthtax_agent.filing.ca_netfile import serialize_t1
 from wealthtax_agent.filing.in_itr import serialize_itr
 from wealthtax_agent.filing.pdf_fill import fill_form
@@ -102,6 +103,20 @@ def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, us
         mime_type="application/json",
         content_b64=_b64(mef_json),
     )
+
+    # California Form 540 state-tax artifact. Gated on CA residence specifically
+    # (NOT on a state line_item being present — TX/FL/WA tables load and spread
+    # state_tax=0.0 into line_items, and an NY filer is state-taxed but not on a
+    # 540). This carries the state tax the federal 1040 deliberately excludes.
+    if (user_answers.get("state_of_residence") or "").upper() == "CA" and draft.line_items.get("state_tax", 0.0) > 0:
+        ca540_json = json.dumps(serialize_ca540(draft, extracts, year, user_answers), indent=2)
+        artifacts["ca_540_json"] = FilingArtifact(
+            jurisdiction="US",
+            form_code="CA-540",
+            filename=f"ca_540_{year}_draft.json",
+            mime_type="application/json",
+            content_b64=_b64(ca540_json),
+        )
 
     # 1040-ES quarterly estimated-tax vouchers (only when meaningful)
     vouchers = quarterly_us_1040es(draft, year + 1)
