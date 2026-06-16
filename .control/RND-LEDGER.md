@@ -1362,7 +1362,7 @@ marginal relief (narrow+risky, CG-cap entangled); <100% FPL (input); 2025 CWB va
 
 ## Cycle 57 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | cap the IRA and HSA above-the-line deductions at their statutory contribution limits | the engine took user-entered HSA/IRA amounts at FACE VALUE with no cap (student-loan interest WAS capped); an over-limit entry under-states AGI AND under-taxes Social Security (provisional income) -> double under-payment. The IRA limit even already sat in the YAML, IGNORED | fail: $20k IRA entry -> $20k deduction — pass: capped $7,000 (age 40) / $8,000 (50+ catch-up); HSA $10k -> $8,300 family / $4,150 self; within-limit $5k unchanged | gated? N | PR #TBD
+MATRIX | cap the IRA and HSA above-the-line deductions at their statutory contribution limits | the engine took user-entered HSA/IRA amounts at FACE VALUE with no cap (student-loan interest WAS capped); an over-limit entry under-states AGI AND under-taxes Social Security (provisional income) -> double under-payment. The IRA limit even already sat in the YAML, IGNORED | fail: $20k IRA entry -> $20k deduction — pass: capped $7,000 (age 40) / $8,000 (50+ catch-up); HSA $10k -> $8,300 family / $4,150 self; within-limit $5k unchanged | gated? N | PR #94
 
 **MAINTAIN:** #93 merged to main (HEAD 1394b07); baseline suite green at 1072. Rebase-before-push held.
 
