@@ -63,6 +63,15 @@ education_credits:
   phaseout_end_single: 90000
   phaseout_start_mfj: 160000
   phaseout_end_mfj: 180000
+# Form 2441 Child & Dependent Care Credit — fixed-statutory (§21), not indexed.
+dependent_care:
+  expense_cap_per_person: 3000
+  max_qualifying_persons: 2
+  dcb_exclusion_max: 5000
+  max_rate: 0.35
+  min_rate: 0.20
+  rate_phasedown_agi_floor: 15000
+  rate_phasedown_step_agi: 2000
 amt:
   exemption:
     single: 85700

@@ -2082,3 +2082,20 @@ Confidence 90%. Suite 1222->1228.
 **ZERO collision (0 open PRs at branch time).** IN Chapter VI-A now COMPLETE for the common sections:
 80C/80CCD1B/80CCD2/80D/80DD/80DDB/80E/80EEB/80G/80GG/80TTA-TTB/80U. Remaining IN absent: §80GGA (scientific-research
 donations, niche), §80CCC (within §80C ceiling -> not distinct). The clean IN Chapter-VIA vein is now substantially exhausted.
+
+## Cycle 140 — FULL LIFECYCLE (2026-06-16) [5-primitive: US Form 2441 dependent-care credit -> worktree -> PR]
+
+MATRIX | add US Form 2441 Child & Dependent Care Credit | us_engine had no 2441 (grep 2441/dependent_care empty) AND W-2 box 10 dependent_care_benefits captured (w2.py:32) but unread (captured-but-unused). Non-refundable credit: rate 35%->20% (1pt per $2k AGI over $15k, floor 20% over $43k) on care expenses capped $3k(1)/$6k(2+), reduced by box-10 DCB, limited to lesser earned income. Common (working parents w/ childcare) | fail-before: $14k wage, $4k care, 1 child -> dependent_care_credit $0 -> pass-after: $1,050 (35%); AGI-band 30k->27%/$810; floor 45k->20%/$600; box-10 $5k DCB shrinks $6k->$1k eligible; MFJ no-spouse-earned->$0; non-refundable (caps at tax) | gated? N | PR #134
+
+**MAINTAIN:** origin/main HEAD 8e91c47 (#133 §80EEB merged); 0 open PRs; base==HEAD; baseline 1228.
+
+**FIXED-statutory credit (research chose 2441 over 8880 Saver's Credit on this).** Every §21 constant ($3k/$6k caps,
+35%/20% rate, $15k/$43k breakpoints) is FIXED, not inflation-indexed -> 92% confidence; identical 2024/2025. (8880 REJECTED:
+its AGI thresholds are INDEXED annually -> same confidence-block as CA HoH brackets.) New helper _compute_dependent_care_credit
+mirrors _compute_education_credits. Applied non-refundable at the federal_tax line (max(0,...) floor -> can't refund, caps
+at tax — confirmed). ACTIVATES the dead W-2 box-10 vein (DCB reduces the eligible-expense cap). MFJ requires both spouses'
+earned income (spouse term defaults 0); non-MFJ spouse term = +inf. +config dependent_care{...} in us/2024+2025.yaml. +1 line_item.
+new user_answers: dependent_care_expenses, num_dependent_care_persons, spouse_earned_income(MFJ). Suite 1228->1239.
+
+**ZERO collision (0 open PRs).** us_engine.py + us yamls free. RESEARCH-flagged fixed-vs-indexed distinction was decisive.
+Remaining high-value US: 8880 (indexed-blocked), 1099-Q/SA (conditional), 5498 roth (basis) — thinning toward convergence.
