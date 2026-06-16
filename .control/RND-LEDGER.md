@@ -1879,3 +1879,17 @@ cases byte-identical (existing surcharge tests pass). HONESTLY NOT modelled (fla
 
 **ZERO collision:** in_engine.py edits at 83-108 (_surcharge) + ~487 (call site) — clear of #116's hunks (344, 420-456
 Chapter-VIA); YAML cap at ~47-49 (surcharge block) clear of #116's deductions hunk (63/67). No #105/#111/#102 file overlap.
+
+## Cycle 95 — FULL LIFECYCLE (2026-06-16) [5-primitive: CA T3 box 25 captured-but-unused -> worktree -> PR]
+
+MATRIX | include T3 box 25 foreign non-business income in CA total income | forms/ca/t3.py captures box 25 -> foreign_non_business_income (t3.py:27) but ca_engine NEVER read it (grep empty) -> it was DROPPED from total_income (240-258). Box 26 other_income IS read (t3_other_income, 140/250); box 25 is a DISTINCT box silently lost. Fully taxable other income (T1 line 12100). Very common (diversified Canadian ETF/mutual-fund T3s report foreign income) -> UNDER-states income & tax | fail-before: T3 box25 $4,000 -> dropped, no trust_foreign_non_business_income key delta -> pass-after: +$4,000 into total_income; box25+box26 both counted (no double-count); no-T3 unchanged | gated? N | PR #126
+
+**MAINTAIN:** origin/main HEAD 5a91332 (#125 surcharge-CG-cap merged — 3 engine-side per-hunk ships now landed); #116/#111/#105/#102 OPEN; base==HEAD; baseline 1165.
+
+**Captured-but-unused, CA side.** Classic class (extractor captures a box the engine never reads). Aggregate-overlap
+checked: box 25 != box 26 (other_income, read) != T1135 foreign_property_income (read, 255) != T3 dividends -> no
+double-count. Pure income-head add mirroring t3_other_income; fixed-rule 100% inclusion, no guessed data. 3 edits:
+read ~141, sum ~250, line_item ~469. Confidence 95%. Suite 1165->1169.
+
+**ZERO collision:** ca_engine.py edits at 141/250/469 all clear of #111's hunks (287-302 donations, 489-497 line_items —
+my line_item at 469 is ~20 lines above 489). No #105/#102/#116/#125 file overlap.

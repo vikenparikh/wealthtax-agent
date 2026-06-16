@@ -138,6 +138,11 @@ def compute_ca_return(
     t3_capital_gains = _sum_field(extracts, "T3", "capital_gains")
     t3_dividends_eligible = _sum_field(extracts, "T3", "taxable_eligible_dividends")
     t3_other_income = _sum_field(extracts, "T3", "other_income")
+    # T3 box 25: foreign non-business income (foreign interest/dividends flowed
+    # through a Canadian trust/fund — common on diversified ETF/mutual-fund T3s) is
+    # fully taxable other income (T1 line 12100). Captured by the extractor (box 25)
+    # but previously never read; distinct from box 26 (other_income) above.
+    t3_foreign_income = _sum_field(extracts, "T3", "foreign_non_business_income")
 
     # T5008 capital gains (book vs proceeds difference)
     t5008_gains = _t5008_capital_gains(extracts)
@@ -248,6 +253,7 @@ def compute_ca_return(
         + pension_income
         + self_emp_t4a
         + t3_other_income
+        + t3_foreign_income
         + rrsp_withdrawals
         + rrif_income
         + t5013_business
@@ -466,6 +472,7 @@ def compute_ca_return(
         "property_tax_eligible": property_tax_eligible,
         "property_tax_credit": property_tax_credit,
         "interest_income": interest_income,
+        "trust_foreign_non_business_income": t3_foreign_income,
         "taxable_eligible_dividends": taxable_eligible,
         "taxable_non_eligible_dividends": taxable_non_eligible,
         "raw_capital_gains": raw_capital_gains,
