@@ -283,6 +283,34 @@ def test_us_additional_medicare_withholding_zero_when_only_regular_rate():
     assert d.line_items["additional_medicare_tax_withheld"] == 0.0
 
 
+# --- US: Form 1098 mortgage interest feeds the itemized deduction ---
+
+def test_us_1098_mortgage_interest_deducted_when_no_schedule_a():
+    """Form 1098 box 1 (mortgage interest — the lender slip most homeowners have)
+    was captured but never read; the engine took mortgage interest only from a
+    Schedule A entry. So a filer who uploaded a 1098 without a Sch A line lost the
+    deduction. Single, $120k wages, $9k state tax (SALT), 1098 box 1 $18,000 →
+    itemized $27,000 ($9k SALT + $18k mortgage) beats the $14,600 standard.
+
+    FAILS before the fix: mortgage interest $0 → itemized $9,000 < standard →
+    takes the standard deduction, dropping the $18,000."""
+    d = compute_us_return([_f("W-2", "US", wages=120000, state_income_tax=9000),
+                           _f("1098", "US", mortgage_interest_received=18000)],
+                          2024, user_answers={"filing_status": "single"})
+    assert d.line_items["itemized_deduction_sch_a"] == 27000.0
+    assert d.line_items["effective_deduction"] == 27000.0  # itemizes (> $14,600)
+
+
+def test_us_1098_not_double_counted_with_schedule_a():
+    """Regression guard: when a Schedule A mortgage_interest entry is present it is
+    used (not summed with the 1098), so the deduction isn't double-counted."""
+    d = compute_us_return([_f("W-2", "US", wages=120000, state_income_tax=9000),
+                           _f("SCH-A", "US", mortgage_interest=18000),
+                           _f("1098", "US", mortgage_interest_received=18000)],
+                          2024, user_answers={"filing_status": "single"})
+    assert d.line_items["itemized_deduction_sch_a"] == 27000.0
+
+
 # --- US: Schedule A medical expenses are deductible only above 7.5% of AGI (§213) ---
 
 def test_us_medical_expenses_apply_7_5pct_agi_floor():

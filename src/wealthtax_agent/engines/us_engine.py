@@ -658,10 +658,17 @@ def compute_us_return(
             f"Medical expenses ${medical_raw:,.0f} reduced by the {_medical_floor_rate:.1%}-of-AGI floor "
             f"(${_medical_floor_rate * agi:,.0f}) → ${medical_deductible:,.0f} deductible (§213)."
         )
+    # Mortgage interest: prefer a Schedule A entry, otherwise fall back to Form
+    # 1098 box 1 (the lender slip most homeowners actually have) — it was captured
+    # but never read, so a filer who uploaded a 1098 without a Sch A entry lost the
+    # entire (usually largest) itemized deduction. (The $750k acquisition-debt limit
+    # is not modelled here, matching the existing Sch A treatment.)
+    sch_a_mortgage = _sum_field(extracts, "SCH-A", "mortgage_interest")
+    mortgage_interest = sch_a_mortgage if sch_a_mortgage > 0 else _sum_field(extracts, "1098", "mortgage_interest_received")
     sch_a_total = (
         medical_deductible
         + salt_deduction
-        + _sum_field(extracts, "SCH-A", "mortgage_interest")
+        + mortgage_interest
         + _sum_field(extracts, "SCH-A", "charitable_gifts")
     )
     used_itemized = sch_a_total > std_deduction

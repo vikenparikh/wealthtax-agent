@@ -1562,3 +1562,23 @@ brackets (only the deduction differed). MFS->single ($8,000) and QSS->MFJ ($16,0
 
 **US-state seam (from the CA-540 artifact) now: #101 CA-MHS, #102 CA-std, #103 CA-HoH-std, #70 NY-HoH-std. Remaining
 DATA-BLOCKED/complex: CA HoH brackets (indexed, <85%), NY tax-benefit recapture (complex), 2025 CA std (#102). HOLD likely next.**
+
+## Cycle 72 — FULL LIFECYCLE (2026-06-15) [5-primitive: systematic captured-but-unused audit -> worktree -> PR]
+
+MATRIX | read Form 1098 box 1 mortgage interest into the itemized deduction | the 1098 extractor captured mortgage_interest_received but the engine read mortgage interest ONLY from SCH-A.mortgage_interest -> a homeowner who uploaded a 1098 (the standard lender slip) without a Sch A entry silently LOST the entire (usually largest) itemized deduction | fail: 1098-only filer ($120k wages, $9k SALT, $18k 1098) itemized $9,000 < std $14,600 -> takes standard, $18k dropped — pass: itemized $27,000 -> itemizes; Sch A + 1098 -> $27,000 (no double-count) | gated? N | PR #TBD
+
+**MAINTAIN:** #104 merged (HEAD 7658949); #102 + #105 open; baseline suite green at 1095. Rebase-before-push held.
+
+**Systematic captured-but-unused audit (the #105 lesson, done comprehensively):** RESEARCH subagent cross-referenced
+ALL 29 US + 15 CA + 5 IN extractor fields vs engine reads. Found 6 genuine money-drops; the rest informational
+(verified). HIGHEST VALUE = 1098 mortgage interest (largest itemized line, every homeowner, cleanest fix = exact
+clone of the W-2-box-17 SALT fallback #73). Shipped it. NO double-count (prefer Sch A when present).
+
+**Runner-up DROPS flagged for follow-up (clean, lower-value):** IN FORM-16.section_80e_declared (student-loan
+interest, old regime — literal sibling of the shipped section_80d_declared; also restores the cross-border §80E
+single-claim guardrail); IN FORM-26AS.advance_tax_paid (form-captured advance tax, key-mismatch w/ the #88
+user_answers path — same class as the #67 professional_tax fix); CA T4A.lump_sum_payments box 018 (dropped taxable
+income); 1099-DIV box 5 section_199A_dividends (REIT QBI, low value). 1098-T tuition = no education credit modelled
+(missing feature, not a clean add). $750k acquisition-debt mortgage limit still not modelled (matches Sch A).
+
+Suite 1095 -> 1097.
