@@ -764,9 +764,16 @@ def compute_us_return(
     state_tax = 0.0
     state_breakdown = {}
     if state_tables:
-        st_status = "married_filing_jointly" if status == "married_filing_jointly" else "single"
-        st_brackets = state_tables.get("brackets_by_status", {}).get(st_status, [])
-        st_std = float(state_tables.get("standard_deduction", {}).get(st_status, 0))
+        # Use the filer's own status for the state schedule, falling back to single
+        # when a state table lacks that status' brackets/deduction. This lets a
+        # state add a head_of_household schedule (e.g. CA's higher HoH standard
+        # deduction) without forcing every state to define one — states without it
+        # keep the single treatment, byte-for-byte (no regression).
+        _bbs = state_tables.get("brackets_by_status", {})
+        _std = state_tables.get("standard_deduction", {})
+        st_status = status if status in {"single", "married_filing_jointly", "head_of_household"} else "single"
+        st_brackets = _bbs.get(st_status) or _bbs.get("single", [])
+        st_std = float(_std.get(st_status, _std.get("single", 0)))
         st_taxable = max(0.0, agi - st_std)
         state_tax = compute_progressive_tax(st_taxable, st_brackets)
         # CA Mental Health Services Tax (R&TC §17043): a flat 1% on taxable income

@@ -24,6 +24,7 @@ brackets_by_status:
 standard_deduction:
   single: 5540
   married_filing_jointly: 11080
+  head_of_household: 11080   # CA HoH standard deduction = the married/HoH tier (2x single)
 # Mental Health Services Tax (R&TC §17043, Prop 63): 1% on taxable income
 # over $1,000,000 (flat $1M threshold for ALL filing statuses).
 mental_health_surcharge:

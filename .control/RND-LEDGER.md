@@ -1522,3 +1522,24 @@ state_breakdown; CA-540 serializer shows the line. No existing test breaks (all 
 
 **CA state-tax now: bracket tax + MHS surcharge, surfaced on the CA-540. Further CA-state correctness (CA-specific
 credits, CA AMT, CA AGI nonconformity adjustments) remains a flagged scope expansion.**
+
+## Cycle 69 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | give CA head-of-household filers their own state schedule (was mapped to single) | us_engine state block mapped HoH->single (st_status = mfj else single), so CA HoH filers got the SINGLE state std deduction ($5,363) instead of CA's HoH/married tier ($11,080, 2x single) -> single parents over-taxed (~$532/return at $90k AGI) | fail: CA HoH $90k state_standard_deduction $5,363 / taxable $84,637 — pass: $11,080 / $78,920; single filers unchanged (guard) | gated? N | PR #TBD
+
+**MAINTAIN:** #101 merged (HEAD 2e0b2e1); #102 (CA std-deduction) open/mergeable; baseline suite green at 1091. Rebase-before-push held.
+
+**SHIP-PARTIAL (disciplined data-confidence split):** RESEARCH subagent found CA HoH STD DEDUCTION fully
+confident (CA structurally has single + a married/HoH/QSS tier = 2x single -> HoH std = MFJ value), but CA
+HoH BRACKET thresholds NOT >=85% confident -> did NOT ship guessed brackets. NY HoH genuinely uses the SINGLE
+brackets (correct now); NY HoH std-deduction gap deferred (moderate confidence).
+
+**Change:** engine 3-way status map with SINGLE-FALLBACK (`st_brackets = _bbs.get(st_status) or _bbs.get(
+"single")`; `st_std = _std.get(st_status, _std.get("single"))`) -> regression-proof: states without a HoH key
+keep single byte-for-byte. Added CA `standard_deduction.head_of_household` = FTB-correct ($10,726 2023, $11,080
+2024+2025; 2024 matches #102's pending MFJ correction). CA HoH now uses the higher std deduction + (fallback)
+single brackets. Suite 1091 -> 1093. No existing test touched (none exercised state HoH).
+
+**Flagged follow-ups (need FTB data, NOT shipped — discipline):** CA HoH BRACKET thresholds (FTB Schedule X)
+would fix the remaining bracket-narrowing over-tax (~$1,700 more in the unverified example); NY HoH std
+deduction (~$11,200). ca/2025 std-deduction staleness (from #102) still open.
