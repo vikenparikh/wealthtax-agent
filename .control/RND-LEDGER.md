@@ -1944,3 +1944,21 @@ provincial_cpp_ei_credit / provincial_medical_credit exactly. Table-driven prov_
 **ZERO collision:** ca_engine.py edits at 406/423/525 all clear of #111's hunks (donations ~296, line_items ~497 — my line_item
 at 525 is ~28 lines below). No #105/#102/#116 file overlap. (NOTE: this contradicts cycle-98/99 "converged" — the convergence
 was conditional on no merges; #128 merging reopened the tuition follow-on, exactly the predicted UNBLOCK mechanism.)
+## Cycle 68 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | fix CA 2024 standard deduction (was the lagged 2023 value) | a US-STATE-table value-audit (the CA-540 work #99-101 opened this never-audited surface) found ca/2024.yaml std deduction = $5,363/$10,726 — those are the 2023 figures; correct 2024 = $5,540/$11,080 -> every CA standard-deduction filer over-taxed (deduction understated $177 single/$354 MFJ, taxed at CA marginal rate; also overstates the SALT feeding the federal 1040) | fail: CA 2024 single state_standard_deduction $5,363 / taxable $84,637 at $90k AGI — pass: $5,540 / $84,460 | gated? N | PR #TBD
+
+**MAINTAIN:** #101 (CA MHS) merged to main (HEAD 2e0b2e1); baseline suite green at 1091. Rebase-before-push held.
+
+**US-state table value-audit (the table-currency class, #72/#82/#83):** RESEARCH subagent verified NY brackets +
+std deduction CORRECT (statutorily fixed 2021-27, reuse-across-years is right) and the CA brackets + the #101 MHS
+CORRECT; the ONE wrong value = CA 2024 std deduction lagged one year (FTB-confirmed 98%). Fixed 2024.
+
+**Test handling:** bumped the #101 MHS test wages by the +$177 deduction delta (2005363->2005540, 505363->505540)
+so taxable income stays $2M/$500k and the MHS assertions ($10,000 / $237,394.76 / $0 / $45,107.90) are UNCHANGED;
+added a direct CA-2024-std-deduction=$5,540 test. No other test depended on the value. Suite 1091 -> 1092.
+
+**Flagged (NOT fixed — verify before shipping):** ca/2025.yaml std deduction = $5,540/$11,080 is ALSO stale (those
+are the 2024 values; the true CA 2025 figure is higher but I do not have it to FTB confidence — left, flagged).
+Deferred bigger items (complex, not table edits): HoH->single state mapping over-taxes CA/NY HoH filers (CA/NY
+have wider HoH schedules + HoH std deduction); NY tax-benefit recapture (supplemental tax) for >$107,650 earners.
