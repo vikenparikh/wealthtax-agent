@@ -31,14 +31,38 @@ def test_medical_credit_applied_above_threshold():
     assert draft.line_items["medical_credit"] > 0
 
 
-def test_oas_clawback_when_pension_income_pushes_over_threshold():
+def test_oas_clawback_when_income_over_threshold_and_oas_received():
+    # High net income ($130k) plus OAS received → recovery tax fires, capped at the
+    # 15%-of-excess amount (well below the $8,400 OAS, so the OAS cap doesn't bind).
     extracts = [
         FormExtract(form_code="T4A", jurisdiction="CA", fields={"pension_or_superannuation": 100000.0}),
         FormExtract(form_code="T4", jurisdiction="CA", fields={"employment_income": 30000.0}),
     ]
-    draft = compute_ca_return(extracts, year=2024, province="ON")
+    draft = compute_ca_return(extracts, year=2024, province="ON",
+                              user_answers={"oas_benefits": "8400"})
     assert draft.line_items["oas_clawback"] > 0
     assert any("OAS" in n or "clawback" in n for n in draft.notes)
+
+
+def test_no_oas_no_clawback_even_with_high_pension():
+    # The bug fix: a senior with large pension/RRIF income but NO OAS owes no
+    # recovery tax (previously the engine spuriously clawed back from the pension).
+    extracts = [
+        FormExtract(form_code="T4A", jurisdiction="CA", fields={"pension_or_superannuation": 100000.0}),
+        FormExtract(form_code="T4", jurisdiction="CA", fields={"employment_income": 30000.0}),
+    ]
+    draft = compute_ca_return(extracts, year=2024, province="ON")  # no oas_benefits
+    assert draft.line_items["oas_clawback"] == 0.0
+
+
+def test_oas_clawback_capped_at_oas_received():
+    # Very high income → 15% of excess exceeds the OAS received → clawback caps at
+    # the full OAS amount (you can't repay more OAS than you got).
+    extracts = [FormExtract(form_code="T4A", jurisdiction="CA", fields={"pension_or_superannuation": 250000.0})]
+    draft = compute_ca_return(extracts, year=2024, province="ON",
+                              user_answers={"oas_benefits": "8400"})
+    # 15% of (250,000 − 90,997) = $23,850 > $8,400 OAS → clawback = $8,400.
+    assert draft.line_items["oas_clawback"] == 8400.0
 
 
 def test_t1135_reminder_emitted_for_foreign_property_over_100k():
