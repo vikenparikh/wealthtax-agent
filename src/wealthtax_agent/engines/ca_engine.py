@@ -343,13 +343,31 @@ def compute_ca_return(
             "credit computed on the first $12,000."
         )
 
+    # Excess CPP/EI from multiple employers (T1 lines 44800/45000): each employer
+    # withholds CPP and EI independently, so a job-switcher's combined contributions
+    # routinely exceed the annual employee maximum. That excess is a REFUNDABLE
+    # overpayment, not a 15% credit (the CA analog of the US excess-Social-Security
+    # rule). It requires 2+ T4s — single-employer over-withholding is the employer's
+    # to correct. (QC's QPP has its own maximum; this uses the federal CPP/EI maxima
+    # and so under-models a QC-only QPP overpayment, which is acceptable here.)
+    cpp_max = float(fed_tables.get("cpp", {}).get("max_contribution", 0) or 0)
+    ei_max = float(fed_tables.get("ei", {}).get("max_contribution", 0) or 0)
+    t4_count = sum(1 for e in extracts if e.form_code == "T4" and e.jurisdiction == "CA")
+    cpp_overpayment = round(max(0.0, cpp_contributions - cpp_max), 2) if (t4_count >= 2 and cpp_max > 0) else 0.0
+    ei_overpayment = round(max(0.0, ei_premiums - ei_max), 2) if (t4_count >= 2 and ei_max > 0) else 0.0
+    cpp_ei_overpayment = round(cpp_overpayment + ei_overpayment, 2)
+    # The refunded excess must not also earn the non-refundable credit, so the
+    # creditable base is contributions net of the overpayment (full amount when
+    # there is no overpayment, so single-employer filers are unaffected).
+    creditable_cpp = cpp_contributions - cpp_overpayment
+    creditable_ei = ei_premiums - ei_overpayment
+
     # CPP/QPP and EI contributions (T4 boxes 16/18) are non-refundable credits
     # at the lowest rate (federal lines 30800 / 31200). The enhanced-CPP portion
     # is technically a deduction rather than a credit; crediting the full amount
     # here is a simplification that is conservative for taxpayers above the
-    # lowest bracket. Excess over the annual maxima (multiple employers) would be
-    # refunded rather than credited — not modelled.
-    cpp_ei_credit = (cpp_contributions + ei_premiums) * float(lowest_rate)
+    # lowest bracket.
+    cpp_ei_credit = (creditable_cpp + creditable_ei) * float(lowest_rate)
 
     # Pension income amount (federal line 31400): a lowest-rate credit on the
     # first $2,000 of eligible pension income. T4A superannuation/pension annuity
@@ -414,7 +432,7 @@ def compute_ca_return(
     # CPP/EI contributions are also credited provincially, at the province's
     # lowest rate (the federal credit was added separately). Without this every
     # employed Canadian's provincial tax was overstated.
-    cpp_ei_credit_prov = (cpp_contributions + ei_premiums) * float(prov_lowest_rate)
+    cpp_ei_credit_prov = (creditable_cpp + creditable_ei) * float(prov_lowest_rate)
     # The medical-expense credit is a lowest-rate credit in both jurisdictions,
     # so the provincial credit is the creditable amount at the PROVINCIAL lowest
     # rate — not the federal-rate amount, which over-credited provincially.
@@ -484,7 +502,12 @@ def compute_ca_return(
                     notes.append(f"{province.upper()} uses a CWB reconfiguration; the federal estimate may differ.")
 
     total_tax = round(federal_tax + provincial_tax, 2)
-    balance = round(total_tax - fed_tax_withheld - cwb, 2)
+    if cpp_ei_overpayment > 0:
+        notes.append(
+            f"Excess CPP/EI of ${cpp_ei_overpayment:,.2f} from multiple employers "
+            "is refunded as an overpayment (T1 lines 44800 / 45000)."
+        )
+    balance = round(total_tax - fed_tax_withheld - cwb - cpp_ei_overpayment, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -556,6 +579,9 @@ def compute_ca_return(
         "cpp_contributions": cpp_contributions,
         "ei_premiums": ei_premiums,
         "cpp_ei_credit": cpp_ei_credit,
+        "cpp_overpayment": cpp_overpayment,
+        "ei_overpayment": ei_overpayment,
+        "cpp_ei_overpayment": cpp_ei_overpayment,
     }
 
     totals = {
