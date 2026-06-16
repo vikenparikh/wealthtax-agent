@@ -1802,3 +1802,20 @@ ca_engine.py (read-only for me). Income-schedule vein: us_mef #120 + ca_netfile 
 (no ScheduleBP line) still QUEUED next cycle. After engine PRs merge -> US 1099-R §72(t) / IN §80DD-80U.
 
 **REBASED onto origin/main 9ed998e (#120 income-schedule us_mef merged mid-cycle); ledger union (Cycle 87 then 88). No code conflict — ledger-only.**
+
+## Cycle 89 — FULL LIFECYCLE (2026-06-16) [5-primitive: IN ITR income-schedule completeness -> worktree -> PR]
+
+MATRIX | add ScheduleBP_Business for PGBP income to the draft ITR | filing/in_itr.py had ScheduleS_Salary/HP/CG/OS/VIA but NO Business schedule, while in_engine folds business_income (PGBP, user_answers["business_income_pgbp"], in_engine:260) into slab_income (331) -> taxable_income. line_items["business_income"] (522) existed but was never serialized -> business income invisible in the ITR artifact though taxed. TotalIncome=engine-truth so bottom line correct -> display-completeness, completes the income-schedule vein (us_mef #120 + ca_netfile #121) on the IN side | fail-before: business_income ₹350k -> no ScheduleBP key (KeyError) -> pass-after: ScheduleBP_Business.NetIncome ₹350,000 | gated? N | PR #122
+
+**MAINTAIN:** origin/main HEAD 4abec11 (#121 ca_netfile income-schedule merged); base==HEAD, no rebase; baseline 1145. Open: #116/#111/#105/#102 (all engine files).
+
+**Last income-schedule gap — IN ITR.** business_income (PGBP) is a SINGLE user value (no aggregate -> no double-count
+risk, unlike the cycle-87 1099-K / cycle-88 t5013 catches). Added ScheduleBP_Business between HP and CG to match ITR
+head ordering. Engine read-only; key already emitted. Confidence 95%. Suite 1145->1148.
+
+**ZERO collision:** only filing/in_itr.py (+ test); engine read-only; in_itr FREE (#118 merged). #116 edits in_engine.py
+(read-only for me). **Income-schedule completeness vein now EXHAUSTED across all 3 jurisdictions:** us_mef line8/1a #120,
+ca_netfile 6-components #121, in_itr ScheduleBP (this). Combined with the credits/deductions-schedule vein (us_mef
+line19/20 #119, in_itr 80CCD2 #118, ca_netfile CWB #114) and tax-balance reconciliation (#113/#114/#117) -> the
+engine<->serializer completeness sweep is COMPLETE. Next non-colliding work needs a NEW surface or an engine PR to merge
+(US 1099-R §72(t) / IN §80DD-80U await us_engine/in_engine freeing). Expect HOLD next cycle unless queue drains.

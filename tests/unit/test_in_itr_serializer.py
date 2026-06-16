@@ -153,3 +153,22 @@ def test_no_employer_nps_unchanged():
     via = payload["ITR"]["ScheduleVIA_Deductions"]
     assert via["Section80CCD2_EmployerNPS"] == 0.0
     assert via["TotalChapterVIA"] == 190_000.0
+
+
+def test_schedule_bp_surfaces_business_income():
+    """Business/Profession income (PGBP) is folded into slab_income → taxable_income
+    by the engine, but the ITR had no Business schedule — the income was invisible in
+    the artifact though it was taxed. ScheduleBP_Business now surfaces it."""
+    payload = serialize_itr(_in_draft(business_income=350000.0), extracts=[], year=2025)
+    bp = payload["ITR"]["ScheduleBP_Business"]
+    assert bp["NetIncome"] == 350000.0
+
+
+def test_schedule_bp_defaults_to_zero_when_absent():
+    payload = serialize_itr(_in_draft(), extracts=[], year=2025)
+    assert payload["ITR"]["ScheduleBP_Business"]["NetIncome"] == 0.0
+
+
+def test_schedule_bp_present_on_empty_draft():
+    payload = serialize_itr(DraftReturn(jurisdiction="IN"), extracts=[], year=2025)
+    assert payload["ITR"]["ScheduleBP_Business"]["NetIncome"] == 0.0
