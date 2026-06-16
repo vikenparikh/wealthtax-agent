@@ -155,6 +155,57 @@ def test_no_employer_nps_unchanged():
     assert via["TotalChapterVIA"] == 190_000.0
 
 
+def test_disability_and_disease_sections_surfaced_in_schedule_via():
+    """§80U/§80DD/§80DDB/§80EEB/§80GG are computed by the engine and already
+    folded into chapter_via_total, but were never serialized into ScheduleVIA —
+    so a hand-filer couldn't see the per-section attribution of a disability,
+    specified-disease, EV-loan, or no-HRA-rent claim. Surface them WITHOUT
+    touching TotalChapterVIA (the total already includes them)."""
+    # 80U severe disability ₹1.25L + 80DDB senior medical ₹1L; chapter_via_total
+    # = 150k(80c)+40k(80e)+125k(80u)+100k(80ddb) = 415k.
+    payload = serialize_itr(
+        _in_draft(
+            section_80u=125_000.0,
+            section_80ddb=100_000.0,
+            chapter_via_total=415_000.0,
+        ),
+        extracts=[], year=2025,
+    )
+    via = payload["ITR"]["ScheduleVIA_Deductions"]
+    assert via["Section80U"] == 125_000.0
+    assert via["Section80DDB"] == 100_000.0
+    # TotalChapterVIA must NOT double-count: chapter_via_total already includes
+    # both, and there's no 80CCD2 here, so the total is exactly 415k.
+    assert via["TotalChapterVIA"] == 415_000.0
+
+
+def test_eeb_and_gg_and_dd_sections_surfaced():
+    payload = serialize_itr(
+        _in_draft(
+            section_80eeb=150_000.0,   # EV-loan interest cap
+            section_80gg=60_000.0,     # no-HRA rent annual cap
+            section_80dd=75_000.0,     # dependant disability (non-severe)
+        ),
+        extracts=[], year=2025,
+    )
+    via = payload["ITR"]["ScheduleVIA_Deductions"]
+    assert via["Section80EEB"] == 150_000.0
+    assert via["Section80GG"] == 60_000.0
+    assert via["Section80DD"] == 75_000.0
+
+
+def test_new_via_sections_absent_default_to_zero():
+    # No disability/disease/EV/rent claims → all five rows coerce to 0.0,
+    # TotalChapterVIA unchanged (no regression to the existing total).
+    via = serialize_itr(_in_draft(chapter_via_total=190_000.0), extracts=[], year=2025)["ITR"]["ScheduleVIA_Deductions"]
+    assert via["Section80U"] == 0.0
+    assert via["Section80DD"] == 0.0
+    assert via["Section80DDB"] == 0.0
+    assert via["Section80EEB"] == 0.0
+    assert via["Section80GG"] == 0.0
+    assert via["TotalChapterVIA"] == 190_000.0
+
+
 def test_schedule_bp_surfaces_business_income():
     """Business/Profession income (PGBP) is folded into slab_income → taxable_income
     by the engine, but the ITR had no Business schedule — the income was invisible in
