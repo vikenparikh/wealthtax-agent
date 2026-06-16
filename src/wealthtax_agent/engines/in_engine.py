@@ -358,6 +358,7 @@ def _compute_one_regime(
     sec_80gg = 0.0
     sec_80u = 0.0
     sec_80dd = 0.0
+    sec_80ddb = 0.0
 
     if regime == "old":
         # 80C — PPF, ELSS, LIC, principal home loan, EPF
@@ -464,6 +465,24 @@ def _compute_one_regime(
               or str(user_answers.get("dependent_disability", "none")).strip().lower() not in ("none", "")):
             notes.append("§80U/§80DD not available to a non-resident (NR); set to ₹0.")
 
+        # 80DDB — medical treatment of specified diseases (cancer, chronic kidney
+        # failure, neurological disorders, etc.). Deduction = actual expense (net of
+        # any insurance/employer reimbursement — the user enters the net) capped at
+        # ₹40,000, or ₹1,00,000 when the patient is a senior citizen (60+). Old regime
+        # only and resident-only (NR barred; RNOR keeps). The cap keys off the
+        # taxpayer's age, mirroring the §80D self-premium cap handling.
+        if residency_status != "NR":
+            _ddb_cfg = deductions.get("section_80ddb", {})
+            _ddb_cap = float(_ddb_cfg.get(
+                "senior_60_plus" if age >= 60 else "under_60",
+                100000 if age >= 60 else 40000))
+            sec_80ddb = min(_to_float(user_answers.get("section_80ddb_medical", 0)), _ddb_cap)
+            if sec_80ddb > 0:
+                notes.append(
+                    f"§80DDB deduction of ₹{sec_80ddb:,.0f} for treatment of a specified "
+                    f"disease (capped at ₹{_ddb_cap:,.0f})."
+                )
+
         # 80GG — rent paid by a filer who receives NO HRA (self-employed, gig
         # workers, employees whose package has no HRA line). Old regime only
         # (§115BAC disallows it) and mutually exclusive with the §10(13A) HRA
@@ -481,7 +500,7 @@ def _compute_one_regime(
             gg_income_pct = float(gg.get("income_pct", 0.25))
             gg_excess_pct = float(gg.get("rent_excess_pct", 0.10))
             other_via = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
-                         + sec_80tta_ttb + sec_80u + sec_80dd)
+                         + sec_80tta_ttb + sec_80u + sec_80dd + sec_80ddb)
             adj_total_income = max(0.0, slab_income - other_via)
             sec_80gg = max(0.0, min(
                 gg_annual_cap,
@@ -495,7 +514,7 @@ def _compute_one_regime(
                 )
 
     chapter_via_total = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
-                         + sec_80tta_ttb + sec_80gg + sec_80u + sec_80dd)
+                         + sec_80tta_ttb + sec_80gg + sec_80u + sec_80dd + sec_80ddb)
 
     # 80CCD(2): the employer's NPS contribution is deductible under BOTH regimes
     # (the one Chapter VI-A item not disallowed in the new regime), up to 10% of
@@ -623,6 +642,7 @@ def _compute_one_regime(
         "section_80gg": sec_80gg,
         "section_80u": sec_80u,
         "section_80dd": sec_80dd,
+        "section_80ddb": sec_80ddb,
         "chapter_via_total": chapter_via_total,
         "gross_total_income": gross_total_income,
         "slab_tax": slab_tax,

@@ -79,6 +79,10 @@ deductions:
   section_80u_80dd:
     normal: 75000     # disability >= 40%
     severe: 125000    # severe disability >= 80%
+  # §80DDB medical-treatment-of-specified-diseases cap (actual expense up to).
+  section_80ddb:
+    under_60: 40000
+    senior_60_plus: 100000
 
 # Capital gains (FY 2023-24 — entire year is pre-Jul 23 2024 regime)
 capital_gains:
