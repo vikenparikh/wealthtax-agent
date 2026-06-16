@@ -1466,3 +1466,25 @@ a base-image hygiene pass.
 **Change:** requirements.txt — `cryptography>=42`→`cryptography>=48.0.1`, new `starlette>=1.3.1` (explicit
 security floor for the fastapi-transitive dep). No code change (a dep bump has no unit test; the audit delta
 + green suite + boot smoke is the proof). Additive + revertible.
+
+## Cycle 65 — FULL LIFECYCLE (2026-06-15) [5-primitive: OPERATOR-APPROVED scope -> research -> worktree -> PR]
+
+MATRIX | add the California Form 540 state-tax artifact (completes the #86/87 federal-only refactor) | the engine computes CA state_tax but NO state artifact surfaced it — the federal 1040 was made federal-only (#86/87, "state tax belongs on a state artifact") leaving the state tax with no deliverable | fail: no 'ca_540_json' artifact for a CA filer — pass: CA resident $80k + $4k box-17 -> ca_540_json with state_tax $3,483.60, withheld $4,000, refund $516.40; NY/non-CA filer -> NO 540 (gate) | gated? N | PR #99
+
+**MAINTAIN:** #97 + #98(security CVE) merged to main (rebased onto eb2f1cb); baseline suite green at 1083. Rebase-before-push held (resolved a ledger union with the security Cycle-64 entry).
+
+**Convergence break = OPERATOR GREEN-LIGHT.** After many honest HOLD cycles (correctness vein exhausted,
+quadruple-verified C59/C62/C63/C64), I surfaced the fork via AskUserQuestion; operator chose "Build CA
+state-tax artifact." RESEARCH subagent designed it: state line_items (state_tax/state_taxable_income/
+state_standard_deduction/agi all confirmed by running the engine), state withholding recomputed from W-2
+box 17 (not a line_item), balance = state_tax - withheld; mirror the in_itr/us_mef envelope. CRITICAL
+GATE TRAP: gate on state_of_residence=="CA" (NOT line_item presence — TX/FL/WA load + spread state_tax=0;
+NY is state-taxed but not a 540). FilingArtifact jurisdiction="US" (CA-state of a US filer; "CA" would
+mislabel as Canada), form_code="CA-540".
+
+**Change:** new filing/ca_540.py serialize_ca540 (transmissible=False, schema ca540-0.1-draft); wired into
+build_return._us_artifacts gated CA+state_tax>0; 4 serializer tests + 2 gate tests. Purely additive — no
+engine/federal-artifact change. Suite 1083 -> 1089.
+
+**Flagged (v1 scope):** CA-only (the one state w/ real income tax in the engine's tables); simple summary
+JSON (not a full Form 540 line layout); no CA-specific credits/AMT (uses the engine's state_tax from AGI).

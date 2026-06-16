@@ -87,3 +87,37 @@ def test_all_generated_artifacts_are_non_transmissible():
     draft = DraftReturn(jurisdiction="CA", totals={"total_income": 80000, "taxable_income": 70000})
     arts = build_return_node(_state({"CA": draft})).filing_artifacts
     assert arts and all(a.transmissible is False for a in arts.values())
+
+
+def test_ca_540_state_artifact_emitted_for_ca_resident():
+    from wealthtax_agent.state import FormExtract
+    draft = DraftReturn(
+        jurisdiction="US",
+        line_items={"state_tax": 3483.6, "agi": 80000.0,
+                    "state_taxable_income": 74637.0, "state_standard_deduction": 5363.0},
+        totals={"total_income": 80000, "taxable_income": 70000},
+    )
+    state = _state({"US": draft},
+                   user_answers={"state_of_residence": "CA", "filing_status": "single"},
+                   extracts=[FormExtract(form_code="W-2", jurisdiction="US",
+                                         fields={"wages": 80000, "state_income_tax": 4000})])
+    arts = build_return_node(state).filing_artifacts
+    assert "ca_540_json" in arts
+    ca = json.loads(_decode(arts["ca_540_json"]))
+    assert ca["transmissible"] is False
+    assert ca["CA540"]["state_tax"] == 3483.6
+    assert ca["CA540"]["state_tax_withheld"] == 4000.0
+    assert ca["CA540"]["refund"] == 516.4
+
+
+def test_no_ca_540_artifact_for_non_ca_resident():
+    # NY resident: the gate is on residence == "CA" (not state_tax > 0), so a
+    # state-taxed NY filer gets no Form 540.
+    draft = DraftReturn(
+        jurisdiction="US",
+        line_items={"state_tax": 5000.0, "agi": 90000.0},
+        totals={"total_income": 90000, "taxable_income": 80000},
+    )
+    arts = build_return_node(_state({"US": draft},
+                                    user_answers={"state_of_residence": "NY"})).filing_artifacts
+    assert "ca_540_json" not in arts
