@@ -97,7 +97,7 @@ def test_core_lines_map_from_line_items_and_totals():
     assert f["line10_adjustments"] == 2500.0
     assert f["line12_standard_deduction"] == 14600.0   # from credits
     assert f["line15_taxable_income"] == 70000.0
-    assert f["line19_child_tax_credit"] == 2000.0
+    assert f["line19_ctc_or_odc"] == 2000.0  # CTC 2000 + ODC 0
     assert f["line24_total_tax"] == 11000.0   # federal_tax + se_tax (no state here)
     assert f["line25a_federal_income_tax_withheld"] == 12000.0
     assert f["line34_overpayment"] == 1000.0
@@ -292,3 +292,45 @@ def test_line33_reconciles_with_engine_refund_for_aotc_filer():
     )
     f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
     assert f["line34_overpayment"] == draft.totals["refund"]
+
+
+def test_line19_includes_credit_for_other_dependents():
+    """Form 1040 line 19 = Child tax credit OR credit for other dependents (Sch 8812).
+    The engine applies the ODC (it nets into federal_tax), but the serializer showed
+    only the CTC — understating line 19 for filers with non-child dependents."""
+    draft = _draft(
+        line_items={"federal_tax": 4000.0, "credit_for_other_dependents": 500.0},
+        credits={"child_tax_credit": 2000.0, "credit_for_other_dependents": 500.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line19_ctc_or_odc"] == 2500.0  # 2000 CTC + 500 ODC
+
+
+def test_line20_surfaces_education_and_ptc_nonrefundable_credits():
+    """The education non-refundable credit and net PTC reduce federal_tax in the
+    engine but were entirely invisible in the artifact. Line 20 surfaces them."""
+    draft = _draft(
+        line_items={"federal_tax": 3000.0, "education_credit_nonrefundable": 1500.0,
+                    "premium_tax_credit": 800.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line20_schedule3_nonrefundable_credits"] == 2300.0  # 1500 + 800
+
+
+def test_line21_total_credits_sums_all_nonrefundable():
+    draft = _draft(
+        line_items={"federal_tax": 1000.0, "credit_for_other_dependents": 500.0,
+                    "education_credit_nonrefundable": 1500.0, "premium_tax_credit": 800.0},
+        credits={"child_tax_credit": 2000.0, "credit_for_other_dependents": 500.0},
+    )
+    f = serialize_1040(draft, [], 2025)["ReturnData"]["IRS1040"]
+    # 2000 CTC + 500 ODC + 1500 education + 800 PTC = 4800
+    assert f["line21_total_credits"] == 4800.0
+    assert f["line21_total_credits"] == f["line19_ctc_or_odc"] + f["line20_schedule3_nonrefundable_credits"]
+
+
+def test_no_credits_lines_are_zero_no_regression():
+    f = serialize_1040(_draft(line_items={"federal_tax": 5000.0}), [], 2025)["ReturnData"]["IRS1040"]
+    assert f["line19_ctc_or_odc"] == 0.0
+    assert f["line20_schedule3_nonrefundable_credits"] == 0.0
+    assert f["line21_total_credits"] == 0.0

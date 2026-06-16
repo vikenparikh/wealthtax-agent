@@ -66,7 +66,25 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
                 "line12_standard_deduction": credits.get("standard_deduction", 0.0),
                 "line15_taxable_income": totals.get("taxable_income", 0.0),
                 "line16_tax": line_items.get("ordinary_tax", 0.0) + line_items.get("preferential_tax", 0.0),
-                "line19_child_tax_credit": credits.get("child_tax_credit", 0.0),
+                # Form 1040 line 19 is "Child tax credit OR credit for other
+                # dependents" (Schedule 8812) — the SUM of both. Surfacing only the
+                # CTC understated line 19 for any filer with non-child dependents,
+                # whose ODC the engine applies (federal_tax nets it) but the artifact
+                # hid. Line 20 surfaces the Schedule-3 non-refundable credits
+                # (education non-refundable + net PTC) the engine also nets into
+                # federal_tax — previously invisible, so a hand-filer recomputing
+                # line 22 from the shown credits would over-state their tax.
+                "line19_ctc_or_odc": round(
+                    credits.get("child_tax_credit", 0.0)
+                    + line_items.get("credit_for_other_dependents", 0.0), 2),
+                "line20_schedule3_nonrefundable_credits": round(
+                    line_items.get("education_credit_nonrefundable", 0.0)
+                    + line_items.get("premium_tax_credit", 0.0), 2),
+                "line21_total_credits": round(
+                    credits.get("child_tax_credit", 0.0)
+                    + line_items.get("credit_for_other_dependents", 0.0)
+                    + line_items.get("education_credit_nonrefundable", 0.0)
+                    + line_items.get("premium_tax_credit", 0.0), 2),
                 "line22_total_tax_before_other": line_items.get("federal_tax", 0.0),
                 "line23_other_taxes_self_employment": line_items.get("self_employment_tax", 0.0),
                 # Federal-form total tax = line 22 + line 23 (federal only; state
