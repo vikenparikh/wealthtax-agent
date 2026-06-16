@@ -1503,3 +1503,22 @@ Suite stays 1089 (extended the existing CA-540 build_return test with PDF assert
 
 **CA state-tax artifact now COMPLETE (JSON #99 + PDF #66), consistent with the 1040 (PDF+JSON) and T1 (PDF+XML)
 pairings. Further state work (other states, CA credits/AMT, real 540 template) is a fresh operator scope call.**
+
+## Cycle 67 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | add CA Mental Health Services Tax (1% over $1M, R&TC §17043) to state tax | the engine's CA state_tax was only the bracket tax (topping at 12.3%); CA levies a SEPARATE flat 1% Mental Health Services Tax on taxable income over $1M (the published 13.3% top = 12.3% + 1% MHS) -> CA filers >$1M taxable under-taxed by 1% of the excess, now visibly wrong on the new CA-540 artifact | fail: no 'state_mental_health_surcharge' key; $2M-taxable single state_tax $227,394.76 — pass: surcharge $10,000 -> state_tax $237,394.76; $500k-taxable guard -> $0 surcharge | gated? N | PR #TBD
+
+**MAINTAIN:** #100 (CA-540 PDF) merged to main (HEAD ccb5819); baseline suite green at 1089. Rebase-before-push held.
+
+**Surfaced BY the CA-540 work:** building the CA-540 artifact (#99/#100) made CA state-tax correctness matter
+more; the C62 table-value audit had verified US-federal/CA-federal(Canada)/ON-province but NOT the US-CA-STATE
+brackets. Checked them -> top 12.3%, MHS omitted. RESEARCH subagent confirmed MHS = flat 1%/$1M-threshold/all-
+statuses/permanent/taxable-income-base, and the clean SELF-GATING design (read from the CA state table -> only
+CA's YAML carries the key -> NY/TX get 0; no `if state=="CA"` branch).
+
+**Change:** `mental_health_surcharge: {rate:0.01, threshold:1000000}` in ca/{2023,2024,2025} state yaml; engine
+adds `state_mhs = rate*max(0, st_taxable-threshold)` to state_tax + surfaces `state_mental_health_surcharge` in
+state_breakdown; CA-540 serializer shows the line. No existing test breaks (all CA fixtures sub-$1M). Suite 1089->1091.
+
+**CA state-tax now: bracket tax + MHS surcharge, surfaced on the CA-540. Further CA-state correctness (CA-specific
+credits, CA AMT, CA AGI nonconformity adjustments) remains a flagged scope expansion.**

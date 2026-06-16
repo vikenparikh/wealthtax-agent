@@ -769,9 +769,17 @@ def compute_us_return(
         st_std = float(state_tables.get("standard_deduction", {}).get(st_status, 0))
         st_taxable = max(0.0, agi - st_std)
         state_tax = compute_progressive_tax(st_taxable, st_brackets)
+        # CA Mental Health Services Tax (R&TC §17043): a flat 1% on taxable income
+        # over $1M (same threshold for all statuses), separate from the brackets
+        # (which stop at 12.3%). Table-driven and self-gating — only CA's state
+        # table carries the key, so other states get 0.
+        _mhs_cfg = state_tables.get("mental_health_surcharge", {})
+        state_mhs = round(float(_mhs_cfg.get("rate", 0.0)) * max(0.0, st_taxable - float(_mhs_cfg.get("threshold", 0.0))), 2)
+        state_tax = round(state_tax + state_mhs, 2)
         state_breakdown = {
             "state_taxable_income": st_taxable,
             "state_standard_deduction": st_std,
+            "state_mental_health_surcharge": state_mhs,
             "state_tax": state_tax,
         }
 

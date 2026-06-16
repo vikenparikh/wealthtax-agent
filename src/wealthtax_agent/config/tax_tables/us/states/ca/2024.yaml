@@ -24,3 +24,8 @@ brackets_by_status:
 standard_deduction:
   single: 5363
   married_filing_jointly: 10726
+# Mental Health Services Tax (R&TC §17043, Prop 63): 1% on taxable income
+# over $1,000,000 (flat $1M threshold for ALL filing statuses).
+mental_health_surcharge:
+  rate: 0.01
+  threshold: 1000000
