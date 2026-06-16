@@ -263,3 +263,35 @@ def test_in_no_prepaid_input_is_unchanged():
     assert d.line_items["advance_tax"] == 0.0
     assert d.totals["total_taxes_paid"] == d.line_items["total_tds"]
     assert d.totals["balance_owing"] == d.totals["total_tax"]
+
+
+# ---------- §80E student-loan interest from Form 16 (old regime) ----------
+
+def test_in_80e_read_from_form16():
+    """§80E student-loan interest declared on Form 16 (box captured by the
+    extractor) was dropped — the engine read §80E only from the manual
+    `student_loan_interest_in` answer. A Form-16 upload now claims it (old regime),
+    which also restores the cross-border single-claim guardrail (keys on
+    line_items['section_80e']).
+
+    FAILS before the fix: section_80e = 0 for a Form-16 with §80E declared."""
+    d = compute_in_return([_form16(gross_salary=1000000, section_80e_declared=50000)],
+                          year=2024, regime="old", user_answers={"age": "30"})
+    assert d.line_items["section_80e"] == 50000.0
+
+
+def test_in_80e_form_preferred_over_manual_no_double_count():
+    """When both a Form-16 §80E and a manual entry are present, the form value is
+    used (not summed) — no double-count."""
+    d = compute_in_return([_form16(gross_salary=1000000, section_80e_declared=50000)],
+                          year=2024, regime="old",
+                          user_answers={"age": "30", "student_loan_interest_in": "40000"})
+    assert d.line_items["section_80e"] == 50000.0
+
+
+def test_in_80e_manual_still_works_without_form():
+    """Regression guard: manual §80E entry (no form value) is unchanged."""
+    d = compute_in_return([_form16(gross_salary=1000000)],
+                          year=2024, regime="old",
+                          user_answers={"age": "30", "student_loan_interest_in": "40000"})
+    assert d.line_items["section_80e"] == 40000.0
