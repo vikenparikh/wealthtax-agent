@@ -108,6 +108,12 @@ def test_ca_540_state_artifact_emitted_for_ca_resident():
     assert ca["CA540"]["state_tax"] == 3483.6
     assert ca["CA540"]["state_tax_withheld"] == 4000.0
     assert ca["CA540"]["refund"] == 516.4
+    # The CA-540 also gets a human-readable PDF, like the federal 1040 and CA T1.
+    assert "ca_540_pdf" in arts
+    pdf = arts["ca_540_pdf"]
+    assert pdf.mime_type == "application/pdf"
+    assert pdf.transmissible is False
+    assert base64.b64decode(pdf.content_b64)[:5] == b"%PDF-"
 
 
 def test_no_ca_540_artifact_for_non_ca_resident():

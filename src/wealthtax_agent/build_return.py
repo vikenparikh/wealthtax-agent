@@ -117,6 +117,30 @@ def _us_artifacts(draft: DraftReturn, extracts: List[FormExtract], year: int, us
             mime_type="application/json",
             content_b64=_b64(ca540_json),
         )
+        # Human-readable Form 540 summary PDF, alongside the JSON — so the state
+        # tax has the same PDF deliverable as the federal 1040 and the CA T1.
+        state_withheld = sum(
+            float(e.fields.get("state_income_tax", 0.0) or 0.0)
+            for e in extracts if e.form_code == "W-2" and e.jurisdiction == "US"
+        )
+        state_tax = float(draft.line_items.get("state_tax", 0.0))
+        ca540_pdf = fill_form("us", year, "CA-540", {
+            "agi": f"{draft.line_items.get('agi', 0.0):.2f}",
+            "state_taxable_income": f"{draft.line_items.get('state_taxable_income', 0.0):.2f}",
+            "state_standard_deduction": f"{draft.line_items.get('state_standard_deduction', 0.0):.2f}",
+            "state_tax": f"{state_tax:.2f}",
+            "state_tax_withheld": f"{state_withheld:.2f}",
+            "amount_you_owe": f"{max(0.0, state_tax - state_withheld):.2f}",
+            "refund": f"{max(0.0, state_withheld - state_tax):.2f}",
+            "filing_status": user_answers.get("filing_status", "single"),
+        })
+        artifacts["ca_540_pdf"] = FilingArtifact(
+            jurisdiction="US",
+            form_code="CA-540",
+            filename=f"ca_540_{year}_draft.pdf",
+            mime_type="application/pdf",
+            content_b64=_b64(ca540_pdf),
+        )
 
     # 1040-ES quarterly estimated-tax vouchers (only when meaningful)
     vouchers = quarterly_us_1040es(draft, year + 1)
