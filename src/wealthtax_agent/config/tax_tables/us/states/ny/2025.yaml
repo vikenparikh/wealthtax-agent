@@ -21,6 +21,21 @@ brackets_by_status:
     - {up_to: 5000000, rate: 0.0965}
     - {up_to: 25000000, rate: 0.103}
     - {up_to: null,    rate: 0.109}
+  # NY Head-of-Household schedule (NY Tax Law §601(b)). Same rates as single but
+  # wider rungs — so each HoH threshold sits between single and MFJ (e.g. the 5.5%
+  # rung caps at single 80,650 / HoH 107,650 / MFJ 161,550). Statutorily fixed
+  # 2021-2027 (identical across the year files, like single/MFJ). Without this block
+  # the engine fell back to the single schedule (us_engine.py:887), over-taxing HoH.
+  head_of_household:
+    - {up_to: 12800,    rate: 0.04}
+    - {up_to: 17650,    rate: 0.045}
+    - {up_to: 20900,    rate: 0.0525}
+    - {up_to: 107650,   rate: 0.055}
+    - {up_to: 269300,   rate: 0.06}
+    - {up_to: 1616450,  rate: 0.0685}
+    - {up_to: 5000000,  rate: 0.0965}
+    - {up_to: 25000000, rate: 0.103}
+    - {up_to: null,    rate: 0.109}
 standard_deduction:
   single: 8000
   married_filing_jointly: 16050
