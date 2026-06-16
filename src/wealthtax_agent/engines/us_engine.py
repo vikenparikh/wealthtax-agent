@@ -191,6 +191,53 @@ def _qualified_dividend_tax(qualified_dividends: float, long_term_gain: float, o
     return round(max(0.0, tax_total - tax_ordinary_only), 2)
 
 
+def _compute_education_credits(net_expense: float, num_students: int, aotc_eligible: bool,
+                               magi: float, status: str, fed_tables: Dict[str, Any]) -> Dict[str, float]:
+    """Form 8863 education credits — AOTC + LLC, take the larger. Returns a dict with
+    the pre-phaseout AOTC and LLC, the chosen post-phaseout credit, and its split
+    into the 40%-refundable (AOTC only) and non-refundable parts.
+
+    v1 simplifications (flagged): one summed 1098-T pool (no per-student tuition
+    breakdown — the per-student AOTC cap is applied to net_expense/num_students); a
+    single aotc_eligible flag for the first-4-years/half-time/no-felony gates; MAGI =
+    AGI + FEIE (rarer add-backs deferred); MFS is ineligible for both credits.
+    """
+    blank = {"aotc": 0.0, "llc": 0.0, "chosen": 0.0, "refundable": 0.0, "nonrefundable": 0.0}
+    edu = fed_tables.get("education_credits", {})
+    if not edu or net_expense <= 0 or status == "married_filing_separately":
+        return blank
+    t100 = float(edu.get("aotc_100pct_threshold", 2000))
+    t25 = float(edu.get("aotc_25pct_threshold", 2000))
+    aotc = 0.0
+    if aotc_eligible and num_students > 0:
+        per = net_expense / num_students
+        aotc = num_students * (min(per, t100) + 0.25 * min(max(per - t100, 0.0), t25))
+    llc = float(edu.get("llc_rate", 0.20)) * min(net_expense, float(edu.get("llc_expense_cap", 10000)))
+    if aotc >= llc:
+        chosen, refundable_pct = aotc, float(edu.get("aotc_refundable_pct", 0.40))
+    else:
+        chosen, refundable_pct = llc, 0.0
+    if status == "married_filing_jointly":
+        start, end = float(edu.get("phaseout_start_mfj", 160000)), float(edu.get("phaseout_end_mfj", 180000))
+    else:
+        start, end = float(edu.get("phaseout_start_single", 80000)), float(edu.get("phaseout_end_single", 90000))
+    if magi >= end:
+        factor = 0.0
+    elif magi > start:
+        factor = 1.0 - (magi - start) / (end - start)
+    else:
+        factor = 1.0
+    chosen = chosen * factor
+    refundable = round(chosen * refundable_pct, 2)
+    return {
+        "aotc": round(aotc, 2),
+        "llc": round(llc, 2),
+        "chosen": round(chosen, 2),
+        "refundable": refundable,
+        "nonrefundable": round(chosen - refundable, 2),
+    }
+
+
 def _compute_ctc(num_children: int, num_other_deps: int, agi: float, status: str,
                  fed_tables: Dict[str, Any]) -> tuple[float, float]:
     """Return (CTC for qualifying children, ODC for other dependents) after the
@@ -714,7 +761,33 @@ def compute_us_return(
     slcsp = _sum_field(extracts, "1095-A", "annual_slcsp")
     ptc_credit, ptc_repayment = _compute_ptc(annual_premiums, slcsp, aptc, agi, num_deps, status, fed_tables)
 
-    federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit) + ptc_repayment
+    # Education credits (AOTC / Lifetime Learning, Form 8863). Net qualified expense
+    # is 1098-T box 1 tuition less box 5 scholarships. The structured extractor emits
+    # "qualified_tuition_payments" while NL intake emits "qualified_tuition_paid", so
+    # both spellings are summed or NL-entered tuition would silently yield $0 credit.
+    edu_tuition = (_sum_field(extracts, "1098-T", "qualified_tuition_payments")
+                   + _sum_field(extracts, "1098-T", "qualified_tuition_paid")
+                   + float(user_answers.get("qualified_education_expense", 0) or 0))
+    edu_scholarships = _sum_field(extracts, "1098-T", "scholarships_or_grants")
+    edu_net_expense = max(0.0, edu_tuition - edu_scholarships)
+    if user_answers.get("num_students") not in (None, ""):
+        edu_num_students = int(user_answers.get("num_students") or 0)
+    else:
+        edu_num_students = sum(1 for e in extracts if e.form_code == "1098-T" and e.jurisdiction == "US") or (1 if edu_net_expense > 0 else 0)
+    edu_aotc_eligible = bool(user_answers.get("aotc_eligible", True))
+    edu_magi = agi + feie_excluded
+    education = _compute_education_credits(edu_net_expense, edu_num_students, edu_aotc_eligible,
+                                           edu_magi, status, fed_tables)
+    education_nonref = education["nonrefundable"]
+    education_refundable = education["refundable"]
+    if education["chosen"] > 0:
+        _kind = "American Opportunity" if education["aotc"] >= education["llc"] else "Lifetime Learning"
+        notes.append(
+            f"{_kind} education credit of ${education['chosen']:,.2f} (Form 8863), "
+            f"of which ${education_refundable:,.2f} is refundable."
+        )
+
+    federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit - education_nonref) + ptc_repayment
 
     # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
     # When a family's tax liability is too low to absorb the full non-refundable
@@ -843,7 +916,7 @@ def compute_us_return(
             f"a payment, based on {eitc_children} EITC-qualifying child(ren)."
         )
 
-    balance = round(total_tax - fed_withheld - excess_ss_tax - addl_medicare_withheld - actc - eitc, 2)
+    balance = round(total_tax - fed_withheld - excess_ss_tax - addl_medicare_withheld - actc - eitc - education_refundable, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -907,6 +980,12 @@ def compute_us_return(
         "earned_income_credit": eitc,
         "premium_tax_credit": ptc_credit,
         "premium_tax_credit_repayment": ptc_repayment,
+        "qualified_education_expense": edu_net_expense,
+        "education_credit_aotc": education["aotc"],
+        "education_credit_llc": education["llc"],
+        "education_credit_chosen": education["chosen"],
+        "education_credit_nonrefundable": education_nonref,
+        "education_credit_refundable": education_refundable,
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
@@ -932,6 +1011,7 @@ def compute_us_return(
         "standard_deduction": std_deduction,
         "premium_tax_credit": ptc_credit,
         "qbi_deduction": qbi_deduction,
+        "education_credit": education["chosen"],
     }
 
     return DraftReturn(
