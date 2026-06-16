@@ -1340,7 +1340,7 @@ relief (narrow+risky); <100% FPL (input/niche); 2025 CWB (CRA data); IN §234B/C
 
 ## Cycle 56 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | tax a qualifying surviving spouse (QSS) as MFJ, not single | _resolve_filing_status coerced any status outside {single,mfj,hoh} to 'single', so a QSS (recently widowed w/ dependent child, IRC §2(a)) — a computational clone of MFJ — got single brackets + $14,600 deduction instead of MFJ's $29,200 -> over-taxed | fail: QSS $80k -> std deduction $14,600 / ordinary_tax $9,441 — pass: $29,200 / $5,632 (over-tax of $3,809 fixed); QSS $300k AGI 1 child -> full $2,000 CTC (MFJ $400k start, not single's wiped-to-$0); 'qss' short alias works | gated? N | PR #TBD
+MATRIX | tax a qualifying surviving spouse (QSS) as MFJ, not single | _resolve_filing_status coerced any status outside {single,mfj,hoh} to 'single', so a QSS (recently widowed w/ dependent child, IRC §2(a)) — a computational clone of MFJ — got single brackets + $14,600 deduction instead of MFJ's $29,200 -> over-taxed | fail: QSS $80k -> std deduction $14,600 / ordinary_tax $9,441 — pass: $29,200 / $5,632 (over-tax of $3,809 fixed); QSS $300k AGI 1 child -> full $2,000 CTC (MFJ $400k start, not single's wiped-to-$0); 'qss' short alias works | gated? N | PR #93
 
 **MAINTAIN:** #92 merged to main (HEAD d0945be); baseline suite green at 1069. Rebase-before-push held.
 
