@@ -2221,3 +2221,14 @@ one worded input). Suite 1259->1262. ZERO collision (0 open PRs). Probe swept fo
 build_return as SAFE (all guarded). LESSON: same guard-symmetry rule as #141 — when the engine guards a conversion, every
 serializer/artifact site repeating that conversion needs the SAME guard; root (uncoerced user_answer store) is defended
 per-consumer (can't blanket-coerce user_answers since it legitimately holds both strings and numbers).
+## Cycle 150 — FULL LIFECYCLE (2026-06-16) [5-primitive: harden 3 unguarded user_answer numeric coercions in us_engine education/dependent-care]
+
+MATRIX | us_engine crashes (ValueError) on worded education/dependent-care user answers -> whole US return dies | three sites coerced user_answers with bare int()/float() and NO guard: 890 float(qualified_education_expense), 894 int(num_students), 916 int(num_dependent_care_persons). user_answers values arrive as raw strings (corrections:269 stores str(new_value) uncoerced; clarifying qs free-text), so "two"/"five thousand" -> ValueError at ENGINE level (worse than #142's artifact-only loss — no US return at all). The engine already has tolerant _to_float + _num_dependents; these 3 sites bypassed them. | fail-before: compute_us_return w/ num_students="two" / num_dependent_care_persons="two" / qualified_education_expense="five thousand" -> ValueError (3 param crashes + 2 numeric-key tests) -> pass-after: no crash, estimated_tax>=0; numeric "2"/"4000"/"1" still produce education_credit_chosen>0; worded num_students degrades to 0 students (no crash) while numeric run still credits | gated? N | PR #143
+
+#142-ROOT systematic follow-up (4th consecutive crash-hunt win). Added tolerant _to_int helper (max(0,int(_to_float(...))))
+mirroring _to_float/_num_dependents; routed all 3 sites through _to_float/_to_int. Scoped tight: did NOT expand _to_float's
+"$" handling (orthogonal). Confidence 93% (3 crashes reproduced live at engine level). Suite 1259->1264. ZERO collision
+(#142 is us_mef.py; this is us_engine.py). NOTE: ca_engine taxpayer_age + in_engine age greps looked unguarded but did NOT
+reproduce a crash (not reached in tested paths) — shipped only what reproduces. LESSON (3rd time): the corrections:269
+uncoerced-str root means EVERY bare int()/float() on a user_answers key is a latent engine crash; sweep+route through
+tolerant helpers per-consumer.
