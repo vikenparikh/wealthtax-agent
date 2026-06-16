@@ -770,9 +770,18 @@ def compute_us_return(
     # subtraction overstates the deduction for taxpayers with preferential
     # income. (Wage/UBIA limits and the SSTB phase-out are not modelled.)
     qbi_eligible = max(0.0, sch_c_profit + nec + k1_business)
+    # 1099-DIV box 5: §199A REIT dividends (and qualified PTP income) get the 20%
+    # QBI deduction too, but — unlike business QBI — they are NOT subject to the
+    # W-2/UBIA wage limit. This engine doesn't model that wage limit, so REIT
+    # dividends and business QBI are treated identically: both add to the QBI base
+    # and share the overall 20%-of-(taxable income − net capital gain) cap. REIT
+    # dividends are non-qualified (box 5 ⊂ box 1a, not box 1b), so they are NOT in
+    # net_capital_gain and correctly stay inside the income-limit base.
+    reit_dividends = max(0.0, _sum_field(extracts, "1099-DIV", "section_199A_dividends"))
+    qbi_base = qbi_eligible + reit_dividends
     net_capital_gain = max(0.0, long_gain) + qualified_dividends
     qbi_income_limit = max(0.0, taxable_income - net_capital_gain)
-    qbi_deduction = round(min(qbi_eligible, qbi_income_limit) * 0.20, 2) if qbi_eligible > 0 else 0.0
+    qbi_deduction = round(min(qbi_base, qbi_income_limit) * 0.20, 2) if qbi_base > 0 else 0.0
     taxable_income = max(0.0, taxable_income - qbi_deduction)
 
     # Ordinary taxable income excludes qualified divs + LTCG
@@ -1051,6 +1060,7 @@ def compute_us_return(
         "salt_deduction_capped": salt_deduction,
         "effective_deduction": effective_deduction,
         "qbi_deduction": qbi_deduction,
+        "section_199a_reit_dividends": reit_dividends,
         "agi": agi,
         "ordinary_tax": ordinary_tax,
         "preferential_tax": preferential_tax,

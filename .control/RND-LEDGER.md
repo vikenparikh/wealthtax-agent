@@ -2036,3 +2036,17 @@ other_via base (in_engine:451) — §80GG adjusted-total-income nets all other C
 
 **ZERO collision (0 open PRs).** RESEARCH rejected US 199A-REIT-box5 alt (entangles with QBI overall-limitation min()) ->
 next-cycle candidate. The per-hunk merge-train discipline paid off: all 4 stuck PRs rebased with ledger-only conflicts.
+## Cycle 137 — FULL LIFECYCLE (2026-06-16) [5-primitive: US §199A REIT dividends (1099-DIV box 5); UNBLOCKED by #105 merge -> worktree -> PR]
+
+MATRIX | add 1099-DIV box 5 §199A REIT dividends to the QBI base | i1099_div.py captures section_199A_dividends (box 5) but us_engine QBI base (772) read ONLY sch_c+nec+k1_business -> REIT dividends got NO 20% §199A deduction. A filer whose only pass-through income was REIT dividends (any REIT fund/ETF holder — very common) got $0 deduction (the `if qbi_eligible>0` guard also zeroed REIT-only filers). MERGE-TRAIN cleared #105 -> us_engine free | fail-before: $80k W2 + $10k REIT (no business) -> qbi_deduction $0 -> pass-after: $2,000 (20%); REIT+business combined base; income-limit cap binds at low income; REIT non-qualified -> stays in income-limit base | gated? N | PR #131
+
+**MAINTAIN:** origin/main HEAD 90a733f (#130 disability OPEN, in_engine.py — different file); base==HEAD; baseline 1199.
+
+**Second post-train ship.** REIT divs (box 5 ⊂ box 1a, non-qualified) get 20% §199A with NO W-2/UBIA wage limit. The
+engine doesn't model that wage limit anyway, so REIT + business QBI are treated identically: qbi_base = qbi_eligible +
+reit_dividends, both share the overall 20%-of-(taxable income − net cap gain) cap. Guard changed qbi_eligible>0 ->
+qbi_base>0 so REIT-only filers get the deduction. REIT divs are non-qualified -> NOT in net_capital_gain -> correctly
+stay inside the income-limit base (verified). +1 line_item section_199a_reit_dividends. Confidence 90%. Suite 1199->1204.
+
+**ZERO collision:** us_engine.py (free, #105 merged); #130 (open) is in_engine.py -> different file. Existing QBI tests
+(no REIT divs -> reit=0) unaffected. RESEARCH had flagged this as the next candidate after the disability deductions.
