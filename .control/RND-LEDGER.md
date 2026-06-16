@@ -2050,3 +2050,18 @@ stay inside the income-limit base (verified). +1 line_item section_199a_reit_div
 
 **ZERO collision:** us_engine.py (free, #105 merged); #130 (open) is in_engine.py -> different file. Existing QBI tests
 (no REIT divs -> reit=0) unaffected. RESEARCH had flagged this as the next candidate after the disability deductions.
+
+## Cycle 138 — FULL LIFECYCLE (2026-06-16) [5-primitive: IN §80DDB medical-treatment deduction -> worktree -> PR]
+
+MATRIX | add IN §80DDB (medical treatment of specified diseases) | in_engine had §80U/§80DD (just shipped #130) but no §80DDB. §80DDB = actual treatment expense (cancer/kidney-failure/neurological/etc., net of reimbursement) capped at ₹40,000, or ₹1,00,000 for a senior patient (60+). Old regime, resident-only. A filer with serious-illness treatment costs was over-taxed. Common (serious illness affects many families). in_engine.py FREE (#116/#130 merged) | fail-before: age 40, ₹50k expense -> section_80ddb $0 -> pass-after: ₹40,000 (capped); senior ₹150k->₹1,00,000; ₹30k->₹30,000; new regime/NR -> $0; RNOR keeps | gated? N | PR #132
+
+**MAINTAIN:** origin/main HEAD fc0bfc2 (#130 disability merged); #131 (REIT, us_engine) open — different file; base==HEAD; baseline 1208.
+
+**Adjacent clean follow-on to the disability deductions (#130).** Mirrors the §80U/§80DD structure exactly: cap from
+year-table, gate regime=="old" + residency_status!="NR" (RNOR keeps), age-based cap (₹40k under-60 / ₹1L senior, keyed off
+taxpayer age like §80D self-cap), feeds BOTH chapter_via_total AND §80GG other_via (computed before §80GG block). Fixed
+statutory caps (unchanged since AY2019-20), no guessed data. user_answers: section_80ddb_medical (net-of-reimbursement
+expense). +config section_80ddb{under_60,senior_60_plus} in in/2024+2025.yaml. +1 line_item. Confidence 90%. Suite 1208->1215.
+
+**ZERO collision:** in_engine.py + in/yamls (free, #116/#130 merged); #131 is us_engine.py. IN Chapter-VIA now covers
+80C/80CCD1B/80CCD2/80D/80DD/80DDB/80E/80G/80GG/80TTA-TTB/80U. Remaining IN absent: §80EEB (EV loan, growing pop), §80GGA, §80CCC.
