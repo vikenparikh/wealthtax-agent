@@ -354,6 +354,7 @@ def _compute_one_regime(
     sec_80d = 0.0
     sec_80e = 0.0
     sec_80g = 0.0
+    sec_80ggc = 0.0
     sec_80tta_ttb = 0.0
     sec_80gg = 0.0
     sec_80u = 0.0
@@ -424,6 +425,20 @@ def _compute_one_regime(
         sec_80g = _to_float(user_answers.get("section_80g_donations", 0)) * float(
             deductions.get("section_80g_percent_default", 0.5)
         )
+
+        # §80GGC — donations to a registered political party / electoral trust:
+        # 100% deductible, no cap, no sunset. Non-cash mode only (the engine, like
+        # §80EEB's sanction window, does not verify payment mode). Unlike the
+        # disability sections this is NOT resident-gated — it is available to
+        # non-residents too, so it sits here (no `residency_status != "NR"` guard).
+        sec_80ggc = _to_float(user_answers.get("section_80ggc_political_donation", 0)) * float(
+            deductions.get("section_80ggc_percent", 1.0)
+        )
+        if sec_80ggc > 0:
+            notes.append(
+                f"§80GGC deduction of ₹{sec_80ggc:,.0f} for a non-cash donation to a "
+                "registered political party / electoral trust (100%, old regime)."
+            )
 
         if age >= 60:
             sec_80tta_ttb = min(
@@ -528,7 +543,7 @@ def _compute_one_regime(
                     "(least of ₹60,000, 25% of income, or rent − 10% of income)."
                 )
 
-    chapter_via_total = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
+    chapter_via_total = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g + sec_80ggc
                          + sec_80tta_ttb + sec_80gg + sec_80u + sec_80dd + sec_80ddb + sec_80eeb)
 
     # 80CCD(2): the employer's NPS contribution is deductible under BOTH regimes
@@ -653,6 +668,7 @@ def _compute_one_regime(
         "section_80d": sec_80d,
         "section_80e": sec_80e,
         "section_80g": sec_80g,
+        "section_80ggc": sec_80ggc,
         "section_80tta_or_80ttb": sec_80tta_ttb,
         "section_80gg": sec_80gg,
         "section_80u": sec_80u,
