@@ -51,6 +51,22 @@ def _sum_field(extracts: Iterable[FormExtract], form_code: str, field: str) -> f
     ))
 
 
+def _early_distribution_taxable(extracts: Iterable[FormExtract]) -> float:
+    """Taxable amount of 1099-R distributions coded 1 in box 7 (early distribution,
+    no known exception) — the only code that triggers the §72(t) 10% additional tax.
+    Codes 2/3/4 (exception applies / disability / death) and 7 (normal) are
+    statutorily exempt, so they are excluded. Evaluated per-form so a filer with both
+    a normal and an early 1099-R is penalised only on the early one. (The FormExtract
+    data model stores box 7 numerically, so alphabetic rollover codes G/H — which are
+    never early distributions anyway — cannot occur here.)"""
+    return float(sum(
+        _to_float(e.fields.get("taxable_amount", 0.0))
+        for e in extracts
+        if e.form_code == "1099-R" and e.jurisdiction == "US"
+        and _to_float(e.fields.get("distribution_code", 0)) == 1.0
+    ))
+
+
 def _sch_d_short_long(extracts: Iterable[FormExtract]) -> tuple[float, float]:
     short = _sum_field(extracts, "SCH-D", "net_short_term_capital_gain")
     long_ = _sum_field(extracts, "SCH-D", "net_long_term_capital_gain")
@@ -838,6 +854,22 @@ def compute_us_return(
     niit = round(min(investment_income, max(0.0, niit_magi - niit_threshold)) * 0.038, 2)
     federal_tax += niit
 
+    # §72(t): a 10% additional tax on early retirement-plan distributions (1099-R
+    # box 7 code "1" = early distribution, no known exception). Reported on Form 5329
+    # / Schedule 2 and added to total tax. Folded into federal_tax here, consistent
+    # with how NIIT (also an "other tax") is handled above. The 1099-R box-7 code was
+    # captured by the extractor but never read, so an early distribution incurred no
+    # penalty — under-stating the tax of anyone under 59½ tapping a 401(k)/IRA early.
+    early_distribution_taxable = _early_distribution_taxable(extracts)
+    early_distribution_penalty = round(0.10 * early_distribution_taxable, 2)
+    federal_tax += early_distribution_penalty
+    if early_distribution_penalty > 0:
+        notes.append(
+            f"Additional 10% tax on early distributions (§72(t), Form 5329) of "
+            f"${early_distribution_penalty:,.2f} on ${early_distribution_taxable:,.0f} of "
+            "1099-R distributions coded '1' (early, no known exception)."
+        )
+
     # se_tax + se_tax_deduction already computed above (the deduction feeds AGI).
 
     # State tax
@@ -974,6 +1006,7 @@ def compute_us_return(
         "preferential_tax": preferential_tax,
         "amt_tax": amt_tax,
         "niit": niit,
+        "early_distribution_penalty": early_distribution_penalty,
         "child_tax_credit": ctc,
         "credit_for_other_dependents": odc,
         "additional_child_tax_credit": actc,
