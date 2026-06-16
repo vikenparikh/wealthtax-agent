@@ -79,6 +79,9 @@ deductions:
   section_80ddb:
     under_60: 40000
     senior_60_plus: 100000
+  # §80EEB electric-vehicle loan interest cap (per year).
+  section_80eeb:
+    cap: 150000
 
 # Capital gains regime change effective Jul 23 2024.
 # Pre-change rates apply to transfers before that date; post-change rates after.

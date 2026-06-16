@@ -83,6 +83,9 @@ deductions:
   section_80ddb:
     under_60: 40000
     senior_60_plus: 100000
+  # §80EEB electric-vehicle loan interest cap (per year).
+  section_80eeb:
+    cap: 150000
 
 # Capital gains (FY 2023-24 — entire year is pre-Jul 23 2024 regime)
 capital_gains:

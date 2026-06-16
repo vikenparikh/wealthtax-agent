@@ -2065,3 +2065,20 @@ expense). +config section_80ddb{under_60,senior_60_plus} in in/2024+2025.yaml. +
 
 **ZERO collision:** in_engine.py + in/yamls (free, #116/#130 merged); #131 is us_engine.py. IN Chapter-VIA now covers
 80C/80CCD1B/80CCD2/80D/80DD/80DDB/80E/80G/80GG/80TTA-TTB/80U. Remaining IN absent: §80EEB (EV loan, growing pop), §80GGA, §80CCC.
+
+## Cycle 139 — FULL LIFECYCLE (2026-06-16) [5-primitive: IN §80EEB EV-loan interest; queued behind #132, shipped after it merged -> PR]
+
+MATRIX | add IN §80EEB (electric-vehicle loan interest) | in_engine Chapter VI-A had 80U/80DD/80DDB but no §80EEB. §80EEB = interest on an EV loan, capped ₹1,50,000/yr. Old regime, resident-only. An EV buyer paying loan interest was over-taxed. Growing population (EV adoption). DELIBERATELY queued behind #132 (§80DDB shared the chapter_via_total line) -> shipped cleanly after #132 merged (no interdependent conflict) | fail-before: ₹2L interest -> section_80eeb $0 -> pass-after: ₹1,50,000 (capped); ₹80k->₹80k; new regime/NR -> $0; RNOR keeps | gated? N | PR #133
+
+**MAINTAIN:** origin/main HEAD eb3b73f (#132 §80DDB merged -> in_engine.py FREE, 0 open PRs); base==HEAD; baseline 1222.
+
+**Shipped the item I queued last cycle (anti-pile-up discipline paid off).** Last cycle I declined to ship §80EEB while
+#132 was open (shared chapter_via_total -> would've created an interdependent conflicting pair). #132 merged -> §80EEB now
+builds cleanly on top. Mirrors §80DDB exactly: cap from year-table, regime=="old" + residency!="NR" (RNOR keeps), feeds
+BOTH chapter_via_total AND §80GG other_via. Fixed ₹1.5L cap. user_answers: section_80eeb_ev_loan_interest. Eligibility
+window (loan sanctioned Apr2019-Mar2023) is the filer's responsibility (noted). +config section_80eeb{cap} in/2024+2025. +1 line_item.
+Confidence 90%. Suite 1222->1228.
+
+**ZERO collision (0 open PRs at branch time).** IN Chapter VI-A now COMPLETE for the common sections:
+80C/80CCD1B/80CCD2/80D/80DD/80DDB/80E/80EEB/80G/80GG/80TTA-TTB/80U. Remaining IN absent: §80GGA (scientific-research
+donations, niche), §80CCC (within §80C ceiling -> not distinct). The clean IN Chapter-VIA vein is now substantially exhausted.

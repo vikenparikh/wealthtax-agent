@@ -359,6 +359,7 @@ def _compute_one_regime(
     sec_80u = 0.0
     sec_80dd = 0.0
     sec_80ddb = 0.0
+    sec_80eeb = 0.0
 
     if regime == "old":
         # 80C — PPF, ELSS, LIC, principal home loan, EPF
@@ -483,6 +484,20 @@ def _compute_one_regime(
                     f"disease (capped at ₹{_ddb_cap:,.0f})."
                 )
 
+        # 80EEB — interest on a loan to buy an electric vehicle, capped at
+        # ₹1,50,000/year. Old regime only and resident-only. (Statutorily limited to
+        # loans sanctioned 1 Apr 2019 – 31 Mar 2023; that eligibility window is the
+        # filer's responsibility, like other date-bounded inputs the engine doesn't
+        # capture.) The deduction reduces taxable income.
+        if residency_status != "NR":
+            _eeb_cap = float(deductions.get("section_80eeb", {}).get("cap", 150000))
+            sec_80eeb = min(_to_float(user_answers.get("section_80eeb_ev_loan_interest", 0)), _eeb_cap)
+            if sec_80eeb > 0:
+                notes.append(
+                    f"§80EEB deduction of ₹{sec_80eeb:,.0f} for electric-vehicle loan "
+                    f"interest (capped at ₹{_eeb_cap:,.0f})."
+                )
+
         # 80GG — rent paid by a filer who receives NO HRA (self-employed, gig
         # workers, employees whose package has no HRA line). Old regime only
         # (§115BAC disallows it) and mutually exclusive with the §10(13A) HRA
@@ -500,7 +515,7 @@ def _compute_one_regime(
             gg_income_pct = float(gg.get("income_pct", 0.25))
             gg_excess_pct = float(gg.get("rent_excess_pct", 0.10))
             other_via = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
-                         + sec_80tta_ttb + sec_80u + sec_80dd + sec_80ddb)
+                         + sec_80tta_ttb + sec_80u + sec_80dd + sec_80ddb + sec_80eeb)
             adj_total_income = max(0.0, slab_income - other_via)
             sec_80gg = max(0.0, min(
                 gg_annual_cap,
@@ -514,7 +529,7 @@ def _compute_one_regime(
                 )
 
     chapter_via_total = (sec_80c + sec_80ccd_1b + sec_80d + sec_80e + sec_80g
-                         + sec_80tta_ttb + sec_80gg + sec_80u + sec_80dd + sec_80ddb)
+                         + sec_80tta_ttb + sec_80gg + sec_80u + sec_80dd + sec_80ddb + sec_80eeb)
 
     # 80CCD(2): the employer's NPS contribution is deductible under BOTH regimes
     # (the one Chapter VI-A item not disallowed in the new regime), up to 10% of
@@ -643,6 +658,7 @@ def _compute_one_regime(
         "section_80u": sec_80u,
         "section_80dd": sec_80dd,
         "section_80ddb": sec_80ddb,
+        "section_80eeb": sec_80eeb,
         "chapter_via_total": chapter_via_total,
         "gross_total_income": gross_total_income,
         "slab_tax": slab_tax,
