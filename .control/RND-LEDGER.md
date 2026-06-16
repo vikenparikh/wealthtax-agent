@@ -1861,3 +1861,21 @@ ONLY. CA 2023/2024/2025 HoH brackets remain a future item once confirmed to FTB 
 NONE overlaps any open PR: #102=us/states/ca/2024.yaml+test_us_engine.py, #105=us_engine.py+test_advanced, #111=ca_engine.py,
 #116=in_engine.py+in/yamls. No us_engine.py edit (engine already reads HoH). The stale "NY HoH uses single brackets"
 comment in test_us_engine.py:85-86 is in #102's file -> left untouched (now-wrong but not mine to edit this cycle).
+
+## Cycle 94 — FULL LIFECYCLE (2026-06-16) [5-primitive: IN surcharge 15% CG cap -> worktree -> PR; decomposed a long-"risky" item]
+
+MATRIX | cap India surcharge at 15% on the capital-gains tax portion (§111A/§112/§112A) | _surcharge (in_engine:83) applied the full tier rate (25%/37% above ₹2cr/₹5cr) to tax_after_rebate = slab_tax + cg_tax TOGETHER (call site 481). A Finance Act proviso caps surcharge at 15% on the income-tax from special-rate capital gains, regardless of tier. So a >₹2cr filer with CG was OVER-charged surcharge (+ the 4% cess riding on it). Common HNI/founder/RSU-seller population | fail-before: ₹6cr salary + ₹50L LTCG-other (cg_tax ₹10L) old regime -> surcharge = (slab+cg)*0.37 -> pass-after: slab*0.37 + cg*0.15 (saves ₹2.2L surcharge); new regime slab*0.25+cg*0.15; ≤15% tier unchanged; no-CG unchanged | gated? N | PR #125
+
+**MAINTAIN:** origin/main HEAD 532774f (#124 NY-HoH merged); #116/#111/#105/#102 OPEN; base==HEAD; baseline 1160.
+
+**DECOMPOSED a long-deferred "risky-entangled" item (cycles 8/15/19/22 flagged IN surcharge as DO-NOT-FORCE).** The cycle-20
+lesson — full §70 ordering is risky but floor-at-0 anti-illegal-offset is clean — applies again: the 15%-CG-surcharge-cap is
+a CLEAN isolatable sub-fix because cg_tax (in_engine:446 = tax_ltcg_eq+tax_stcg_eq+tax_ltcg_other) cleanly separates the
+special-rate CG tax from slab tax. Fix: _surcharge now takes (slab_after_rebate, cg_tax) separately; cg_rate=min(rate,0.15);
+rebate only reduces slab (§87A never rebates CG, verified prior cycles). +config surcharge_capital_gains_cap:0.15 in
+in/2024+2025.yaml (top-level, NOT the deductions block). DIRECTIONALLY correct (reduces over-charge); ≤15%-tier + no-CG
+cases byte-identical (existing surcharge tests pass). HONESTLY NOT modelled (flagged in PR): surcharge marginal relief
+(pre-existing) + dividend 15% cap (dividends flow through slab, not separable). Confidence 88%. Suite 1160->1165.
+
+**ZERO collision:** in_engine.py edits at 83-108 (_surcharge) + ~487 (call site) — clear of #116's hunks (344, 420-456
+Chapter-VIA); YAML cap at ~47-49 (surcharge block) clear of #116's deductions hunk (63/67). No #105/#111/#102 file overlap.

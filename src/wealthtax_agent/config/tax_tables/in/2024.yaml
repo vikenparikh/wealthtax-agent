@@ -46,6 +46,9 @@ surcharge:
   - {income_above: 50000000, rate: 0.37}
 # New regime caps surcharge at 25% (no 37% tier).
 surcharge_new_regime_cap: 0.25
+# Surcharge on the tax from §111A/§112/§112A capital gains is capped at 15%
+# regardless of the total-income tier (Finance Act Part I proviso).
+surcharge_capital_gains_cap: 0.15
 
 # Health & Education Cess
 cess_rate: 0.04

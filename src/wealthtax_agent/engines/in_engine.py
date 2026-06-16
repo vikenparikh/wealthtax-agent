@@ -81,14 +81,24 @@ def _hra_exemption(
 
 
 def _surcharge(
-    tax_before_surcharge: float,
+    slab_tax_after_rebate: float,
+    cg_tax: float,
     total_income: float,
     tables: Dict[str, Any],
     regime: str,
 ) -> float:
     """Tiered surcharge on income tax (not on income directly).
 
-    For the new regime the highest tier (37%) is capped at 25%.
+    The tier rate is set by total income, but two caps apply:
+    - new regime: the top tier (37%) is capped at 25%;
+    - on the income-tax attributable to capital gains taxed at special rates
+      (§111A / §112 / §112A), the surcharge rate is capped at 15% regardless of the
+      total-income tier (a proviso in Part I of the Finance Act). So a >₹2cr / >₹5cr
+      filer pays the full tier rate on slab tax but only 15% surcharge on CG tax.
+
+    Note: surcharge marginal relief at the tier thresholds is not modelled (a
+    pre-existing simplification); the 15% cap on dividend surcharge is also not
+    modelled because dividends flow through the slab and are not separable here.
     """
     tiers = tables.get("surcharge", [])
     rate = 0.0
@@ -97,7 +107,8 @@ def _surcharge(
             rate = float(tier["rate"])
     if regime == "new":
         rate = min(rate, float(tables.get("surcharge_new_regime_cap", 0.25)))
-    return round(tax_before_surcharge * rate, 2)
+    cg_rate = min(rate, float(tables.get("surcharge_capital_gains_cap", 0.15)))
+    return round(slab_tax_after_rebate * rate + cg_tax * cg_rate, 2)
 
 
 def _capital_gains_split(
@@ -478,7 +489,10 @@ def _compute_one_regime(
     tax_after_rebate = max(0.0, tax_before_rebate - rebate)
 
     # Surcharge on income tax
-    surcharge = _surcharge(tax_after_rebate, total_income, tables, regime)
+    # Split the surcharge base: §87A rebate only ever reduces slab tax (never CG
+    # tax), so the post-rebate slab portion is slab_tax - rebate; the CG-tax portion
+    # is surcharged at the capped rate inside _surcharge.
+    surcharge = _surcharge(max(0.0, slab_tax - rebate), cg_tax, total_income, tables, regime)
     tax_with_surcharge = tax_after_rebate + surcharge
 
     # 4% Health & Education Cess
