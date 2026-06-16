@@ -461,7 +461,11 @@ def _compute_one_regime(
     # full liability show as owing for the large population (business / capital-gains
     # / professional) that pays advance tax. §234B/§234C interest on any advance-tax
     # shortfall is a separate liability-side computation and is not modelled here.
-    advance_tax = _to_float(user_answers.get("advance_tax_paid", 0))
+    # Advance tax: prefer the amount reported on an uploaded Form 26AS (captured but
+    # previously unread, so a 26AS upload left advance tax uncredited and overstated
+    # the balance owing), else the manual entry. Fallback, not a sum — no double-count.
+    _form_advance = _sum_field(extracts, "FORM-26AS", "advance_tax_paid")
+    advance_tax = _form_advance if _form_advance > 0 else _to_float(user_answers.get("advance_tax_paid", 0))
     self_assessment_tax = _to_float(user_answers.get("self_assessment_tax_paid", 0))
     tcs = _to_float(user_answers.get("tcs_collected", 0))
     total_tds = tds_salary + tds_non_salary
