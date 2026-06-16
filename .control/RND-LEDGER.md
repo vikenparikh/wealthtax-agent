@@ -1676,3 +1676,34 @@ local var). Confidence 92%. Suite 1113->1117.
 to keep the cycle non-colliding while the 4-PR queue drains. Next-best US 1099-R §72(t) still deferred (contends us_engine.py w/ #105).
 
 **REBASED onto origin/main 7888b3a (#112 merged mid-cycle); ledger union (Cycle 78 then 79). No code conflict — ledger-only.**
+
+## Cycle 81 — HONEST HOLD (2026-06-16) [5-primitive: serializer vein exhausted; lone candidate rests on false premise]
+
+**MAINTAIN:** origin/main HEAD d503d6c (#113 merged); #114/#111/#105/#102 OPEN; suite green 1121.
+
+**DECISION: HOLD (no PR, no padding).** The engine<->serializer reconciliation vein — the productive thread of the
+last two cycles — is now EXHAUSTED. Verified this cycle (not assumed):
+- filing/us_mef.py — refundable AOTC + addl-Medicare dropped from L33 -> FIXED #113.
+- filing/ca_netfile.py — Canada Workers Benefit dropped from <Tax> -> FIXED #114.
+- filing/in_itr.py — audited, fully reconciles (87A/surcharge/cess/prepaid all present). No bug.
+- filing/ca_540.py — audited, reconciles: balance = state_tax - state_withheld; reads state_tax/state_taxable_income/
+  state_mental_health_surcharge/state_standard_deduction; engine computes NO CA-state credit (EITC/renter's) so none
+  can be dropped; only W-2 box17 carries state withholding (no 1099 does) -> W-2-only summing is complete. No bug.
+- filing/pdf_fill.py + build_return.py — mechanical/assembly, no reconciliation logic, owe/refund computed identically
+  to the JSON. No bug.
+
+**Lone SHIP candidate REJECTED (would be padding):** RESEARCH proposed sizing 1040-ES vouchers to the §6654 90%-of-
+current-year safe-harbour FLOOR instead of balance_owing/4. Rejected because its premise is FALSE: quarterly.py's
+docstring (line 41) intends "25% of the year's estimated tax" = pay 100% of the liability in 4 installments, a
+deliberate conservative default. Sizing to the 90% penalty-avoidance floor would make filers DELIBERATELY underpay and
+owe ~10% at filing — a debatable product DECISION, not a correctness bug. (It also cited the docstring as wanting the
+safe-harbour minimum — it does not. The orphaned engines/estimated_tax.py — verified zero imports in src/ — computes
+the floor but is intentionally unwired.) Not a clean correctness fix -> declined.
+
+**Remaining backlog ALL still blocked** (unchanged): per-province data (BC/QC donation rates, CA BPA phaseout,
+provincial pension caps); missing intake input (CA age amount, US 65/blind std); risky entanglement (IN surcharge
+marginal relief, full §70 CG ordering); contended-file collisions (US 1099-R §72(t) penalty -> us_engine.py vs #105).
+
+**UNBLOCK conditions:** a PR in the open queue merges and frees a contended engine file; OR new form/requirement; OR
+confirmed per-province table data; OR an age/blind intake input. Until then -> honest HOLD. 4 PRs (#114/#111/#105/#102)
+still draining ~1/cycle; once #105 lands, the US 1099-R §72(t) early-withdrawal penalty becomes the next clean SHIP.
