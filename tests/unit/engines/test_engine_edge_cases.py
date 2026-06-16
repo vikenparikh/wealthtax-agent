@@ -695,7 +695,8 @@ def test_ca_oas_clawback_uses_2023_threshold():
     income between the two was wrongly given NO clawback (under-taxation).
 
     FAILS before the fix: 2023 uses $90,997 → $89,000 < threshold → clawback $0."""
-    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=89000)], 2023, province="ON",
+    # Net income $89,000 = $80,500 pension + $8,500 OAS (OAS is taxable income).
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=80500)], 2023, province="ON",
                           user_answers={"oas_benefits": "8500"})
     # 2023 threshold $86,912; $89,000 is $2,088 over → 15% = $313.20 (< the $8,500 OAS
     # received, so the cap does not bind).
@@ -705,7 +706,8 @@ def test_ca_oas_clawback_uses_2023_threshold():
 def test_ca_oas_clawback_uses_2025_threshold():
     """The 2025 threshold is $93,454, so a 2025 retiree at $92,000 net income owes
     NO clawback — but the hardcoded $90,997 wrongly clawed back (over-taxation)."""
-    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=92000)], 2025, province="ON",
+    # Net income $92,000 = $83,500 pension + $8,500 OAS, still below the 2025 threshold.
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=83500)], 2025, province="ON",
                           user_answers={"oas_benefits": "8500"})
     assert d.line_items["oas_clawback"] == 0.0
 
@@ -713,7 +715,8 @@ def test_ca_oas_clawback_uses_2025_threshold():
 def test_ca_oas_clawback_2024_unchanged():
     """Regression guard: 2024 keeps the $90,997 threshold. $95,000 net → $4,003
     over → 15% = $600.45."""
-    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=95000)], 2024, province="ON",
+    # Net income $95,000 = $86,500 pension + $8,500 OAS (OAS is taxable income).
+    d = compute_ca_return([_f("T4A", "CA", pension_or_superannuation=86500)], 2024, province="ON",
                           user_answers={"oas_benefits": "8500"})
     assert d.line_items["oas_clawback"] == 600.45
 

@@ -98,3 +98,18 @@ def test_qc_emits_separate_filing_note():
     extracts = [_t4(60000.0)]
     draft = compute_ca_return(extracts, year=2024, province="QC")
     assert any("Quebec" in n or "Québec" in n for n in draft.notes)
+
+
+def test_oas_benefits_included_in_total_income():
+    """OAS benefits (T1 line 11300) are fully taxable income. Previously the engine
+    read the OAS amount only to cap the clawback; it must also be in total income so
+    a recipient is taxed on it."""
+    base = compute_ca_return([FormExtract(form_code="T4A", jurisdiction="CA",
+                                          fields={"pension_or_superannuation": 20000.0})],
+                             year=2024, province="ON")
+    with_oas = compute_ca_return([FormExtract(form_code="T4A", jurisdiction="CA",
+                                              fields={"pension_or_superannuation": 20000.0})],
+                                 year=2024, province="ON", user_answers={"oas_benefits": "8500"})
+    assert with_oas.line_items["oas_income"] == 8500.0
+    assert round(with_oas.total_income - base.total_income, 2) == 8500.0
+    assert with_oas.estimated_tax > base.estimated_tax  # OAS is taxed
