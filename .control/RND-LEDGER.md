@@ -2207,3 +2207,17 @@ reproduced; trigger is the less-common worded-amount wording but fully reachable
 ZERO collision (#140 merged mid-cycle; this is corrections/__init__.py, untouched since foundation commit #4). LESSON:
 audit guard SYMMETRY — when one branch (set) coerces defensively, sibling branches (add) doing the same coercion need
 the same guard; an unguarded float(str) on any LLM/user-supplied value is a latent crash.
+
+---
+
+## Cycle 149 — FULL LIFECYCLE (2026-06-16) [5-primitive: fix reachable ValueError crash in US MeF serializer (int(num_dependents))]
+
+MATRIX | US MeF serializer crashes on a non-numeric num_dependents -> whole US artifact set silently lost | filing/us_mef.py:49 did `int(user_answers.get("num_dependents", 0) or 0)` UNGUARDED. num_dependents reaches user_answers as a raw string (corrections/__init__.py:269 stores set-user_answer as str(new_value) with no coercion; clarifying q us.yaml is free-text). An NL correction "I have two dependents" -> num_dependents="two" -> int("two") raises ValueError. build_return_node wraps each jurisdiction in try/except -> pipeline survives but the US filer SILENTLY loses ALL US artifacts (no 1040 PDF, MeF JSON, CA-540, ES vouchers) with only a buried "Filing artifact generation failed for US" warning. The ENGINE already guards the identical conversion (us_engine._num_dependents: try/except + max(0,int)). Serializer was asymmetric. | fail-before: serialize_1040(..., num_dependents="two") -> ValueError invalid literal for int (3 failed) -> pass-after: Dependents==0 (no crash); "3"->3, ""->0, "-2"->0 (clamped, mirrors engine); build_return_node emits us_1040_pdf + us_mef_json + no failure warning | gated? N | PR #142
+
+#140/#141-CLASS latent crash (3rd consecutive crash-hunt win). Display-only header field (Dependents) -> degrade to 0 is
+calc-safe. _safe_int helper mirrors engine _num_dependents exactly (try/except + max(0,int)). Confidence 92% (node
+try/except softens "whole draft dies" to "whole US jurisdiction artifacts vanish" — still total US deliverable loss from
+one worded input). Suite 1259->1262. ZERO collision (0 open PRs). Probe swept forms/_helpers, quarterly, ca_540,
+build_return as SAFE (all guarded). LESSON: same guard-symmetry rule as #141 — when the engine guards a conversion, every
+serializer/artifact site repeating that conversion needs the SAME guard; root (uncoerced user_answer store) is defended
+per-consumer (can't blanket-coerce user_answers since it legitimately holds both strings and numbers).

@@ -10,6 +10,18 @@ from wealthtax_agent.state import DraftReturn, FormExtract
 SCHEMA_VERSION = "0.1-draft"
 
 
+def _safe_int(value, default: int = 0) -> int:
+    """Tolerant int coercion mirroring us_engine._num_dependents: a non-numeric
+    value (e.g. an NL correction stored uncoerced as "two") degrades to the
+    default and is clamped non-negative, instead of raising ValueError and
+    wiping the entire US artifact set in build_return_node's per-jurisdiction
+    try/except."""
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return default
+
+
 def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, user_answers: Dict[str, str] | None = None) -> Dict[str, Any]:
     user_answers = user_answers or {}
     line_items = draft.line_items or {}
@@ -46,7 +58,7 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
         "ReturnHeader": {
             "TaxYear": year,
             "FilingStatus": user_answers.get("filing_status", "single"),
-            "Dependents": int(user_answers.get("num_dependents", 0) or 0),
+            "Dependents": _safe_int(user_answers.get("num_dependents", 0)),
             "StateOfResidence": user_answers.get("state_of_residence", ""),
         },
         "ReturnData": {

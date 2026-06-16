@@ -81,3 +81,45 @@ def test_build_return_node_produces_us_pdf_and_json():
     assert "us_mef_json" in result.filing_artifacts
     payload = json.loads(base64.b64decode(result.filing_artifacts["us_mef_json"].content_b64))
     assert payload["transmissible"] is False
+
+
+def test_serialize_1040_tolerates_non_numeric_dependents():
+    """A non-numeric num_dependents (e.g. an NL correction "I have two
+    dependents" stored uncoerced as "two") must NOT crash the MeF serializer —
+    the engine already degrades the same value to 0, so the artifact layer must
+    too rather than wiping the entire US deliverable."""
+    draft = DraftReturn(
+        jurisdiction="US", tax_year=2024,
+        line_items={"wages": 80000.0, "federal_tax": 9000.0},
+        totals={"total_income": 80000.0, "taxable_income": 65400.0, "total_tax": 9000.0, "refund": 0.0, "balance_owing": 0.0},
+    )
+    payload = serialize_1040(draft, [], 2024, {"filing_status": "single", "num_dependents": "two"})  # was ValueError
+    assert payload["ReturnHeader"]["Dependents"] == 0
+
+
+def test_serialize_1040_numeric_dependents_unchanged():
+    draft = DraftReturn(jurisdiction="US", tax_year=2024, line_items={}, totals={})
+    assert serialize_1040(draft, [], 2024, {"num_dependents": "3"})["ReturnHeader"]["Dependents"] == 3
+    assert serialize_1040(draft, [], 2024, {})["ReturnHeader"]["Dependents"] == 0
+    # Negative is clamped to 0, mirroring the engine's _num_dependents.
+    assert serialize_1040(draft, [], 2024, {"num_dependents": "-2"})["ReturnHeader"]["Dependents"] == 0
+
+
+def test_build_return_node_emits_us_artifacts_despite_worded_dependents():
+    """End-to-end: a US filer whose num_dependents is a word must still receive
+    their full US artifact set (not silently lose it to a buried warning)."""
+    draft = DraftReturn(
+        jurisdiction="US", tax_year=2024,
+        line_items={"wages": 80000.0, "federal_tax": 9000.0},
+        totals={"total_income": 80000.0, "taxable_income": 65400.0, "total_tax": 9000.0, "refund": 0.0, "balance_owing": 0.0},
+    )
+    state = GraphState(
+        filing_year=2024, jurisdictions=["US"],
+        user_answers={"filing_status": "single", "num_dependents": "two"},
+        extracts=[FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 80000.0})],
+        draft_returns={"US": draft},
+    )
+    result = build_return_node(state)
+    assert "us_1040_pdf" in result.filing_artifacts
+    assert "us_mef_json" in result.filing_artifacts
+    assert not any("Filing artifact generation failed for US" in w for w in result.warnings)
