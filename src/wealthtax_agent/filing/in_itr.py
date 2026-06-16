@@ -95,6 +95,10 @@ def serialize_itr(
                 "Section80DDB": _f("section_80ddb"),
                 "Section80EEB": _f("section_80eeb"),
                 "Section80GG": _f("section_80gg"),
+                # §80GGC (political-party donation) is already in chapter_via_total,
+                # so surface it as a display row only — do NOT add it to
+                # TotalChapterVIA (would double-count, same rule as §80GG/§80U above).
+                "Section80GGC": _f("section_80ggc"),
                 "TotalChapterVIA": _f("chapter_via_total") + _f("section_80ccd_2_employer_nps"),
             },
             "PartB_TI": {
