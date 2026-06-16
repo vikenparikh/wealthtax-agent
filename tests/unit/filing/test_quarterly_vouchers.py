@@ -33,15 +33,31 @@ def test_us_no_voucher_when_withholding_covers_tax():
 
 
 def test_us_voucher_sized_at_a_quarter_of_amount_owed():
-    d = _draft("US", totals={"total_tax": 9000.0}, line_items={"tax_withheld": 2000.0})
+    d = _draft("US", totals={"total_tax": 9000.0, "balance_owing": 7000.0},
+               line_items={"tax_withheld": 2000.0})
     v = quarterly_us_1040es(d, 2025)
     assert set(v) == {"Q1", "Q2", "Q3", "Q4"}
-    assert "$1,750.00" in v["Q1"]  # (9000 - 2000) / 4
+    assert "Estimated payment: $1,750.00" in v["Q1"]  # balance_owing 7000 / 4
     assert "DRAFT — not transmitted" in v["Q1"]
 
 
+def test_us_voucher_nets_refundable_credits_via_balance_owing():
+    """The voucher must size on the net amount owed (balance_owing), which the
+    engine computes after withholding AND refundable credits/extra payments — not
+    total_tax − withholding, which ignores EITC/ACTC and over-states the payment.
+    total_tax $10,000, withholding $2,000, $4,000 of refundable credits →
+    balance_owing $4,000 → $1,000/qtr, not $2,000/qtr.
+
+    FAILS before the fix: sizes on (10,000 − 2,000)/4 = $2,000."""
+    d = _draft("US", totals={"total_tax": 10000.0, "balance_owing": 4000.0},
+               line_items={"tax_withheld": 2000.0, "self_employment_tax": 6000.0})
+    v = quarterly_us_1040es(d, 2025)
+    assert "Estimated payment: $1,000.00" in v["Q1"]
+
+
 def test_us_due_dates_roll_q4_into_next_january():
-    d = _draft("US", totals={"total_tax": 9000.0}, line_items={"tax_withheld": 2000.0})
+    d = _draft("US", totals={"total_tax": 9000.0, "balance_owing": 7000.0},
+               line_items={"tax_withheld": 2000.0})
     v = quarterly_us_1040es(d, 2025)
     assert "2025-04-15" in v["Q1"]
     assert "2025-06-15" in v["Q2"]

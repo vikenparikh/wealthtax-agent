@@ -43,7 +43,10 @@ def quarterly_us_1040es(draft: DraftReturn, year: int) -> Dict[str, str]:
     total_tax = float(draft.totals.get("total_tax", 0.0))
     se_tax = float(draft.line_items.get("self_employment_tax", 0.0))
     withholding = float(draft.line_items.get("tax_withheld", 0.0))
-    annual_owed = max(0.0, total_tax - withholding)
+    # Size on the engine's net amount owed, which already nets withholding AND the
+    # refundable credits / extra payments (EITC, ACTC, excess SS, additional
+    # Medicare). total_tax − withholding ignored those and over-stated the voucher.
+    annual_owed = float(draft.totals.get("balance_owing", 0.0))
 
     # If withholding already covers >= total tax, no voucher needed.
     if annual_owed <= 1000 and se_tax <= 1000:

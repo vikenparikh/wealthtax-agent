@@ -1427,3 +1427,24 @@ Suite 1080 -> 1082.
 correct. After this merges, the engine is substantially converged. Remaining items ALL design-gated
 (US state artifact), input-blocked (CA RRSP room, <100% FPL), need external data (2025 CWB), risky (IN
 surcharge marginal relief), or rare (charitable 60%/mortgage $750k, full MFS). EXPECT HOLD next cycle.
+
+## Cycle 63 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | size the US 1040-ES quarterly voucher on net owed (balance_owing), not total_tax-withholding | quarterly_us_1040es sized vouchers at total_tax-withholding, ignoring the refundable credits + extra payments (EITC/ACTC/excess-SS/addl-Medicare) the engine nets into balance_owing -> a self-employed filer with credits was told to pay up to 2x too much per quarter. The CA sibling already used balance_owing | fail: total_tax $10k - wh $2k = $8k -> $2,000/qtr (credits ignored) — pass: balance_owing $4k -> $1,000/qtr; existing $1,750/qtr fixtures corrected to carry balance_owing | gated? N | PR #97
+
+**MAINTAIN:** #96 merged to main (HEAD cdee9ad); baseline suite green at 1082. Rebase-before-push held.
+
+**Found via probing an UNAUDITED surface:** filing/quarterly.py (the quarterly voucher generator) and the
+build_return.py PDF field-mapping were never audited (C47 covered §6654 estimated_tax.py + the JSON/XML
+serializers, NOT these). PDF field dicts pull correct keys (only the already-tracked federal-vs-combined
+issue). quarterly_us_1040es had the bug; RESEARCH subagent confirmed 1040-ES required estimate = liability
+- withholding - REFUNDABLE CREDITS (so balance_owing is the correct + more-accurate base; no reason to
+prefer total_tax-withholding), the $1,000 threshold semantics hold, and that exactly 2 existing fixtures
+(test_quarterly_vouchers.py:35,43) omitted balance_owing and needed it added (legit fixture correction,
+keeps the $1,750/qtr assertion). CA function unchanged (already correct).
+
+**Change:** annual_owed = balance_owing (was max(0, total_tax-withholding)); total_tax/withholding still
+read for the informational voucher lines. Corrected 2 fixtures + 1 new credit-netting test. Suite 1082->1083.
+
+**Table values verified correct C62, engine logic C59, this closes the last unaudited computation surface
+(quarterly vouchers). Remaining ALL design/input/data/risky/rare. EXPECT HOLD next.**
