@@ -1840,3 +1840,24 @@ ValidationError). So box 7 is always numeric; match _to_float(code)==1.0 (string
 bug). Alphabetic rollover codes can't occur + are never early anyway -> conservative & complete. Confidence 90%. Suite 1148->1155.
 
 **Collision:** us_engine.py (vs #105) — code hunks verified non-overlapping; expect ledger-only conflict on rebase.
+
+## Cycle 93 — FULL LIFECYCLE (2026-06-16) [5-primitive: NY HoH state brackets -> worktree -> PR; config-only]
+
+MATRIX | add NY Head-of-Household state tax brackets (all 3 years) | NY state tables defined head_of_household ONLY under standard_deduction, never under brackets_by_status -> us_engine.py:887 (st_brackets = _bbs.get(st_status) or _bbs.get("single")) fell back to the SINGLE schedule for HoH filers. NY HoH rungs are statutorily WIDER than single (5.5% caps at single 80,650 / HoH 107,650 / MFJ 161,550), so HoH filers (commonly single parents) were OVER-taxed at the state level. This is #102's own deferred ledger note ("HoH->single state mapping over-taxes CA/NY HoH") | fail-before: NY HoH $90k 2024 (taxable 78,800) -> state_tax $4,169.00 (single fallback) -> pass-after: $4,085.38 (HoH brackets), $83.62 less; gap widens at higher income (>$300 at $300k taxable) | gated? N | PR #124
+
+**MAINTAIN:** origin/main HEAD 10c7fca (#123 §72(t) JUST merged — per-hunk strategy validated); #116/#111/#105/#102 OPEN; base==HEAD; baseline 1155.
+
+**CONFIG-ONLY, engine already reads it.** The fix is purely adding a head_of_household list under brackets_by_status in
+ny/{2023,2024,2025}.yaml — us_engine.py:887 already consumes brackets_by_status.head_of_household; zero code change.
+NY brackets are statutorily FIXED 2021-2027 (repo's NY single is byte-identical across years -> confirmed the fixed-schedule
+convention), and the HoH thresholds are structurally corroborated (each rung between single and MFJ). HIGH confidence.
+
+**CONFIDENCE-BAR DISCIPLINE — CA HoH brackets HELD (not shipped).** RESEARCH also proposed CA 2025 HoH brackets, but CA
+brackets are INDEXED ANNUALLY (harder to verify) vs NY's fixed schedule. Per the established bar (ship fixed-statutory
+>=85%, HOLD indexed/uncertain) + direct precedent (a prior cycle shipped NY HoH std but HELD CA HoH brackets), shipped NY
+ONLY. CA 2023/2024/2025 HoH brackets remain a future item once confirmed to FTB Schedule-Z and #102 frees ca/2024.yaml.
+
+**ZERO collision:** edited ny/{2023,2024,2025}.yaml + NEW test file tests/unit/engines/test_us_state_hoh_brackets.py.
+NONE overlaps any open PR: #102=us/states/ca/2024.yaml+test_us_engine.py, #105=us_engine.py+test_advanced, #111=ca_engine.py,
+#116=in_engine.py+in/yamls. No us_engine.py edit (engine already reads HoH). The stale "NY HoH uses single brackets"
+comment in test_us_engine.py:85-86 is in #102's file -> left untouched (now-wrong but not mine to edit this cycle).
