@@ -1676,3 +1676,23 @@ local var). Confidence 92%. Suite 1113->1117.
 to keep the cycle non-colliding while the 4-PR queue drains. Next-best US 1099-R §72(t) still deferred (contends us_engine.py w/ #105).
 
 **REBASED onto origin/main 7888b3a (#112 merged mid-cycle); ledger union (Cycle 78 then 79). No code conflict — ledger-only.**
+## Cycle 80 — FULL LIFECYCLE (2026-06-16) [5-primitive: CA serializer reconciliation -> worktree -> PR]
+
+MATRIX | emit refundable Canada Workers Benefit in the NETFILE Tax block | filing/ca_netfile.py serialize_t1 <Tax> block emitted FederalTax/ProvincialTax/BPA/TaxWithheld/BalanceOwing/Refund but DROPPED canada_workers_benefit, which the engine subtracts to PRODUCE that balance (ca_engine:444 balance = total_tax - tax_withheld - cwb). A reader summing the XML's own visible lines could NOT reconcile to the emitted BalanceOwing/Refund whenever cwb>0 -> artifact contradicts itself; understates payments applied -> hand-filer computes larger owing/smaller refund. Low-income CA filers (working income > $3k floor); CWB ~$1,400 single / ~$2,400 family | fail-before: $1,200 tax/$1,500 wh/$1,400 CWB -> no <CanadaWorkersBenefit> element, visible lines don't reconcile to Refund $1,700 -> pass-after: <CanadaWorkersBenefit>1400.00</...>, total_tax - wh - cwb = -refund reconciles | gated? N | PR #114
+
+**MAINTAIN:** origin/main HEAD 7888b3a (#112 merged); #113/#111/#105/#102 OPEN; base==HEAD, no rebase; baseline 1117.
+
+**Direct follow-on to #113 (us_mef line-33) — the SAME engine<->serializer reconciliation bug class on the CA side.**
+Last cycle's lesson ("a credit can reach the engine balance yet be dropped from the filing artifact; sweep
+ca_netfile/in_itr/ca_540") paid off immediately. CWB is the ONLY payment-side item besides tax_withheld in
+ca_engine's balance, and the NETFILE Tax block omitted it. Pure additive serializer fix (engine read-only); one
+<CanadaWorkersBenefit> element after <TaxWithheld>; defaults 0.00 when no cwb table / non-resident -> no regression.
+Key-name verified: line_items["canada_workers_benefit"] (snake_case, NOT cwb), lives in line_items NOT credits.
+RESEARCH confirmed in_itr.py FULLY reconciles (87A/surcharge/cess/prepaid-tax all present) -> no second bug there.
+Confidence 92%. Suite 1117->1120.
+
+**ZERO collision:** primary+only edit is filing/ca_netfile.py (+ its test); engine read-only. #113=us_mef.py,
+#111=ca_engine.py, #105=us_engine.py+US tables, #102=ca/2024.yaml -> none overlap. Serializer-reconciliation vein:
+us_mef (#113) + ca_netfile (this) shipped; in_itr verified clean; ca_540/quarterly not yet swept (next candidates).
+
+**REBASED onto origin/main d503d6c (#113 merged mid-cycle); ledger union (Cycle 79 then 80). No code conflict — ledger-only.**
