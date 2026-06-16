@@ -969,9 +969,41 @@ def compute_us_return(
             "(Form 5695, non-refundable; $1,200 general + $2,000 heat-pump annual caps)."
         )
 
+    # §25E Used Clean Vehicle Credit (Form 8936): the lesser of $4,000 or 30% of
+    # the sale price, non-refundable (no carryforward). Hard MAGI cliff (no
+    # phase-out band): $75k single / $112.5k HoH / $150k MFJ — above it the credit
+    # is $0. The $4,000, 30%, and cliffs are fixed by IRA-2022 through 2032
+    # (non-indexed). §25E uses the lesser of current/prior-year MAGI; this single-
+    # year model uses current-year MAGI (= AGI + FEIE), the same simplification as
+    # NIIT/education. Vehicle eligibility (>=2 model years old, <=$25k, dealer sale,
+    # first transfer) is the filer's responsibility.
+    vehicle_cfg = fed_tables.get("clean_vehicle", {})
+    used_vehicle_price = _to_float(user_answers.get("used_clean_vehicle_price", 0))
+    vehicle_magi = agi + feie_excluded
+    _magi_cap = float(
+        vehicle_cfg.get("used_magi_cap_married_filing_jointly", 150000) if status == "married_filing_jointly"
+        else vehicle_cfg.get("used_magi_cap_head_of_household", 112500) if status == "head_of_household"
+        else vehicle_cfg.get("used_magi_cap_single", 75000)
+    )
+    if used_vehicle_price > 0 and vehicle_magi <= _magi_cap:
+        sec_25e = round(min(float(vehicle_cfg.get("used_max_credit", 4000)),
+                            used_vehicle_price * float(vehicle_cfg.get("used_credit_rate", 0.30))), 2)
+    else:
+        sec_25e = 0.0
+    if sec_25e > 0:
+        notes.append(
+            f"Used Clean Vehicle Credit (§25E) of ${sec_25e:,.2f} = lesser of $4,000 or "
+            "30% of the sale price (Form 8936, non-refundable, no carryforward)."
+        )
+    elif used_vehicle_price > 0 and vehicle_magi > _magi_cap:
+        notes.append(
+            f"Used Clean Vehicle Credit (§25E) disallowed: MAGI ${vehicle_magi:,.0f} exceeds "
+            f"the ${_magi_cap:,.0f} limit for this filing status."
+        )
+
     federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit
                       - education_nonref - dependent_care_credit
-                      - sec_25d - sec_25c) + ptc_repayment
+                      - sec_25d - sec_25c - sec_25e) + ptc_repayment
 
     # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
     # When a family's tax liability is too low to absorb the full non-refundable
@@ -1197,6 +1229,7 @@ def compute_us_return(
         "dependent_care_credit": dependent_care_credit,
         "residential_clean_energy_credit": sec_25d,
         "energy_efficient_home_credit": sec_25c,
+        "used_clean_vehicle_credit": sec_25e,
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
