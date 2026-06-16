@@ -220,6 +220,41 @@ def _qualified_dividend_tax(qualified_dividends: float, long_term_gain: float, o
     return round(max(0.0, tax_total - tax_ordinary_only), 2)
 
 
+def _compute_dependent_care_credit(care_expenses: float, num_persons: int, dcb: float,
+                                   taxpayer_earned: float, spouse_earned: float, agi: float,
+                                   status: str, fed_tables: Dict[str, Any]) -> float:
+    """Form 2441 Child & Dependent Care Credit (non-refundable). All constants are
+    fixed-statutory under §21 (NOT inflation-indexed): expense caps $3,000 (1 person)
+    / $6,000 (2+), rate 35% declining 1 point per $2,000 of AGI over $15,000 to a 20%
+    floor above $43,000. Reduced by employer-provided dependent-care benefits (W-2
+    box 10) and limited to the lesser of the taxpayer's / spouse's earned income.
+
+    v1 simplifications: the box-10 exclusion uses the flat $5,000 cap ($2,500 MFS);
+    DCB above that (rare) is not added back to wages; MFS is allowed the credit here
+    (the engine maps MFS→single, so it is treated as single)."""
+    cfg = fed_tables.get("dependent_care", {})
+    if not cfg or care_expenses <= 0 or num_persons <= 0:
+        return 0.0
+    per_cap = float(cfg.get("expense_cap_per_person", 3000))
+    max_persons = int(cfg.get("max_qualifying_persons", 2))
+    cap = per_cap * min(num_persons, max_persons)
+    dcb_max = float(cfg.get("dcb_exclusion_max", 5000))
+    excludable_dcb = min(max(0.0, dcb), dcb_max)
+    eligible = max(0.0, min(care_expenses, cap) - excludable_dcb)
+    # Earned-income limit: lesser of the taxpayer's and (for MFJ) the spouse's earned
+    # income. For non-MFJ the spouse term is +inf (skipped).
+    eligible = min(eligible, taxpayer_earned, spouse_earned)
+    if eligible <= 0:
+        return 0.0
+    floor_agi = float(cfg.get("rate_phasedown_agi_floor", 15000))
+    step_agi = float(cfg.get("rate_phasedown_step_agi", 2000))
+    max_rate = float(cfg.get("max_rate", 0.35))
+    min_rate = float(cfg.get("min_rate", 0.20))
+    steps = math.ceil(max(0.0, agi - floor_agi) / step_agi) if agi > floor_agi else 0
+    rate = max(min_rate, max_rate - 0.01 * steps)
+    return round(eligible * rate, 2)
+
+
 def _compute_education_credits(net_expense: float, num_students: int, aotc_eligible: bool,
                                magi: float, status: str, fed_tables: Dict[str, Any]) -> Dict[str, float]:
     """Form 8863 education credits — AOTC + LLC, take the larger. Returns a dict with
@@ -860,7 +895,30 @@ def compute_us_return(
             f"of which ${education_refundable:,.2f} is refundable."
         )
 
-    federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit - education_nonref) + ptc_repayment
+    # Form 2441 Child & Dependent Care Credit (non-refundable). Box 10 (employer
+    # dependent-care benefits) is captured by the W-2 extractor but was never read;
+    # it reduces the eligible-expense cap. For MFJ both spouses need earned income
+    # (the spouse term defaults to 0, zeroing the credit if not supplied); for other
+    # statuses the spouse term is +inf so only the taxpayer's earned income binds.
+    care_expenses = _to_float(user_answers.get("dependent_care_expenses", 0))
+    num_care_persons = int(user_answers.get("num_dependent_care_persons", 0) or 0)
+    dcb = _sum_field(extracts, "W-2", "dependent_care_benefits")
+    taxpayer_earned = wages + max(0.0, self_employment_income)
+    if status == "married_filing_jointly":
+        spouse_earned = _to_float(user_answers.get("spouse_earned_income", 0))
+    else:
+        spouse_earned = float("inf")
+    dependent_care_credit = _compute_dependent_care_credit(
+        care_expenses, num_care_persons, dcb, taxpayer_earned, spouse_earned,
+        agi, status, fed_tables)
+    if dependent_care_credit > 0:
+        notes.append(
+            f"Child & Dependent Care Credit of ${dependent_care_credit:,.2f} "
+            "(Form 2441, non-refundable)."
+        )
+
+    federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit
+                      - education_nonref - dependent_care_credit) + ptc_repayment
 
     # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
     # When a family's tax liability is too low to absorb the full non-refundable
@@ -1082,6 +1140,7 @@ def compute_us_return(
         "education_credit_chosen": education["chosen"],
         "education_credit_nonrefundable": education_nonref,
         "education_credit_refundable": education_refundable,
+        "dependent_care_credit": dependent_care_credit,
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
