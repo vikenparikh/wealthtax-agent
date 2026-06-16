@@ -1491,7 +1491,7 @@ JSON (not a full Form 540 line layout); no CA-specific credits/AMT (uses the eng
 
 ## Cycle 66 — FULL LIFECYCLE (2026-06-15) [5-primitive: in-scope completion of the operator-approved CA-540 artifact]
 
-MATRIX | add a human-readable CA Form 540 PDF alongside the #99 JSON | the CA-540 artifact (shipped #99) emitted ONLY JSON, while every other jurisdiction emits a human-readable PDF (federal 1040 PDF, CA T1 PDF) -> the state tax had no PDF deliverable, an inconsistency | fail: only 'ca_540_json' for a CA filer, no 'ca_540_pdf' — pass: ca_540_pdf present, mime application/pdf, valid %PDF- bytes, transmissible False; same CA-residence gate | gated? N | PR #TBD
+MATRIX | add a human-readable CA Form 540 PDF alongside the #99 JSON | the CA-540 artifact (shipped #99) emitted ONLY JSON, while every other jurisdiction emits a human-readable PDF (federal 1040 PDF, CA T1 PDF) -> the state tax had no PDF deliverable, an inconsistency | fail: only 'ca_540_json' for a CA filer, no 'ca_540_pdf' — pass: ca_540_pdf present, mime application/pdf, valid %PDF- bytes, transmissible False; same CA-residence gate | gated? N | PR #138
 
 **MAINTAIN:** #99 (CA-540 JSON) merged to main (HEAD 344e66f); baseline suite green at 1089. Rebase-before-push held.
 
@@ -1506,7 +1506,7 @@ pairings. Further state work (other states, CA credits/AMT, real 540 template) i
 
 ## Cycle 67 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | add CA Mental Health Services Tax (1% over $1M, R&TC §17043) to state tax | the engine's CA state_tax was only the bracket tax (topping at 12.3%); CA levies a SEPARATE flat 1% Mental Health Services Tax on taxable income over $1M (the published 13.3% top = 12.3% + 1% MHS) -> CA filers >$1M taxable under-taxed by 1% of the excess, now visibly wrong on the new CA-540 artifact | fail: no 'state_mental_health_surcharge' key; $2M-taxable single state_tax $227,394.76 — pass: surcharge $10,000 -> state_tax $237,394.76; $500k-taxable guard -> $0 surcharge | gated? N | PR #TBD
+MATRIX | add CA Mental Health Services Tax (1% over $1M, R&TC §17043) to state tax | the engine's CA state_tax was only the bracket tax (topping at 12.3%); CA levies a SEPARATE flat 1% Mental Health Services Tax on taxable income over $1M (the published 13.3% top = 12.3% + 1% MHS) -> CA filers >$1M taxable under-taxed by 1% of the excess, now visibly wrong on the new CA-540 artifact | fail: no 'state_mental_health_surcharge' key; $2M-taxable single state_tax $227,394.76 — pass: surcharge $10,000 -> state_tax $237,394.76; $500k-taxable guard -> $0 surcharge | gated? N | PR #138
 
 **MAINTAIN:** #100 (CA-540 PDF) merged to main (HEAD ccb5819); baseline suite green at 1089. Rebase-before-push held.
 
@@ -1525,7 +1525,7 @@ credits, CA AMT, CA AGI nonconformity adjustments) remains a flagged scope expan
 
 ## Cycle 69 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | give CA head-of-household filers their own state schedule (was mapped to single) | us_engine state block mapped HoH->single (st_status = mfj else single), so CA HoH filers got the SINGLE state std deduction ($5,363) instead of CA's HoH/married tier ($11,080, 2x single) -> single parents over-taxed (~$532/return at $90k AGI) | fail: CA HoH $90k state_standard_deduction $5,363 / taxable $84,637 — pass: $11,080 / $78,920; single filers unchanged (guard) | gated? N | PR #TBD
+MATRIX | give CA head-of-household filers their own state schedule (was mapped to single) | us_engine state block mapped HoH->single (st_status = mfj else single), so CA HoH filers got the SINGLE state std deduction ($5,363) instead of CA's HoH/married tier ($11,080, 2x single) -> single parents over-taxed (~$532/return at $90k AGI) | fail: CA HoH $90k state_standard_deduction $5,363 / taxable $84,637 — pass: $11,080 / $78,920; single filers unchanged (guard) | gated? N | PR #138
 
 **MAINTAIN:** #101 merged (HEAD 2e0b2e1); #102 (CA std-deduction) open/mergeable; baseline suite green at 1091. Rebase-before-push held.
 
@@ -1546,7 +1546,7 @@ deduction (~$11,200). ca/2025 std-deduction staleness (from #102) still open.
 
 ## Cycle 70 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | give NY head-of-household filers their own state standard deduction | the NY state table had only single ($8,000) + MFJ; NY's IT-201 HoH standard deduction is a distinct $11,200 (statutory, NY Tax Law §614) -> NY HoH filers fell back to the single $8,000 (via the #103 3-way map fallback) and were over-taxed ~$176/return at $90k | fail: NY HoH $90k state_standard_deduction $8,000 / taxable $82,000 — pass: $11,200 / $78,800; NY single unchanged (guard) | gated? N | PR #TBD
+MATRIX | give NY head-of-household filers their own state standard deduction | the NY state table had only single ($8,000) + MFJ; NY's IT-201 HoH standard deduction is a distinct $11,200 (statutory, NY Tax Law §614) -> NY HoH filers fell back to the single $8,000 (via the #103 3-way map fallback) and were over-taxed ~$176/return at $90k | fail: NY HoH $90k state_standard_deduction $8,000 / taxable $82,000 — pass: $11,200 / $78,800; NY single unchanged (guard) | gated? N | PR #138
 
 **MAINTAIN:** #103 (CA HoH map) merged (HEAD c61f94a); #102 (CA std) open; baseline suite green at 1093. Rebase-before-push held.
 
@@ -1565,7 +1565,7 @@ DATA-BLOCKED/complex: CA HoH brackets (indexed, <85%), NY tax-benefit recapture 
 
 ## Cycle 72 — FULL LIFECYCLE (2026-06-15) [5-primitive: systematic captured-but-unused audit -> worktree -> PR]
 
-MATRIX | read Form 1098 box 1 mortgage interest into the itemized deduction | the 1098 extractor captured mortgage_interest_received but the engine read mortgage interest ONLY from SCH-A.mortgage_interest -> a homeowner who uploaded a 1098 (the standard lender slip) without a Sch A entry silently LOST the entire (usually largest) itemized deduction | fail: 1098-only filer ($120k wages, $9k SALT, $18k 1098) itemized $9,000 < std $14,600 -> takes standard, $18k dropped — pass: itemized $27,000 -> itemizes; Sch A + 1098 -> $27,000 (no double-count) | gated? N | PR #TBD
+MATRIX | read Form 1098 box 1 mortgage interest into the itemized deduction | the 1098 extractor captured mortgage_interest_received but the engine read mortgage interest ONLY from SCH-A.mortgage_interest -> a homeowner who uploaded a 1098 (the standard lender slip) without a Sch A entry silently LOST the entire (usually largest) itemized deduction | fail: 1098-only filer ($120k wages, $9k SALT, $18k 1098) itemized $9,000 < std $14,600 -> takes standard, $18k dropped — pass: itemized $27,000 -> itemizes; Sch A + 1098 -> $27,000 (no double-count) | gated? N | PR #138
 
 **MAINTAIN:** #104 merged (HEAD 7658949); #102 + #105 open; baseline suite green at 1095. Rebase-before-push held.
 
@@ -1585,7 +1585,7 @@ Suite 1095 -> 1097.
 
 ## Cycle 73 — FULL LIFECYCLE (2026-06-16) [5-primitive: backlog from C72 audit -> worktree -> PR]
 
-MATRIX | read §80E student-loan interest from Form 16 (was manual-only) | the Form-16 extractor captured section_80e_declared but the engine read §80E only from user_answers["student_loan_interest_in"] -> a Form-16 upload silently dropped the (uncapped, old-regime) student-loan-interest deduction AND blinded the cross-border single-claim guardrail (which keys on line_items["section_80e"]) | fail: Form-16 with §80E ₹50k -> section_80e ₹0 — pass: ₹50,000; form preferred over manual (no double-count); manual-only still ₹40k | gated? N | PR #TBD
+MATRIX | read §80E student-loan interest from Form 16 (was manual-only) | the Form-16 extractor captured section_80e_declared but the engine read §80E only from user_answers["student_loan_interest_in"] -> a Form-16 upload silently dropped the (uncapped, old-regime) student-loan-interest deduction AND blinded the cross-border single-claim guardrail (which keys on line_items["section_80e"]) | fail: Form-16 with §80E ₹50k -> section_80e ₹0 — pass: ₹50,000; form preferred over manual (no double-count); manual-only still ₹40k | gated? N | PR #138
 
 **MAINTAIN:** #106 (1098 mortgage) merged (HEAD f3c19d0); #102 + #105 open; baseline suite green at 1097. Rebase-before-push held.
 
@@ -1600,7 +1600,7 @@ double-count form+manual — a harmonization follow-up (use fallback like §80E/
 
 ## Cycle 74 — FULL LIFECYCLE (2026-06-16) [5-primitive: C72-audit backlog -> worktree -> PR]
 
-MATRIX | credit advance tax reported on an uploaded Form 26AS (was manual-only) | the FORM-26AS extractor captured advance_tax_paid but the engine read advance tax only from user_answers["advance_tax_paid"] -> a 26AS upload (the standard tax-credit statement) left advance tax uncredited, OVERSTATING the balance owing for any filer who pre-paid (#88 added it via manual entry only) | fail: FORM-26AS advance ₹1L -> advance_tax ₹0 / balance owing ₹2,96,400 — pass: ₹1,00,000 credited / balance ₹1,96,400; form preferred over manual (no double-count) | gated? N | PR #TBD
+MATRIX | credit advance tax reported on an uploaded Form 26AS (was manual-only) | the FORM-26AS extractor captured advance_tax_paid but the engine read advance tax only from user_answers["advance_tax_paid"] -> a 26AS upload (the standard tax-credit statement) left advance tax uncredited, OVERSTATING the balance owing for any filer who pre-paid (#88 added it via manual entry only) | fail: FORM-26AS advance ₹1L -> advance_tax ₹0 / balance owing ₹2,96,400 — pass: ₹1,00,000 credited / balance ₹1,96,400; form preferred over manual (no double-count) | gated? N | PR #138
 
 **MAINTAIN:** #107 (§80E) merged (HEAD 06b34e4); #102 + #105 open; baseline suite green at 1100. Rebase-before-push held.
 
@@ -1613,7 +1613,7 @@ dividends (QBI, low); §80D add-both harmonization (in_engine:371-372 sums form+
 
 ## Cycle 75 — FULL LIFECYCLE (2026-06-16) [5-primitive: C72-audit backlog -> worktree -> PR]
 
-MATRIX | include T4A box 018 lump-sum payments in CA income | the T4A extractor captured lump_sum_payments (box 018) but the engine read only T4A boxes 016/020/048/022 -> taxable lump-sum income (retiring allowance, DPSP/RPP commutation; line 13000 other income) was fully DROPPED, under-taxing recipients | fail: T4A lump $20k -> no 'lump_sum_income' key; total_income excludes it — pass: $20,000 into total_income (tax +$5,930); correctly NOT pension-income-amount-eligible (credit $0) | gated? N | PR #TBD
+MATRIX | include T4A box 018 lump-sum payments in CA income | the T4A extractor captured lump_sum_payments (box 018) but the engine read only T4A boxes 016/020/048/022 -> taxable lump-sum income (retiring allowance, DPSP/RPP commutation; line 13000 other income) was fully DROPPED, under-taxing recipients | fail: T4A lump $20k -> no 'lump_sum_income' key; total_income excludes it — pass: $20,000 into total_income (tax +$5,930); correctly NOT pension-income-amount-eligible (credit $0) | gated? N | PR #138
 
 **MAINTAIN:** #108 merged (HEAD 2c2841b); #102 + #105 open; baseline suite green at 1102. Rebase-before-push held.
 
@@ -1946,7 +1946,7 @@ at 525 is ~28 lines below). No #105/#102/#116 file overlap. (NOTE: this contradi
 was conditional on no merges; #128 merging reopened the tuition follow-on, exactly the predicted UNBLOCK mechanism.)
 ## Cycle 68 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | fix CA 2024 standard deduction (was the lagged 2023 value) | a US-STATE-table value-audit (the CA-540 work #99-101 opened this never-audited surface) found ca/2024.yaml std deduction = $5,363/$10,726 — those are the 2023 figures; correct 2024 = $5,540/$11,080 -> every CA standard-deduction filer over-taxed (deduction understated $177 single/$354 MFJ, taxed at CA marginal rate; also overstates the SALT feeding the federal 1040) | fail: CA 2024 single state_standard_deduction $5,363 / taxable $84,637 at $90k AGI — pass: $5,540 / $84,460 | gated? N | PR #TBD
+MATRIX | fix CA 2024 standard deduction (was the lagged 2023 value) | a US-STATE-table value-audit (the CA-540 work #99-101 opened this never-audited surface) found ca/2024.yaml std deduction = $5,363/$10,726 — those are the 2023 figures; correct 2024 = $5,540/$11,080 -> every CA standard-deduction filer over-taxed (deduction understated $177 single/$354 MFJ, taxed at CA marginal rate; also overstates the SALT feeding the federal 1040) | fail: CA 2024 single state_standard_deduction $5,363 / taxable $84,637 at $90k AGI — pass: $5,540 / $84,460 | gated? N | PR #138
 
 **MAINTAIN:** #101 (CA MHS) merged to main (HEAD 2e0b2e1); baseline suite green at 1091. Rebase-before-push held.
 
@@ -1964,7 +1964,7 @@ Deferred bigger items (complex, not table edits): HoH->single state mapping over
 have wider HoH schedules + HoH std deduction); NY tax-benefit recapture (supplemental tax) for >$107,650 earners.
 ## Cycle 71 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | tax 1099-DIV special-rate LTCG (§1250 25%, collectibles 28%) at their max rates, not 0/15/20% | the 1099-DIV extractor captured box 2b (unrecaptured §1250) + 2d (collectibles) but the engine ignored them -> these subsets of box 2a were taxed at the ordinary 0/15/20% LTCG rate, UNDER-taxing holders (REIT/real-estate-fund §1250; precious-metal-fund collectibles) | fail: no 'special_rate_tax' key; §1250 $10k at $250k income taxed 15% ($1,500) — pass: 25% capped -> $2,500; collectibles -> $2,800; low-bracket ($40k) §1250 -> min(25%,12%)=$1,200 (cap binds) | gated? N | PR #TBD
+MATRIX | tax 1099-DIV special-rate LTCG (§1250 25%, collectibles 28%) at their max rates, not 0/15/20% | the 1099-DIV extractor captured box 2b (unrecaptured §1250) + 2d (collectibles) but the engine ignored them -> these subsets of box 2a were taxed at the ordinary 0/15/20% LTCG rate, UNDER-taxing holders (REIT/real-estate-fund §1250; precious-metal-fund collectibles) | fail: no 'special_rate_tax' key; §1250 $10k at $250k income taxed 15% ($1,500) — pass: 25% capped -> $2,500; collectibles -> $2,800; low-bracket ($40k) §1250 -> min(25%,12%)=$1,200 (cap binds) | gated? N | PR #138
 
 **MAINTAIN:** #104 merged (HEAD 7658949); #102 (CA std) open; baseline suite green at 1093. Rebase-before-push held.
 
@@ -2156,3 +2156,15 @@ net_income stays constant and the 313.20 / 0.0 / 600.45 clawback assertions are 
 
 **Confidence 93%.** Suite 1244->1245. Follow-on to #136 (queued behind it in Cycle 143).
 ZERO collision (0 open PRs). HARD GUARD honoured: artifact/calc only, no filing-submission path.
+
+---
+
+## Cycle 145 — FULL LIFECYCLE (2026-06-16) [5-primitive: refundable excess CPP/EI overpayment from multiple employers]
+
+MATRIX | CA refund excess CPP/EI contributions from multiple employers (T1 lines 44800/45000) | ca_engine credited ALL CPP/EI as a 15% non-refundable credit (#55/#56); the comment at line ~350 admitted "Excess over the annual maxima (multiple employers) would be refunded rather than credited — not modelled". Each employer withholds CPP/EI independently, so a job-switcher's combined withholding routinely exceeds the annual employee maximum -> the excess is a 100%-refundable overpayment, not ~15% back as a credit. Direct CA analog of US excess-Social-Security (#74). Maxima are FIXED vendored values (2024 cpp 3867.50/ei 1049.12; 2025 4034.10/1077.48; 2023 3754.45/1002.45). | fail-before: KeyError on cpp_ei_overpayment + refund baseline 0>0 (4 failed) -> pass-after: two T4s CPP 4500/EI 1200 (2024) -> cpp_overpayment 632.50, ei_overpayment 150.88, total 783.38; single T4 over max -> 0.0 (employer corrects, gated t4_count>=2); two T4s under max -> 0.0 + full credit retained; refund strictly > single-employer-same-contributions baseline | gated? N | PR #138
+
+Mirrors US #74 exactly (count slips, gate >=2, refundable payment in balance). Creditable base = contributions NET of
+overpayment so the excess isn't double-counted as credit AND refund; single-employer filers unaffected (overpayment 0 ->
+full credit). Guard cpp_max>0 so unknown years (no cpp table) don't refund everything. QC QPP has its own max -> noted as
+under-modelled (uses federal CPP/EI maxima). Confidence 90% (maxima are read from existing config, no new magic numbers).
+Suite 1245->1249. ZERO collision (0 open PRs). §72(t) candidate REJECTED by RESEARCH — already shipped (#123).
