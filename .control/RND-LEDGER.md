@@ -1909,3 +1909,22 @@ K-1 form_code scopes _sum_field (no bleed w/ 1099-DIV same field name); box2 != 
 
 **ZERO collision:** us_engine.py edits at 551/556/636/849/996 all clear of #105's hunks (175, 688-733, 892-939). Test in
 NEW file (not test_us_engine.py which #102 touches). No #116/#111/#102 file overlap.
+## Cycle 97 — FULL LIFECYCLE (2026-06-16) [5-primitive: CA T2202 tuition credit captured-but-unused -> worktree -> PR]
+
+MATRIX | apply the federal tuition credit (line 32300) on T2202 eligible tuition fees | forms/ca/t2202.py captures eligible_tuition_fees but ca_engine NEVER read it for the student's OWN claim (grep: only optimize.py suggests TRANSFERRING the unused portion). The "suggestion only" docstring concerns the transfer/carryforward (downstream), NOT the mandatory own-year claim. So a working student with a T2202 + federal tax payable was OVER-taxed (skipped step one of line 32300 -> Sch 11 -> own tax first). Common (every working student) | fail-before: $50k T4 + $6,500 tuition -> tuition_credit computed but NOT applied -> federal tax unchanged -> pass-after: tuition_credit $975 (6500*15%); federal tax $4929.30->$3954.30 (-$975); low-income student floored at $0 (non-refundable, no refund) | gated? N | PR #128
+
+**MAINTAIN:** origin/main HEAD 742e53f (#126 T3-box25 merged); #116/#111/#105/#102/#127 OPEN; base==HEAD; baseline 1169.
+
+**Captured-but-unused (CA), with a deferral-vs-bug judgment.** RESEARCH evaluated 3 backlog candidates: A=CA tuition (SHIP),
+B=IN professional_fees (weaker — ambiguous PGBP-vs-OS classification), C=US 199A REIT div (REJECT — collides #105's QBI
+region + needs separate combine logic). For A, the KEY question was whether "suggestion only" is intentional: VERDICT it
+is NOT — the optimizer's tuition_transfer concerns the UNUSED portion AFTER the own-claim; the engine skipped the own-claim
+entirely. SAFE: fed_non_refundable is capped (federal_tax = max(0, before - fed_non_refundable - dtc), ca_engine:366) ->
+non-refundable, can't refund; low-income student floors at $0. Mirrors student_loan_credit/property_tax_credit exactly.
+Fixed-rule lowest_rate*tuition. Provincial tuition credit left out (minimal). Unused-portion transfer/carryforward = known
+unmodelled simplification (optimizer already flags transfer). 3 edits: read ~244, credit+fed_non_refundable ~355, line_item ~474.
+Confidence 90%. Suite 1169->1173.
+
+**ZERO collision:** ca_engine.py edits at 244/355/474 all clear of #111's hunks (287-302 donations, 489-497 line_items). No #105/#102/#116/#127 file overlap.
+
+**REBASED onto origin/main 7e115f2 (#127 K-1 merged mid-cycle); ledger union (Cycle 96 then 97). No code conflict — ledger-only (#127 = us_engine, this = ca_engine).**
