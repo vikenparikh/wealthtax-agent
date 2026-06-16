@@ -1386,7 +1386,7 @@ Remaining tracked: US state artifact (design); IN surcharge marginal relief (ris
 
 ## Cycle 58 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
 
-MATRIX | apply the §213 7.5%-of-AGI floor to Schedule A medical expenses | the engine added SCH-A medical_expenses to the itemized total at FACE VALUE; §213 only allows the excess over 7.5% of AGI -> over-deduction that can wrongly tip itemizing past the standard deduction and under-tax | fail: no 'medical_expense_deductible' key; sch_a total $30,000 ($10k medical + $20k mortgage at $80k AGI) — pass: floor $6,000 -> deductible $4,000 -> sch_a $24,000; $5k medical < floor -> $0; IRA $7k lowers AGI to $73k -> floor $5,475 -> $4,525 | gated? N | PR #TBD
+MATRIX | apply the §213 7.5%-of-AGI floor to Schedule A medical expenses | the engine added SCH-A medical_expenses to the itemized total at FACE VALUE; §213 only allows the excess over 7.5% of AGI -> over-deduction that can wrongly tip itemizing past the standard deduction and under-tax | fail: no 'medical_expense_deductible' key; sch_a total $30,000 ($10k medical + $20k mortgage at $80k AGI) — pass: floor $6,000 -> deductible $4,000 -> sch_a $24,000; $5k medical < floor -> $0; IRA $7k lowers AGI to $73k -> floor $5,475 -> $4,525 | gated? N | PR #95
 
 **MAINTAIN:** #94 merged to main (HEAD 2e870c8); baseline suite green at 1077. Rebase-before-push held.
 
