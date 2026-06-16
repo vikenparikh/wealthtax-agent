@@ -1337,3 +1337,25 @@ capped at num_deps; EITC call site uses it instead of num_deps; childless-age-ga
 **Credit-accuracy seam now substantially complete:** ACTC #77, PTC #84/85, EITC #90, EITC-children #92,
 CWB #89, IN-prepaid #88, CTC/ODC split #91. Remaining: US state artifact (design); IN surcharge marginal
 relief (narrow+risky); <100% FPL (input/niche); 2025 CWB (CRA data); IN §234B/C interest. Likely HOLD next.
+
+## Cycle 56 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | tax a qualifying surviving spouse (QSS) as MFJ, not single | _resolve_filing_status coerced any status outside {single,mfj,hoh} to 'single', so a QSS (recently widowed w/ dependent child, IRC §2(a)) — a computational clone of MFJ — got single brackets + $14,600 deduction instead of MFJ's $29,200 -> over-taxed | fail: QSS $80k -> std deduction $14,600 / ordinary_tax $9,441 — pass: $29,200 / $5,632 (over-tax of $3,809 fixed); QSS $300k AGI 1 child -> full $2,000 CTC (MFJ $400k start, not single's wiped-to-$0); 'qss' short alias works | gated? N | PR #93
+
+**MAINTAIN:** #92 merged to main (HEAD d0945be); baseline suite green at 1069. Rebase-before-push held.
+
+**Distinct surface (filing status, not credits):** RESEARCH subagent tabulated all 16 status-driven
+sites and confirmed EVERY MFJ branch keys on the exact string "married_filing_jointly", so a one-line
+alias QSS->married_filing_jointly inherits them ALL correctly (brackets, std deduction, additional-std,
+LTCG, CTC/EITC/AMT/NIIT/FICA thresholds, SS base). Verified artifacts use the RAW user filing_status
+(us_mef.py:39, build_return.py:86) so QSS is NOT mislabeled as MFJ. Chose the alias over duplicating MFJ
+values into 6 YAML blocks + 8 branches (14 error-prone edit sites). SKIPPED MFS (=single except the top
+37% bracket >$365,600 + EITC-disallow; low value). Spouse-65/blind boxes are opt-in -> harmless for QSS.
+
+**Change:** alias qss/qualifying_surviving_spouse/qualifying_widow(er)/... -> married_filing_jointly in
+_resolve_filing_status before the validity check. Flagged the minor EITC-start approximation in a comment.
+Suite 1069 -> 1072. Zero other edits needed (the string-keyed branches do the rest).
+
+**Remaining (design/risky/niche/data — likely HOLD next):** US state artifact (design); IN surcharge
+marginal relief (narrow+risky, CG-cap entangled); <100% FPL (input); 2025 CWB values (CRA data); IN
+§234B/C interest; full MFS support (low value). The clean distinct-bug vein is now very thin.

@@ -74,6 +74,15 @@ def _resolve_filing_status(user_answers: Dict[str, str]) -> str:
         raw = "married_filing_jointly"
     if raw == "hoh":
         raw = "head_of_household"
+    # A qualifying surviving spouse (qualifying widow(er)) uses the MFJ rate
+    # schedule and standard deduction (IRC §2(a)) — it is a computational clone of
+    # MFJ, so alias it rather than falling through to single (which over-taxed it).
+    # Every MFJ-specific table/branch keys on "married_filing_jointly", so the alias
+    # inherits them all. (The EITC for a QSS technically uses the unmarried phase-out
+    # start; using MFJ's is a minor, taxpayer-favorable approximation in a narrow band.)
+    if raw in {"qss", "qualifying_surviving_spouse", "qualifying_widow(er)",
+               "qualifying_widower", "qualifying_widow", "surviving_spouse"}:
+        raw = "married_filing_jointly"
     if raw not in VALID_FILING_STATUSES:
         raw = "single"
     return raw

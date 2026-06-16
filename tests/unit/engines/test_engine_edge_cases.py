@@ -253,6 +253,38 @@ def test_us_actc_uses_qualifying_children_not_other_dependents():
     assert d.line_items["additional_child_tax_credit"] == 1700.0
 
 
+# --- US: qualifying surviving spouse (QSS) is taxed as MFJ, not single ---
+
+def test_us_qss_uses_mfj_standard_deduction_and_brackets():
+    """A qualifying surviving spouse (recently widowed with a dependent child) uses
+    the MFJ rate schedule and standard deduction (IRC §2(a)). The engine coerced any
+    unrecognised status to 'single', over-taxing them. Wages $80,000 → MFJ standard
+    deduction $29,200 (not $14,600) and tax on $50,800 = $5,632 (not $9,441 on the
+    single $65,400 taxable).
+
+    FAILS before the fix: QSS falls through to single → $14,600 / $9,441."""
+    d = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                          user_answers={"filing_status": "qualifying_surviving_spouse"})
+    assert d.line_items["standard_deduction"] == 29200.0
+    assert d.line_items["ordinary_tax"] == 5632.0
+
+
+def test_us_qss_inherits_mfj_ctc_phaseout_start():
+    """QSS inherits the MFJ $400,000 CTC phase-out start. AGI $300,000, 1 child →
+    full $2,000 CTC (single's $200,000 start would have wiped it to $0)."""
+    d = compute_us_return([_f("W-2", "US", wages=300000)], 2024,
+                          user_answers={"filing_status": "qualifying_surviving_spouse",
+                                        "num_dependents": "1"})
+    assert d.line_items["child_tax_credit"] == 2000.0
+
+
+def test_us_qss_alias_accepts_short_form():
+    """The short 'qss' alias resolves to the same MFJ treatment."""
+    d = compute_us_return([_f("W-2", "US", wages=80000)], 2024,
+                          user_answers={"filing_status": "qss"})
+    assert d.line_items["standard_deduction"] == 29200.0
+
+
 # --- US: EITC qualifying-children count (distinct from CTC's, coexists with ODC) ---
 
 def test_us_eitc_dependent_parent_gets_childless_credit_not_one_child():
