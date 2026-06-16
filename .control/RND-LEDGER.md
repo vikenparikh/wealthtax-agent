@@ -2115,3 +2115,20 @@ constant). +1 line_item. Confidence 90%. Suite 1228->1233.
 wiring ~890 / credit line_item ~1143; this = above_line ~686 / deduction line_item ~1054. No shared lines -> both
 mergeable, no interdependency (like #131/#132 across files). Picked SE-health over educator-expenses ($300, low-$) and
 Form 8880 (indexed-blocked). RESEARCH heuristic: fixed-rule > indexed; value > tiny.
+
+## Cycle 142 — FULL LIFECYCLE (2026-06-16) [5-primitive: CA OAS clawback MISCOMPUTE fix -> worktree -> PR]
+
+MATRIX | CA OAS recovery tax: clawback actual OAS, not a pension+RRIF proxy | ca_engine OAS clawback (390) used pensionable = pension_income + rrif_income as a PROXY for OAS benefits -> (a) SPURIOUSLY clawed back from seniors with pension/RRIF income but ZERO OAS, and (b) capped the clawback at the full pension instead of the OAS received. §180.2 ITA: recovery = lesser of OAS RECEIVED and 15% of net income over threshold. CORRECTNESS BUG (genuine miscompute, found by the convergence-scan subagent which deferred it as "test-locked" — but the locking test asserted the BUG) | fail-before: pension $100k + emp $30k, NO OAS -> spurious clawback $5,850 (proven: old test asserted clawback>0 on pension); $250k income -> clawback $23,850 (capped at pension) -> pass-after: no-OAS -> $0; $250k + $8,400 OAS -> $8,400 (capped at OAS); threshold tests unchanged (313.20/600.45, OAS cap doesn't bind) | gated? N | PR #136
+
+**MAINTAIN:** origin/main HEAD 4daec65 (#135 SE-health merged); 0 open PRs; base==HEAD; baseline 1238.
+
+**A genuine MISCOMPUTE (per the directive: a correctness bug is worth fixing at any $).** The convergence-scan subagent
+reached honest NOTHING-HIGH-VALUE BUT flagged the OAS clawback as "the closest thing to a defect," deferring it as
+intentional/test-locked. RE-EXAMINED: the locking test asserted the WRONG behavior (clawback on pension), so updating it
+to assert correct behavior is the fix (same pattern as #102's stale test). Fix: read oas_benefits (T4A(OAS) box 18, via
+user_answers); clawback = min(oas_benefits, 0.15*(net_income - threshold)); zero if no OAS. Scoped to the CAP only (OAS as
+taxable income is a separate unmodelled item, noted). Updated 4 existing tests (+oas_benefits input, values preserved since
+cap doesn't bind) + 2 NEW bug-demonstrating tests (no-OAS->$0, capped-at-OAS). Confidence 92%. Suite 1238->1244.
+
+**ZERO collision (0 open PRs).** LESSON: a convergence/NOTHING-HIGH-VALUE scan can still surface a real miscompute it
+deems "deferred" — re-examine flagged defects; a test asserting buggy behavior is a fix opportunity, not a lock.

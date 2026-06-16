@@ -387,9 +387,16 @@ def compute_ca_return(
     # so it must come from the year table — a single hardcoded value mis-taxed every
     # non-2024 return near the boundary. Falls back to the 2024 value if absent.
     oas_threshold = float(fed_tables.get("oas_recovery_threshold", 90997.0))
-    pensionable = pension_income + rrif_income
-    if pensionable > 0 and net_income > oas_threshold:
-        clawback = round(min(pensionable, (net_income - oas_threshold) * 0.15), 2)
+    # The recovery tax (§180.2 ITA) claws back the LESSER of the OAS actually
+    # received and 15% of net income over the threshold. The OAS amount (T4A(OAS)
+    # box 18) must be supplied — previously the engine used pension + RRIF income as
+    # a proxy, which (a) spuriously clawed back from seniors with pension/RRIF income
+    # but no OAS, and (b) capped at the full pension rather than the OAS received. A
+    # filer with no OAS owes no recovery tax. (OAS is itself taxable income; that
+    # income-side capture is a separate, unmodelled item — this fixes only the cap.)
+    oas_benefits = _to_float(user_answers.get("oas_benefits", 0))
+    if oas_benefits > 0 and net_income > oas_threshold:
+        clawback = round(min(oas_benefits, (net_income - oas_threshold) * 0.15), 2)
         federal_tax += clawback
         notes.append(f"OAS recovery tax (clawback): net income > ${oas_threshold:,.0f}; added ${clawback:,.0f}.")
     else:
