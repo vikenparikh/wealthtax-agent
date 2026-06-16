@@ -55,3 +55,25 @@ def test_us_engine_state_tax_added_when_state_table_present():
     ]
     draft = compute_us_return(extracts, year=2024, state="CA", user_answers={"filing_status": "single"})
     assert draft.line_items.get("state_tax", 0.0) > 0
+
+
+def test_ca_mental_health_surcharge_above_1m():
+    """CA levies a 1% Mental Health Services Tax (R&TC §17043) on taxable income
+    over $1M, separate from the 12.3%-topping brackets. Wages $2,005,363 (AGI minus
+    the $5,363 CA standard deduction = $2,000,000 taxable) → 1% × ($2,000,000 −
+    $1,000,000) = $10,000 surcharge on top of $227,394.76 of bracket tax.
+
+    FAILS before the fix: no 'state_mental_health_surcharge' key; state_tax is
+    $227,394.76 (surcharge omitted)."""
+    draft = compute_us_return([FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 2005363.0})],
+                              year=2024, state="CA", user_answers={"filing_status": "single"})
+    assert draft.line_items["state_mental_health_surcharge"] == 10000.0
+    assert draft.line_items["state_tax"] == 237394.76
+
+
+def test_ca_mental_health_surcharge_zero_below_1m():
+    """Guard: taxable income below $1M → $0 surcharge (state tax unchanged)."""
+    draft = compute_us_return([FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 505363.0})],
+                              year=2024, state="CA", user_answers={"filing_status": "single"})
+    assert draft.line_items["state_mental_health_surcharge"] == 0.0
+    assert draft.line_items["state_tax"] == 45107.9
