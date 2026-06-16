@@ -1928,3 +1928,19 @@ Confidence 90%. Suite 1169->1173.
 **ZERO collision:** ca_engine.py edits at 244/355/474 all clear of #111's hunks (287-302 donations, 489-497 line_items). No #105/#102/#116/#127 file overlap.
 
 **REBASED onto origin/main 7e115f2 (#127 K-1 merged mid-cycle); ledger union (Cycle 96 then 97). No code conflict — ledger-only (#127 = us_engine, this = ca_engine).**
+
+## Cycle 100 — FULL LIFECYCLE (2026-06-16) [5-primitive: CA provincial tuition credit -> worktree -> PR; #128 merge unblocked it]
+
+MATRIX | add the PROVINCIAL tuition credit on T2202 eligible tuition fees | #128 added the FEDERAL tuition credit but explicitly scoped provincial OUT as a follow-up. ca_engine computed no provincial tuition credit -> a student was still over-taxed PROVINCIALLY (provinces grant a parallel lowest-rate non-refundable tuition credit, ON 5.05%). tuition_fees is now read on main (#128). Common (every working student) | fail-before: $50k T4 + $6,500 tuition -> provincial_tuition_credit not in prov_non_refundable -> prov tax unchanged -> pass-after: $328.25 (6500*5.05% ON); prov tax $1,898.85->$1,570.60 (-$328.25); low-income floored at $0 | gated? N | PR #129
+
+**MAINTAIN:** origin/main HEAD b3505fb (#128 federal-tuition MERGED — state CHANGED, unblocking this follow-on); #116/#111/#105/#102 OPEN; base==HEAD; baseline 1179.
+
+**STATE CHANGE unblocked a PRE-FLAGGED follow-on.** #128's PR explicitly said "provincial tuition credit left as separate
+item" — so this is a planned completion, NOT padding. tuition_credit_prov = tuition_fees * prov_lowest_rate -> prov_non_refundable
+(capped via provincial_tax = max(0, before - prov_non_refundable - prov_dtc) -> non-refundable, low-income floors $0). Mirrors
+provincial_cpp_ei_credit / provincial_medical_credit exactly. Table-driven prov_lowest_rate keeps it province-agnostic.
+3 edits: prov credit ~406, prov_non_refundable ~423, line_item ~525. Confidence 90%. Suite 1179->1183.
+
+**ZERO collision:** ca_engine.py edits at 406/423/525 all clear of #111's hunks (donations ~296, line_items ~497 — my line_item
+at 525 is ~28 lines below). No #105/#102/#116 file overlap. (NOTE: this contradicts cycle-98/99 "converged" — the convergence
+was conditional on no merges; #128 merging reopened the tuition follow-on, exactly the predicted UNBLOCK mechanism.)
