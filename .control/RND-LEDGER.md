@@ -1597,3 +1597,16 @@ differentiator). Suite 1097 -> 1100.
 key-mismatch w/ #88 user_answers — any regime, direct $ on balance); CA T4A.lump_sum_payments box 018 (dropped
 taxable income); 1099-DIV box5 §199A REIT dividends (QBI, low). §80D add-both pattern (in_engine:371-372) could
 double-count form+manual — a harmonization follow-up (use fallback like §80E/SALT/1098).
+
+## Cycle 74 — FULL LIFECYCLE (2026-06-16) [5-primitive: C72-audit backlog -> worktree -> PR]
+
+MATRIX | credit advance tax reported on an uploaded Form 26AS (was manual-only) | the FORM-26AS extractor captured advance_tax_paid but the engine read advance tax only from user_answers["advance_tax_paid"] -> a 26AS upload (the standard tax-credit statement) left advance tax uncredited, OVERSTATING the balance owing for any filer who pre-paid (#88 added it via manual entry only) | fail: FORM-26AS advance ₹1L -> advance_tax ₹0 / balance owing ₹2,96,400 — pass: ₹1,00,000 credited / balance ₹1,96,400; form preferred over manual (no double-count) | gated? N | PR #TBD
+
+**MAINTAIN:** #107 (§80E) merged (HEAD 06b34e4); #102 + #105 open; baseline suite green at 1100. Rebase-before-push held.
+
+**3rd item from the C72 captured-but-unused audit backlog.** Same form-vs-manual bridge class as #67 (professional_tax)
+and #107 (§80E). Form-then-manual FALLBACK (no double-count). Direct $-for-$ on the balance, any regime — higher
+value than §80E (old-regime-only deduction). Completes the #88 advance-tax work for the 26AS-upload path. Suite 1100->1102.
+
+**Remaining C72 backlog:** CA T4A.lump_sum_payments box 018 (dropped taxable income); 1099-DIV box5 §199A REIT
+dividends (QBI, low); §80D add-both harmonization (in_engine:371-372 sums form+manual -> double-count risk).

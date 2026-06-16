@@ -295,3 +295,31 @@ def test_in_80e_manual_still_works_without_form():
                           year=2024, regime="old",
                           user_answers={"age": "30", "student_loan_interest_in": "40000"})
     assert d.line_items["section_80e"] == 40000.0
+
+
+# ---------- Advance tax from an uploaded Form 26AS (form-vs-manual bridge) ----------
+
+def test_in_advance_tax_read_from_form26as():
+    """Advance tax reported on an uploaded Form 26AS (captured by the extractor) was
+    dropped — the engine read advance tax only from the manual `advance_tax_paid`
+    answer, so a 26AS upload left it uncredited and overstated the balance owing.
+    Salary 20L new regime → total_tax ₹2,96,400, no TDS; Form 26AS advance tax
+    ₹1,00,000 → balance owing ₹1,96,400.
+
+    FAILS before the fix: advance_tax = 0; balance owing ₹2,96,400."""
+    d = compute_in_return([_form16(gross_salary=2000000),
+                           FormExtract(form_code="FORM-26AS", jurisdiction="IN",
+                                       fields={"advance_tax_paid": 100000})],
+                          year=2024, regime="new", user_answers={"age": "30"})
+    assert d.line_items["advance_tax"] == 100000.0
+    assert d.totals["balance_owing"] == round(d.totals["total_tax"] - 100000.0, 2)
+
+
+def test_in_advance_tax_form26as_preferred_over_manual_no_double_count():
+    """Form 26AS value is used (not summed with the manual entry) → no double-count."""
+    d = compute_in_return([_form16(gross_salary=2000000),
+                           FormExtract(form_code="FORM-26AS", jurisdiction="IN",
+                                       fields={"advance_tax_paid": 100000})],
+                          year=2024, regime="new",
+                          user_answers={"age": "30", "advance_tax_paid": "80000"})
+    assert d.line_items["advance_tax"] == 100000.0
