@@ -62,11 +62,19 @@ def serialize_itr(
             "ScheduleVIA_Deductions": {
                 "Section80C": _f("section_80c"),
                 "Section80CCD1B": _f("section_80ccd_1b"),
+                # §80CCD(2) employer-NPS is the one Chapter VI-A item allowed in the
+                # NEW regime; the engine computes it and nets it from total income
+                # (in_engine: total_income = gross - chapter_via_total - sec_80ccd_2),
+                # but it was excluded from chapter_via_total. Surface it and fold it
+                # into TotalChapterVIA so GrossTotalIncome - TotalChapterVIA
+                # reconciles with TotalIncome (otherwise the artifact under-reports
+                # the deduction the engine already applied).
+                "Section80CCD2_EmployerNPS": _f("section_80ccd_2_employer_nps"),
                 "Section80D": _f("section_80d"),
                 "Section80E": _f("section_80e"),
                 "Section80G": _f("section_80g"),
                 "Section80TTAor80TTB": _f("section_80tta_or_80ttb"),
-                "TotalChapterVIA": _f("chapter_via_total"),
+                "TotalChapterVIA": _f("chapter_via_total") + _f("section_80ccd_2_employer_nps"),
             },
             "PartB_TI": {
                 "GrossTotalIncome": _f("gross_total_income"),
