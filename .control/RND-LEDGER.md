@@ -1982,3 +1982,21 @@ Simplification flagged: one top-dollar marginal rate per slice, not the full Sch
 
 **Flagged follow-up:** §1202 box 2c (QSBS exclusion needs acquisition date); full Sch D worksheet bracket-straddle
 precision (current uses single marginal rate). Federal correctness lane otherwise converged.
+## Cycle 77 — FULL LIFECYCLE (2026-06-16) [5-primitive: captured-but-unused CA audit -> worktree -> PR]
+
+MATRIX | wire T4 box 46 charitable donations into the CA donation credit | forms/ca/t4.py captures box 46 (charitable_donations) but ca_engine.py:290 read donations ONLY from user_answers -> a filer who uploaded a T4 with payroll-giving and trusted the slip LOST the entire federal + provincial donation credit (full credit machinery already present at 293-296 fed / 391-397 prov, merely unfed) | fail-before: $1,000 box-46 slip -> donations_credit $0 + no 'charitable_donations_slip' key -> pass-after: $1,000 slip -> fed credit $262 (200*15% + 800*29%) + ON provincial credit; merged via max(slip,manual) so a slip+manual of the same gift is NOT double-counted | gated? N | PR #111
+
+**MAINTAIN:** origin/main HEAD 3b656d3 (#109 merged); #110/#105/#102 still OPEN; base==HEAD, no rebase; baseline suite 1104.
+
+**Captured-but-unused vein (thought exhausted at cycle-75 for US/CA/IN) yielded one more CLEAN CA hit.** The
+extractor field name (`charitable_donations`) is IDENTICAL to the user_answers key — the tell that the wiring was
+intended and simply missed. Fix merges slip + manual via max() (override semantics, no double-count), mirroring the
+T1135 slip-or-manual precedent at line 220. Both fed and provincial credits read the single `donations` var, so one
+edit at line 290 covers both. Confidence 90% (statutory two-tier credit already implemented; no new constants/data).
++2 line_items (charitable_donations, charitable_donations_slip). Suite 1104 -> 1109.
+
+**ZERO collision:** fix is in ca_engine.py (code); #102 edits ca/2024.yaml (data); #110/#105 are us_engine.py (other
+jurisdiction). Picked specifically to avoid rebase landmines vs the 3 open PRs. RESEARCH also flagged US 1099-R box 7
+§72(t) 10% early-withdrawal penalty as next-best (clean statutory) but it lands in the contended us_engine.py zone -> deferred.
+
+**REBASED onto origin/main eb6e993 (#110 education credits merged mid-cycle); ledger union (Cycle 76 then 77). Post-rebase suite 1113 -> 1118.**

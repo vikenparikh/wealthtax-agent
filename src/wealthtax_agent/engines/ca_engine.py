@@ -300,7 +300,15 @@ def compute_ca_return(
     lowest_rate = (fed_tables.get("brackets") or [{"rate": 0.15}])[0].get("rate", 0.15)
 
     # Donations + medical expense credits (federal)
-    donations = _to_float(user_answers.get("charitable_donations", 0))
+    # T4 box 46 captures employer-facilitated (payroll) charitable giving. Take the
+    # larger of the slip amount and the manual entry rather than summing: a single
+    # donation reported on the slip and also typed by the user is the same dollar, so
+    # summing would double the credit. Manual entry thus acts as an override (e.g. the
+    # user adds a separate cash-donation receipt by typing a larger total). Mirrors the
+    # slip-or-manual precedent used for T1135 foreign property above.
+    slip_donations = _sum_field(extracts, "T4", "charitable_donations")
+    manual_donations = _to_float(user_answers.get("charitable_donations", 0))
+    donations = max(slip_donations, manual_donations)
     medical_expenses = _to_float(user_answers.get("medical_expenses", 0))
     # First $200 of donations gets 15%; excess gets 29% (federal). Simplified.
     if donations > 0:
@@ -514,6 +522,8 @@ def compute_ca_return(
         "foreign_property_income": foreign_property_income,
         "t1135_foreign_property_cost": t1135_cost,
         "donations_credit": donations_credit,
+        "charitable_donations": donations,
+        "charitable_donations_slip": slip_donations,
         "medical_credit": medical_credit,
         "oas_clawback": clawback,
         "federal_tax_before_credits": federal_tax_before_credits,
