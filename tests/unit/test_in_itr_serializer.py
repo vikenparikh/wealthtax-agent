@@ -112,3 +112,44 @@ def test_empty_draft_serializes_to_zeros_without_error():
     assert itr["ScheduleS_Salary"]["GrossSalary"] == 0.0
     assert itr["PartB_TI"]["TotalIncome"] == 0.0
     assert payload["transmissible"] is False
+
+
+def test_section_80ccd2_surfaced_in_schedule_via():
+    """§80CCD(2) employer-NPS is computed and netted from income by the engine but
+    was dropped from the serialized ScheduleVIA — under-reporting the deduction the
+    engine already applied. It must now appear and be folded into TotalChapterVIA."""
+    payload = serialize_itr(
+        _in_draft(section_80ccd_2_employer_nps=50_000.0, chapter_via_total=190_000.0),
+        extracts=[], year=2025,
+    )
+    via = payload["ITR"]["ScheduleVIA_Deductions"]
+    assert via["Section80CCD2_EmployerNPS"] == 50_000.0
+    # TotalChapterVIA reconciles: chapter_via_total (190k) + 80CCD2 (50k) = 240k.
+    assert via["TotalChapterVIA"] == 240_000.0
+
+
+def test_total_chapter_via_reconciles_gross_minus_total_income():
+    """The artifact must be internally consistent: GrossTotalIncome − TotalChapterVIA
+    == TotalIncome, which only holds once 80CCD(2) is in the total."""
+    payload = serialize_itr(
+        _in_draft(
+            section_80ccd_2_employer_nps=50_000.0,
+            chapter_via_total=190_000.0,
+            gross_total_income=1_200_000.0,
+        ),
+        extracts=[], year=2025,
+        # totals.taxable_income from _in_draft = 960_000 = 1_200_000 − 190_000 − 50_000
+    )
+    itr = payload["ITR"]
+    gross = itr["PartB_TI"]["GrossTotalIncome"]
+    total_via = itr["ScheduleVIA_Deductions"]["TotalChapterVIA"]
+    total_income = itr["PartB_TI"]["TotalIncome"]
+    assert round(gross - total_via, 2) == total_income
+
+
+def test_no_employer_nps_unchanged():
+    # Absent 80CCD2 → key reads 0.0, TotalChapterVIA unchanged (no regression).
+    payload = serialize_itr(_in_draft(chapter_via_total=190_000.0), extracts=[], year=2025)
+    via = payload["ITR"]["ScheduleVIA_Deductions"]
+    assert via["Section80CCD2_EmployerNPS"] == 0.0
+    assert via["TotalChapterVIA"] == 190_000.0

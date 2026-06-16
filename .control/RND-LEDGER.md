@@ -1715,3 +1715,21 @@ tables)/#102(ca/2024.yaml). VERIFIED absence first (grep) before building — he
 target before trusting a "missing" claim). RESEARCH next-best after #105 lands: US 1099-R §72(t) early-withdrawal penalty.
 
 **REBASED onto origin/main 03b66e1 (#114 merged mid-cycle); ledger union (Cycle 80 then 82; Cycle 81 was a HOLD on its own unmerged branch). No code conflict — ledger-only.**
+
+## Cycle 85 — FULL LIFECYCLE (2026-06-16) [5-primitive: IN ITR serializer reconciliation -> worktree -> PR]
+
+MATRIX | serialize §80CCD(2) employer-NPS into the draft ITR ScheduleVIA | in_engine.py computes sec_80ccd_2 and NETS it from total_income (436: total_income = gross - chapter_via_total - sec_80ccd_2; line_item at 540), but in_itr.py ScheduleVIA (62-69) emitted Section80C/80CCD1B/80D/80E/80G/80TTAor80TTB + TotalChapterVIA=chapter_via_total -> NO Section80CCD2, and TotalChapterVIA was SHORT by sec_80ccd_2. chapter_via_total deliberately excludes 80CCD2 (the one Chapter-VIA item allowed in NEW regime, the IN default). So GrossTotalIncome - TotalChapterVIA != TotalIncome whenever employer NPS>0 -> artifact under-reports the deduction the engine already applied; hand-filer over-states taxable income | fail-before: ₹50k employer-NPS -> no Section80CCD2 key (KeyError), TotalChapterVIA short -> pass-after: Section80CCD2_EmployerNPS ₹50,000 + TotalChapterVIA folds it in -> GTI - TotalVIA == TotalIncome reconciles | gated? N | PR #118
+
+**MAINTAIN:** origin/main HEAD 78f060c (#115 merged); #117/#116/#111/#105/#102 OPEN (5 PRs; #117 a PARALLEL lane on build_return.py); base==HEAD, no rebase; baseline 1130.
+
+**Serializer-reconciliation vein extends to the IN ITR — but a DEDUCTIONS-schedule gap, not a tax-balance gap.** A
+cycle-80 audit said in_itr "fully reconciles" on TAX (87A/surcharge/cess/prepaid) — TRUE; but it didn't check the
+ScheduleVIA DEDUCTIONS total vs the income reduction. §80CCD(2) (new-regime salaried filers w/ employer NPS — the exact
+population that uses it) was dropped. Pure additive serializer fix (engine read-only): +Section80CCD2_EmployerNPS, and
+TotalChapterVIA = chapter_via_total + sec_80ccd_2 so GTI-TotalVIA==TotalIncome. _f default 0.0 -> no-NPS filers byte-
+identical. Confidence 92%. Suite 1130->1133.
+
+**ZERO collision:** primary+only edit filing/in_itr.py (+ its test); engine read-only. Verified via gh pr diff vs all 5
+open PRs — #116 (nearest, IN) edits in_engine.py+in/yamls for §80GG, different file. Serializer-recon vein now: us_mef
+#113 + ca_netfile #114 + in_itr 80CCD2 (this) shipped; ca_540/quarterly/pdf_fill verified clean; build_return is #117.
+RESEARCH also audited us/states ny/tx/fl/wa + ca/provinces ab/bc/on/qc (BPAs/brackets all CORRECT) + residency + cross_border (clean).
