@@ -149,6 +149,11 @@ def compute_ca_return(
     # T4A pension / fees
     pension_income = _sum_field(extracts, "T4A", "pension_or_superannuation")
     self_emp_t4a = _sum_field(extracts, "T4A", "fees_for_services") + _sum_field(extracts, "T4A", "self_employed_commissions")
+    # T4A box 018: lump-sum payments (e.g. retiring allowance, DPSP/RPP commutation)
+    # are taxable other income (line 13000). Captured but previously unread, so they
+    # were dropped from income. They are NOT eligible for the pension income amount,
+    # so they go into total_income but not pension_income.
+    lump_sum_income = _sum_field(extracts, "T4A", "lump_sum_payments")
 
     # T4RSP / T4RIF (RRSP & RRIF withdrawals; HBP / LLP excluded from income)
     rrsp_withdrawals = (
@@ -247,7 +252,8 @@ def compute_ca_return(
         + rrif_income
         + t5013_business
         + t5013_rental
-        + foreign_property_income,
+        + foreign_property_income
+        + lump_sum_income,
         2,
     )
 
@@ -474,6 +480,7 @@ def compute_ca_return(
         "pension_income_credit": pension_income_credit,
         "age_amount_credit": age_amount_credit,
         "other_self_employment": self_emp_t4a,
+        "lump_sum_income": lump_sum_income,
         "trust_other_income": t3_other_income,
         "rrsp_deduction": rrsp_deduction,
         "rpp_deduction": rpp_contributions,
