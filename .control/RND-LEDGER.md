@@ -1405,3 +1405,25 @@ a §213 note. Floor uses the post-above-line AGI (block sits after agi=line 615)
 **Remaining (design/risky/niche/input/data):** US state artifact (design); CA RRSP room cap (NOA input);
 IN surcharge marginal relief (risky); <100% FPL (input); 2025 CWB (CRA data); IN §234B/C; full MFS;
 charitable 60%-AGI / mortgage $750k limits (rarer). Vein thinning -> likely HOLD next.
+
+## Cycle 59 — FULL LIFECYCLE (2026-06-15) [5-primitive: broad-sweep subagent -> worktree -> PR]
+
+MATRIX | credit the Additional Medicare tax withheld in W-2 box 6 (Form 8959 Part IV) | the engine adds the 0.9% Additional Medicare tax to the liability (via _compute_fica) but never credited the employer's matching box-6 withholding -> every high-wage W-2 employee was double-charged the 0.9% surtax they already paid via paycheck | fail: no 'additional_medicare_tax_withheld' key; $300k single owes $900 more — pass: box 6 $5,250 -> $900 credit cancels the $900 liability; box 6 at exactly 1.45% -> $0 credit (guard) | gated? N | PR #TBD
+
+**MAINTAIN:** #95 merged to main (HEAD cb5e671); baseline suite green at 1080. Rebase-before-push held.
+
+**Found via a FINAL broad sweep** (income inclusion / FICA / dividend-CG stacking / deductions / refund
+assembly across all 3 engines). The subagent VERIFIED CORRECT: US income assembly (no double-count), SE/SS
+cap + half-SE-deduction-excludes-0.9%, NIIT MAGI+FEIE, qual-div/LTCG stacking, CA gross-up/DTC/inclusion/
+clawback/CWB, IN salary/house-property/CG-split/87A/prepaid. The ONE bug: box-6 additional-Medicare
+withholding (0.9% above 1.45%) was extracted but unread, so the liability had no offsetting credit ->
+$900 over-tax @ $300k, $2,700 @ $500k. Clean (data in scope, no new input/table).
+
+**Change:** addl_medicare_withheld = max(0, box6_medicare_tax_withheld - 1.45%*medicare_wages); credited in
+the balance line alongside excess-SS; line_items['additional_medicare_tax_withheld'] + Form 8959 note.
+Suite 1080 -> 1082.
+
+**CONVERGENCE CALL:** the broad sweep found exactly ONE clean material bug (this) and verified the rest
+correct. After this merges, the engine is substantially converged. Remaining items ALL design-gated
+(US state artifact), input-blocked (CA RRSP room, <100% FPL), need external data (2025 CWB), risky (IN
+surcharge marginal relief), or rare (charitable 60%/mortgage $750k, full MFS). EXPECT HOLD next cycle.

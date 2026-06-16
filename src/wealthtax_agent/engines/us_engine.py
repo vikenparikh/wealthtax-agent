@@ -792,6 +792,20 @@ def compute_us_return(
             "is credited as an additional payment (Schedule 3, line 11)."
         )
 
+    # Additional Medicare tax withheld (Form 8959 Part IV): the employer withholds
+    # the 0.9% surtax above $200,000 into W-2 box 6 (on top of the regular 1.45%).
+    # The engine adds the 0.9% to the liability via _compute_fica, so the box-6
+    # over-withholding must be credited as a payment or the filer is double-charged.
+    _medicare_rate = float(_fica.get("medicare_rate", 0.0145))
+    medicare_wages = _sum_field(extracts, "W-2", "medicare_wages")
+    medicare_tax_withheld = _sum_field(extracts, "W-2", "medicare_tax_withheld")
+    addl_medicare_withheld = round(max(0.0, medicare_tax_withheld - _medicare_rate * medicare_wages), 2)
+    if addl_medicare_withheld > 0:
+        notes.append(
+            f"Additional Medicare tax withheld of ${addl_medicare_withheld:,.2f} (W-2 box 6 above "
+            "1.45%) is credited as a payment (Form 8959 Part IV)."
+        )
+
     # Earned Income Tax Credit (refundable, Form 1040 line 27). The §32(i)
     # investment-income cliff adds tax-exempt interest to the NIIT investment total
     # (which omits it). EITC qualifying children (under 19, not a parent/relative)
@@ -807,7 +821,7 @@ def compute_us_return(
             f"a payment, based on {eitc_children} EITC-qualifying child(ren)."
         )
 
-    balance = round(total_tax - fed_withheld - excess_ss_tax - actc - eitc, 2)
+    balance = round(total_tax - fed_withheld - excess_ss_tax - addl_medicare_withheld - actc - eitc, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -875,6 +889,7 @@ def compute_us_return(
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
         "excess_social_security_tax": excess_ss_tax,
+        "additional_medicare_tax_withheld": addl_medicare_withheld,
         **state_breakdown,
     }
 

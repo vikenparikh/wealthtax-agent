@@ -253,6 +253,36 @@ def test_us_actc_uses_qualifying_children_not_other_dependents():
     assert d.line_items["additional_child_tax_credit"] == 1700.0
 
 
+# --- US: Additional Medicare tax withheld (W-2 box 6) is credited (Form 8959 Part IV) ---
+
+def test_us_additional_medicare_withholding_is_credited():
+    """The engine adds the 0.9% Additional Medicare tax to the liability but never
+    credited the employer's matching withholding (W-2 box 6, above 1.45%), so a
+    high-wage W-2 employee was over-taxed by the amount already paid via paycheck.
+    Single, $300k wages, box 6 $5,250 (= 1.45%·300k + 0.9%·100k) → $900 of
+    additional-Medicare withholding is a credit.
+
+    FAILS before the fix: no 'additional_medicare_tax_withheld' key; the $900
+    liability is not offset."""
+    base = compute_us_return([_f("W-2", "US", wages=300000, medicare_wages=300000)], 2024,
+                             user_answers={"filing_status": "single"})
+    withheld = compute_us_return([_f("W-2", "US", wages=300000, medicare_wages=300000,
+                                     medicare_tax_withheld=5250)], 2024,
+                                 user_answers={"filing_status": "single"})
+    assert withheld.line_items["additional_medicare_tax_withheld"] == 900.0
+    # Crediting the $900 of box-6 additional withholding lowers the balance owing by $900.
+    assert round(base.totals["balance_owing"] - withheld.totals["balance_owing"], 2) == 900.0
+
+
+def test_us_additional_medicare_withholding_zero_when_only_regular_rate():
+    """Guard: box 6 of exactly 1.45% of Medicare wages has no additional-Medicare
+    component → $0 credit (no spurious refund)."""
+    d = compute_us_return([_f("W-2", "US", wages=300000, medicare_wages=300000,
+                              medicare_tax_withheld=4350)], 2024,
+                          user_answers={"filing_status": "single"})
+    assert d.line_items["additional_medicare_tax_withheld"] == 0.0
+
+
 # --- US: Schedule A medical expenses are deductible only above 7.5% of AGI (§213) ---
 
 def test_us_medical_expenses_apply_7_5pct_agi_floor():
