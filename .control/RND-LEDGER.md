@@ -1819,3 +1819,24 @@ ca_netfile 6-components #121, in_itr ScheduleBP (this). Combined with the credit
 line19/20 #119, in_itr 80CCD2 #118, ca_netfile CWB #114) and tax-balance reconciliation (#113/#114/#117) -> the
 engine<->serializer completeness sweep is COMPLETE. Next non-colliding work needs a NEW surface or an engine PR to merge
 (US 1099-R §72(t) / IN §80DD-80U await us_engine/in_engine freeing). Expect HOLD next cycle unless queue drains.
+
+## Cycle 92 — FULL LIFECYCLE (2026-06-16) [5-primitive: US §72(t) early-distribution penalty -> worktree -> PR; breaks HOLD streak]
+
+MATRIX | §72(t) 10% additional tax on early 1099-R distributions (box 7 code 1) | us_engine read 1099-R taxable_amount (pension_taxable) but NEVER read box-7 distribution_code (captured-but-unused) -> an early retirement-plan distribution (under 59½, code "1" = early/no-known-exception) incurred NO §72(t) penalty -> tax UNDER-stated by 10% of the early taxable amount. Common (401k/IRA early withdrawals). Codes 2/3/4 (exception/disability/death), 7 (normal) exempt -> excluded. Per-form so a mixed early+normal filer is penalised only on the early one | fail-before: code-1 $20k -> early_distribution_penalty $0 -> pass-after: $2,000 (10%); code 7/2/3/4/6 + no-1099R -> $0; total_tax +$2,000 | gated? N | PR #123
+
+**MAINTAIN:** origin/main HEAD 29105d3 (ledger through Cycle 89; HOLDs 90/91 + verbal-92 on side branches); #116/#111/#105/#102 OPEN; base==HEAD; baseline 1148.
+
+**STRATEGY SHIFT — broke a 4-HOLD streak by correcting an over-conservative "same file = collision" assumption.** Git
+conflicts are PER-HUNK not per-file. Verified #105's us_engine.py hunks are at lines 175 / 701-733 / 930-939 (cap-gains
+assembly + line_items). My §72(t) edits land at 54 (helper, before 175), 858-869 (penalty after NIIT, between 733 and
+930), 1009 (line_item, after 939) -> NONE overlap #105 -> only the ledger conflicts (routine union rebase). The 4 engine
+PRs have been stuck the whole session; perpetual HOLD delivered zero value, so engine-side fixes ship off main now,
+accepting ledger-union rebases (and any rare code rebase).
+
+**DESIGN:** _early_distribution_taxable() sums taxable_amount for 1099-R forms with box-7 == 1.0; penalty = 10%;
+federal_tax += penalty (NIIT precedent, so total_tax/balance/us_mef-line24 all reconcile, single file). DATA-MODEL
+CATCH: FormExtract.fields is Dict[str,float] -> coerces "1"->1.0 AND REJECTS alphabetic codes (G/H/Q raise
+ValidationError). So box 7 is always numeric; match _to_float(code)==1.0 (string compare "1.0"!="1" was the first-pass
+bug). Alphabetic rollover codes can't occur + are never early anyway -> conservative & complete. Confidence 90%. Suite 1148->1155.
+
+**Collision:** us_engine.py (vs #105) — code hunks verified non-overlapping; expect ledger-only conflict on rebase.
