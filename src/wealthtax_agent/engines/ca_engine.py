@@ -343,6 +343,20 @@ def compute_ca_return(
             "credit computed on the first $12,000."
         )
 
+    # Home Buyers' Amount (federal line 31270, ITA s.118.05): a first-time home
+    # buyer claims a FIXED $10,000 amount, credited at the lowest federal rate
+    # (15% -> $1,500 max). Flat $10,000 since the 2022 budget (non-indexed).
+    # Spouses may split the claim but the combined amount cannot exceed $10,000;
+    # the filer supplies their allocated share. Non-refundable.
+    raw_home_buyers = _to_float(user_answers.get("home_buyers_amount", 0))
+    home_buyers_eligible = min(max(0.0, raw_home_buyers), 10000.0)
+    home_buyers_credit = home_buyers_eligible * float(lowest_rate)
+    if raw_home_buyers > 10000.0:
+        notes.append(
+            f"Home Buyers' Amount ${raw_home_buyers:,.0f} exceeds $10,000 cap; "
+            "credit computed on the first $10,000."
+        )
+
     # Excess CPP/EI from multiple employers (T1 lines 44800/45000): each employer
     # withholds CPP and EI independently, so a job-switcher's combined contributions
     # routinely exceed the annual employee maximum. That excess is a REFUNDABLE
@@ -402,6 +416,7 @@ def compute_ca_return(
         + medical_credit
         + student_loan_credit
         + property_tax_credit
+        + home_buyers_credit
         + tuition_credit
     )
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
@@ -531,6 +546,9 @@ def compute_ca_return(
         "property_tax_paid": raw_property_tax,
         "property_tax_eligible": property_tax_eligible,
         "property_tax_credit": property_tax_credit,
+        "home_buyers_amount": raw_home_buyers,
+        "home_buyers_eligible": home_buyers_eligible,
+        "home_buyers_credit": home_buyers_credit,
         "eligible_tuition_fees": tuition_fees,
         "tuition_credit": tuition_credit,
         "interest_income": interest_income,
