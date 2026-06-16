@@ -63,6 +63,10 @@ deductions:
   section_80e_education_loan_cap: null      # uncapped
   section_24b_home_loan_self_occupied: 200000
   section_80g_percent_default: 0.50          # without qualifying limit
+  # §57(iia) standard deduction on family pension: lower of 1/3 or the cap.
+  # AY 2024-25 — both regimes ₹15,000 (the ₹25,000 new-regime bump starts AY 2025-26).
+  section_57_family_pension_old: 15000
+  section_57_family_pension_new: 15000
 
 # Capital gains (FY 2023-24 — entire year is pre-Jul 23 2024 regime)
 capital_gains:

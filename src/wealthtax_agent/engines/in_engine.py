@@ -265,9 +265,31 @@ def _compute_one_regime(
     dividends = _sum_field(extracts, "FORM-16A", "dividend_income") + _sum_field(extracts, "AIS", "dividend_income")
     dividends += _to_float(user_answers.get("dividend_income", 0))
     rental_other = 0.0  # already captured under house property
+
+    # Family pension (pension to the legal heir of a deceased employee) is taxed
+    # under Income from Other Sources, but §57(iia) grants a standard deduction of
+    # the lower of 1/3 of the pension or a statutory cap (₹15,000 old regime;
+    # ₹25,000 new regime from AY 2025-26). Crucially this is one of the few
+    # deductions §115BAC does NOT disallow, so it applies under BOTH regimes —
+    # only the cap value is regime-specific. Without it, family pension funnelled
+    # through `other_income` is taxed in full, over-taxing widows/dependants.
+    family_pension = _to_float(user_answers.get("family_pension_income", 0))
+    _fp_cap = float(tables.get("deductions", {}).get(
+        "section_57_family_pension_new" if regime == "new"
+        else "section_57_family_pension_old",
+        25000 if regime == "new" else 15000))
+    family_pension_deduction = min(family_pension / 3.0, _fp_cap) if family_pension > 0 else 0.0
+    family_pension_taxable = max(0.0, family_pension - family_pension_deduction)
+    if family_pension_deduction > 0:
+        notes.append(
+            f"§57(iia) standard deduction of ₹{family_pension_deduction:,.0f} on family "
+            f"pension (lower of 1/3 or ₹{_fp_cap:,.0f})."
+        )
+
     other_income = (
         bank_interest
         + dividends
+        + family_pension_taxable
         + _to_float(user_answers.get("other_income", 0))
     )
     tds_non_salary = (
@@ -500,6 +522,9 @@ def _compute_one_regime(
         "business_income": business_income,
         "bank_interest": bank_interest,
         "dividends": dividends,
+        "family_pension": family_pension,
+        "family_pension_deduction": family_pension_deduction,
+        "family_pension_taxable": family_pension_taxable,
         "other_income_total": other_income,
         "stcg_equity_total": cg["stcg_equity_total"],
         "ltcg_equity_total": cg["ltcg_equity_total"],
