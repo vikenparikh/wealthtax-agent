@@ -1715,3 +1715,31 @@ tables)/#102(ca/2024.yaml). VERIFIED absence first (grep) before building — he
 target before trusting a "missing" claim). RESEARCH next-best after #105 lands: US 1099-R §72(t) early-withdrawal penalty.
 
 **REBASED onto origin/main 03b66e1 (#114 merged mid-cycle); ledger union (Cycle 80 then 82; Cycle 81 was a HOLD on its own unmerged branch). No code conflict — ledger-only.**
+
+## Cycle 83 — HONEST HOLD (2026-06-16) [5-primitive: sole candidate duplicates open PR #102; box-maps verified clean]
+
+**MAINTAIN:** origin/main HEAD 78f060c (#115 family-pension merged); #111/#105/#102 OPEN; suite green 1130.
+
+**DECISION: HOLD (no PR, no padding).** RESEARCH audited the non-colliding surfaces (extractor box-maps, cross_border
+FTC, residency, state/province configs) and surfaced ONE SHIP candidate — but it is a DUPLICATE of open PR #102.
+
+- **Rejected candidate:** "fix stale CA-state 2024 standard deduction (single 5363->5540, MFJ 10726->11080)." VERIFIED
+  via `gh pr diff 102`: PR #102 ALREADY makes this EXACT edit to us/states/ca/2024.yaml (identical file, identical
+  values). The subagent mis-identified #102 as touching Canada-federal ca/2024.yaml; it actually touches the
+  California-state us/states/ca/2024.yaml — the very file/values proposed. Shipping would be a redundant collision.
+
+**Directly verified clean this cycle (not assumed):**
+- Extractor box-maps ALL correct — US W-2 (1/2/3/4/5/6/7/8/10/11/16/17), 1099-R (1/2a/4/5/7), 1099-DIV (1a/1b/2a/2b/
+  2c/2d/3/4/5), 1099-INT (1/2/3/4/8), 1098 (1/2/6); CA T4 (14/22/16/18/52/20/44/46), T4A (016/018/020/048/105/022);
+  IN Form-16/16A/AIS regex labels sane. No mis-extraction bug anywhere.
+- cross_border.py FTC is INTENTIONALLY a hint only ("Engine does not currently apply FTC") — documented design, not a bug.
+- §80TTA/§80TTB ARE read by in_engine.py (391-398) — last cycle's "captured-but-unused" lead was FALSE (verified).
+
+**All four engine surfaces contended** (#115 in_engine+in/yamls just merged but ca_engine #111 / us_engine+us-tables
+#105 / ca/2024.yaml+us/states/ca #102 still open). Remaining backlog ALL blocked: US 1099-R §72(t) penalty (us_engine.py
+vs #105); IN surcharge marginal relief / full §70 CG ordering (risky-entangled); BC/QC donation rates + CA BPA phaseout
++ provincial pension caps (unconfirmed data); CA age / US 65-blind std (no intake input); HoH->single state-bracket
+mapping (us_engine.py, contended). 
+
+**UNBLOCK:** #105 merges -> frees us_engine.py -> US 1099-R §72(t) becomes next clean SHIP; OR #102 merges -> frees
+us/states/ca + ca/2024.yaml; OR new form/requirement/data/intake-input. Until then -> honest HOLD. 3 PRs draining ~1/cycle.
