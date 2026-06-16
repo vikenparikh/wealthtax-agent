@@ -1543,3 +1543,22 @@ single brackets. Suite 1091 -> 1093. No existing test touched (none exercised st
 **Flagged follow-ups (need FTB data, NOT shipped — discipline):** CA HoH BRACKET thresholds (FTB Schedule X)
 would fix the remaining bracket-narrowing over-tax (~$1,700 more in the unverified example); NY HoH std
 deduction (~$11,200). ca/2025 std-deduction staleness (from #102) still open.
+
+## Cycle 70 — FULL LIFECYCLE (2026-06-15) [5-primitive: research subagent -> worktree -> PR]
+
+MATRIX | give NY head-of-household filers their own state standard deduction | the NY state table had only single ($8,000) + MFJ; NY's IT-201 HoH standard deduction is a distinct $11,200 (statutory, NY Tax Law §614) -> NY HoH filers fell back to the single $8,000 (via the #103 3-way map fallback) and were over-taxed ~$176/return at $90k | fail: NY HoH $90k state_standard_deduction $8,000 / taxable $82,000 — pass: $11,200 / $78,800; NY single unchanged (guard) | gated? N | PR #TBD
+
+**MAINTAIN:** #103 (CA HoH map) merged (HEAD c61f94a); #102 (CA std) open; baseline suite green at 1093. Rebase-before-push held.
+
+**Confidence-bar judgment (the discipline from #103, applied the other way):** in #103 I HELD the CA HoH BRACKETS
+(<85% — INDEXED yearly thresholds). Here the NY HoH std deduction is a FIXED STATUTORY value (not indexed), and
+the repo's already-correct NY single $8,000 / MFJ $16,050 corroborate the source -> RESEARCH subagent rated HoH
+$11,200 at ~92%, clearing the bar. So shipping NY-HoH-std while having held CA-HoH-brackets is CONSISTENT (fixed
+statutory > indexed threshold on verifiability), not contradictory.
+
+**Change:** added `standard_deduction.head_of_household: 11200` to ny/{2023,2024,2025}.yaml. ZERO code change —
+the #103 engine 3-way map already reads head_of_household w/ single-fallback. NY HoH correctly keeps single rate
+brackets (only the deduction differed). MFS->single ($8,000) and QSS->MFJ ($16,050) confirmed correct. Suite 1093->1095.
+
+**US-state seam (from the CA-540 artifact) now: #101 CA-MHS, #102 CA-std, #103 CA-HoH-std, #70 NY-HoH-std. Remaining
+DATA-BLOCKED/complex: CA HoH brackets (indexed, <85%), NY tax-benefit recapture (complex), 2025 CA std (#102). HOLD likely next.**
