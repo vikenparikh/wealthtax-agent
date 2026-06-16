@@ -2248,3 +2248,15 @@ in the line-932 max(0,...) assembly. §25C per-item sub-limits ($600/item, $250/
 Suite 1262->1267. Collision-free vs #143 (helper ~36-50 + education ~888-918; this is ~932 + ~1187 + config). LESSON: after
 crash/tweak veins converge, the MISSING-WHOLE-FEATURE angle (a statutory credit not modeled at all, fixed params) reopens
 real bottom-line value.
+## Cycle 153 — FULL LIFECYCLE (2026-06-16) [5-primitive: NEW FEATURE — CA Home Buyers' Amount (line 31270)]
+
+MATRIX | add CA Home Buyers' Amount non-refundable credit (federal line 31270, ITA s.118.05) | ca_engine modelled NO home-buyer credit (grep 0 hits for home.?buyer/31270 in engine+config). A first-time home buyer claiming the FIXED $10,000 amount got $0 — credit never computed, fed tax unchanged at 10756.61 whether claimed or not. NEW-FEATURE angle, routed to CA to avoid collision with the two open us_engine.py PRs (#143/#144). | fail-before: home_buyers_amount="10000" -> home_buyers_credit absent/KeyError (3 failed) -> pass-after: $10k x 15% = $1,500 credit, fed tax drops exactly $1,500; cap binds at $10k (15000->eligible 10000, credit 1500, note); partial 4000->600; non-refundable (0-income -> fed tax 0) | gated? N | PR #145
+
+Statutory: ITA s.118.05, FIXED $10,000 since 2022 budget (raised from $5,000), NON-indexed -> 15% lowest rate = $1,500 max.
+Confidence 90%. NEAR-EXACT CLONE of the existing property_tax_paid credit pattern (cap-min-rate, fold into fed_non_refundable,
+3 line_items, cap note). New user_answers key home_buyers_amount (self-declared, no slip — like property_tax_paid). Spouse-split
+handled by accepting the filer's allocated share. Suite 1267->1272. Collision-free vs #143/#144 (ca_engine vs us_engine).
+NOTE: #143 merged mid-cycle (main 0d39938) -> #144 now DIRTY on ledger; rebase separately. LESSON (validated 2nd time):
+missing-whole-feature angle keeps producing — and routing each new feature to a DIFFERENT jurisdiction/file avoids the
+us_engine pile-up. Next CA/IN candidates still absent: IN §80EE (₹50k home-loan interest, fixed), CA volunteer-firefighter
+($3,000->$450) + search-and-rescue amounts (fixed).
