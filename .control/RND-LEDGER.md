@@ -2181,3 +2181,16 @@ ALREADY counts them, so adding would double-count (the OPPOSITE of #118's 80CCD2
 surfacing — no statutory constant introduced. Confidence 93%. Suite 1249->1252. ZERO collision (#138 was in ca_engine; merged
 mid-cycle). RESEARCH rejected: QBI net_capital_gain "bug" (FALSE POSITIVE — long_gain already clamped >=0); IN surcharge
 marginal relief (repeatedly-deferred HOLD, ~15 cycles). The ledger had explicitly QUEUED "IN §80DD-80U" as a next candidate.
+
+---
+
+## Cycle 147 — FULL LIFECYCLE (2026-06-16) [5-primitive: fix reachable NameError crash in CA pension-splitting]
+
+MATRIX | CA pension income-splitting input crashes the entire return (NameError) | ca_engine.py:470/474 referenced an UNDEFINED name `pensionable` (never assigned anywhere in the module; the intended var is `eligible_pension`, defined line 376). Any CA filer supplying user_answers["pension_split_pct"] > 0 -> `pension_split_pct > 0` short-circuits True, then `pensionable > 0` raises NameError -> the WHOLE compute_ca_return dies (no draft at all), not just the advisory note. Pension income-splitting is a common retiree input. REACHABLE + REPRODUCED live. | fail-before: compute_ca_return(..., pension_split_pct="40") -> NameError name 'pensionable' is not defined (3 failed) -> pass-after: no crash, estimated_tax>0, note "Pension income splitting at 40% of $40,000" emitted; 80% -> capped to 50% in note; no pct -> no note; pct with zero eligible pension -> no crash, no note | gated? N | PR #140
+
+HIGHER-VALUE than a fixed-value miscompute: a crash destroys the whole draft, not just one line. 1-char-class fix
+(pensionable -> eligible_pension x2). FOUND VIA HONEST REJECT CHAIN: cycle's primary candidate (US MFS NIIT/Medicare
+$125k thresholds) REJECTED — MFS unreachable (_resolve_filing_status maps it to "single"; VALID_FILING_STATUSES lacks
+it; no MFS config tables), narrow fix a no-op, full MFS support an unsafe multi-site feature (SALT $5k, cap-loss $1.5k,
+AMT, brackets/std/LTCG all MFS-halved). Second probe found NO clean fixed-value miscompute (engine well-mined, 139 PRs)
+but reproduced THIS crash. Suite 1252->1256. ZERO collision (0 open PRs).
