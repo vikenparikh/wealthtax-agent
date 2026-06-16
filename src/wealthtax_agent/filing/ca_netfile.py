@@ -50,6 +50,17 @@ def serialize_t1(draft: DraftReturn, extracts: List[FormExtract], year: int) -> 
         f"    <NetRentalIncome>{_fmt(line_items.get('net_rental_income', 0.0))}</NetRentalIncome>\n"
         f"    <NetBusinessIncome>{_fmt(line_items.get('net_business_income', 0.0))}</NetBusinessIncome>\n"
         f"    <PensionIncome>{_fmt(line_items.get('pension_income', 0.0))}</PensionIncome>\n"
+        # The engine folds these into total_income but the <Income> block omitted
+        # them, so summing the visible lines fell short of <TotalIncome>. Each has a
+        # distinct line_item key and is NOT covered by another element (T5013 rental
+        # and business are already inside NetRentalIncome / NetBusinessIncome, so they
+        # are deliberately not repeated here). TotalIncome stays engine-truth.
+        f"    <SelfEmploymentIncome>{_fmt(line_items.get('other_self_employment', 0.0))}</SelfEmploymentIncome>\n"
+        f"    <RRSPIncome>{_fmt(line_items.get('rrsp_withdrawals', 0.0))}</RRSPIncome>\n"
+        f"    <RRIFIncome>{_fmt(line_items.get('rrif_income', 0.0))}</RRIFIncome>\n"
+        f"    <LumpSumIncome>{_fmt(line_items.get('lump_sum_income', 0.0))}</LumpSumIncome>\n"
+        f"    <TrustIncome>{_fmt(line_items.get('trust_other_income', 0.0))}</TrustIncome>\n"
+        f"    <ForeignPropertyIncome>{_fmt(line_items.get('foreign_property_income', 0.0))}</ForeignPropertyIncome>\n"
         f"    <TotalIncome>{_fmt(totals.get('total_income', 0.0))}</TotalIncome>\n"
         "  </Income>\n"
         "  <Deductions>\n"
