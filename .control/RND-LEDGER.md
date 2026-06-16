@@ -1944,3 +1944,23 @@ provincial_cpp_ei_credit / provincial_medical_credit exactly. Table-driven prov_
 **ZERO collision:** ca_engine.py edits at 406/423/525 all clear of #111's hunks (donations ~296, line_items ~497 — my line_item
 at 525 is ~28 lines below). No #105/#102/#116 file overlap. (NOTE: this contradicts cycle-98/99 "converged" — the convergence
 was conditional on no merges; #128 merging reopened the tuition follow-on, exactly the predicted UNBLOCK mechanism.)
+
+## Cycle 101 — HONEST HOLD (2026-06-16) [5-primitive: #129 completed tuition, unblocked nothing new; back to convergence]
+
+**MAINTAIN:** origin/main HEAD 7f4e943 (#129 provincial-tuition MERGED); #116/#111/#105/#102 OPEN; suite green 1183.
+
+**DECISION: HOLD (no PR, no padding).** Applied the cycle-100 discipline (DIFF what a merge unblocks, don't reflexively
+hold): #129 = the provincial tuition credit, which COMPLETES the tuition credit (federal #128 + provincial #129) and
+defers nothing further (the remaining tuition transfer/carry-forward is an optimizer feature, not a clean fix). So unlike
+#128 (which scoped provincial OUT), #129 reopens no follow-on. Re-checked every blocked item — none freed by #129:
+- CA HoH BRACKETS (2023/2025): file us/states/ca/{2023,2025}.yaml is FREE of #102 (which owns only 2024.yaml), but BLOCKED
+  on confidence-bar — CA indexes brackets annually and the FTB Schedule-Z values can't be verified to confidence from here.
+  Standing deferral (shipped NY fixed brackets, HELD CA indexed). Shipping unverified indexed brackets risks mis-taxing CA
+  HoH filers — worse than the current single-fallback. HOLD on DATA.
+- IN §80DD/§80U/§80EEB: in_engine Chapter VI-A; any new deduction edits chapter_via_total (~456) -> collides #116. BLOCKED.
+- US 1099-DIV box5 §199A: us_engine QBI region -> collides #105's ~688-733. BLOCKED.
+- Captured-but-unused vein: EXHAUSTED (cycle-98; last clean field = #111). Withholding aggregations complete.
+
+**UNBLOCK:** #116 merges -> IN §80DD/§80U; #105 merges -> US §199A; confirmed CA FTB Schedule-Z data -> CA HoH brackets;
+OR new form/requirement. Until then -> honest HOLD. (Stale-comment nit: ca_engine.py:249 "provincial tuition left out"
+is now wrong post-#129 — trivial, fix when next touching the file; NOT worth a comment-only PR = padding.)
