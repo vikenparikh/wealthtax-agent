@@ -398,6 +398,12 @@ def compute_ca_return(
     # so the provincial credit is the creditable amount at the PROVINCIAL lowest
     # rate — not the federal-rate amount, which over-credited provincially.
     medical_credit_prov = medical_creditable * float(prov_lowest_rate)
+    # Provincial tuition credit: the lowest-rate non-refundable credit on the same
+    # T2202 eligible tuition fees claimed federally (#128). Most provinces grant it at
+    # their own lowest rate (ON 5.05%); a few have eliminated it, but the table-driven
+    # prov_lowest_rate keeps this a province-agnostic estimate. Mirrors the provincial
+    # CPP/EI and medical credits above; the federal half is computed earlier.
+    tuition_credit_prov = tuition_fees * float(prov_lowest_rate)
     # Provincial donation credit at provincial rates when the table supplies the
     # excess rate (first $200 at the lowest rate, excess at donation_credit_high_rate).
     # Provinces without that rate fall back to the federal-rate amount (legacy
@@ -415,6 +421,7 @@ def compute_ca_return(
         + cpp_ei_credit_prov
         + donations_credit_prov
         + medical_credit_prov
+        + tuition_credit_prov
     )
     prov_dtc = _province_dtc(taxable_eligible, taxable_non_eligible, prov_tables)
     provincial_tax = max(0.0, provincial_tax_before_credits - prov_non_refundable - prov_dtc)
@@ -516,6 +523,7 @@ def compute_ca_return(
         "provincial_tax_before_credits": provincial_tax_before_credits,
         "provincial_non_refundable_credits": prov_non_refundable,
         "provincial_cpp_ei_credit": cpp_ei_credit_prov,
+        "provincial_tuition_credit": tuition_credit_prov,
         "provincial_medical_credit": medical_credit_prov,
         "provincial_donations_credit": donations_credit_prov,
         "provincial_dividend_tax_credit": prov_dtc,
