@@ -100,6 +100,11 @@ eitc:
     "1": {credit_rate: 0.34, earned_income_amount: 12730, max_credit: 4328, phaseout_rate: 0.1598, phaseout_start: 23350, phaseout_start_mfj: 30470}
     "2": {credit_rate: 0.4, earned_income_amount: 17880, max_credit: 7152, phaseout_rate: 0.2106, phaseout_start: 23350, phaseout_start_mfj: 30470}
     "3": {credit_rate: 0.45, earned_income_amount: 17880, max_credit: 8046, phaseout_rate: 0.2106, phaseout_start: 23350, phaseout_start_mfj: 30470}
+# Health Savings Account contribution/deduction limits (Form 8889).
+hsa:
+  self_limit: 4300
+  family_limit: 8550
+  catchup_55_plus: 1000
 ira:
   contribution_limit: 7000
   catchup_50_plus: 1000

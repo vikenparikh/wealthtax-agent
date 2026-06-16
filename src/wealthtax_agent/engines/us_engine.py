@@ -502,15 +502,39 @@ def compute_us_return(
     # 1098-E student loan interest deduction (capped at $2500)
     student_loan_interest = min(2500.0, _sum_field(extracts, "1098-E", "student_loan_interest"))
 
-    # HSA deduction: prefer Form 8889 line, fall back to user answer
+    taxpayer_age = _to_float(user_answers.get("taxpayer_age", 0))
+
+    # HSA deduction: prefer Form 8889 line, fall back to user answer, then cap at the
+    # year's contribution limit (self vs family coverage, +$1,000 catch-up at 55+).
     hsa_deduction = _sum_field(extracts, "8889", "hsa_deduction")
     if hsa_deduction == 0.0:
         hsa_deduction = _to_float(user_answers.get("hsa_contributions", 0))
+    _hsa_tbl = fed_tables.get("hsa", {})
+    if _hsa_tbl:
+        _hsa_coverage = str(user_answers.get("hsa_coverage", "family")).strip().lower()
+        _hsa_base = float(_hsa_tbl.get("self_limit", 4150)) if _hsa_coverage == "self" else float(_hsa_tbl.get("family_limit", 8300))
+        _hsa_cap = _hsa_base + (float(_hsa_tbl.get("catchup_55_plus", 1000)) if taxpayer_age >= 55 else 0.0)
+        if hsa_deduction > _hsa_cap:
+            notes.append(f"HSA deduction capped at ${_hsa_cap:,.0f} ({_hsa_coverage} coverage limit); "
+                         f"${hsa_deduction - _hsa_cap:,.0f} over the limit is not deductible.")
+            hsa_deduction = _hsa_cap
 
-    # Traditional IRA contributions: prefer 5498 box 1, fall back to user answer
+    # Traditional IRA contributions: prefer 5498 box 1, fall back to user answer, then
+    # cap at the contribution limit (+$1,000 catch-up at 50+). The MAGI deduction
+    # phase-out for employer-plan participants is not modeled (and this key conflates
+    # IRA with 401(k), whose elective deferrals are already pre-tax — left as-is).
     ira_deduction = _sum_field(extracts, "5498", "ira_contributions")
     if ira_deduction == 0.0:
         ira_deduction = _to_float(user_answers.get("ira_401k_contributions", 0))
+    _ira_tbl = fed_tables.get("ira", {})
+    if _ira_tbl:
+        _ira_cap = float(_ira_tbl.get("contribution_limit", 7000)) + (
+            float(_ira_tbl.get("catchup_50_plus", 1000)) if taxpayer_age >= 50 else 0.0)
+        if ira_deduction > _ira_cap:
+            notes.append(f"IRA deduction capped at ${_ira_cap:,.0f} (contribution limit); "
+                         f"${ira_deduction - _ira_cap:,.0f} over the limit is not deductible. "
+                         f"MAGI phase-out for employer-plan participants is not modeled.")
+            ira_deduction = _ira_cap
 
     # Form 2555 reports foreign-earned wages and the amount the taxpayer is
     # excluding. We add the foreign-earned amount to income then subtract the
@@ -764,7 +788,6 @@ def compute_us_return(
     # defaults to the full dependent count.
     eitc_children = _num_eitc_qualifying_children(user_answers, num_deps)
     eitc_earned = wages + max(0.0, self_employment_income)
-    taxpayer_age = _to_float(user_answers.get("taxpayer_age", 0))
     eitc = _compute_eitc(eitc_earned, agi, eitc_children, status, taxpayer_age,
                          investment_income + tax_exempt_interest, feie_excluded > 0, fed_tables)
     if eitc > 0:

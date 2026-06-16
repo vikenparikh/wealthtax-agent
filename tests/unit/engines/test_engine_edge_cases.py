@@ -253,6 +253,54 @@ def test_us_actc_uses_qualifying_children_not_other_dependents():
     assert d.line_items["additional_child_tax_credit"] == 1700.0
 
 
+# --- US: IRA and HSA deductions are capped at their statutory contribution limits ---
+
+def test_us_ira_deduction_capped_at_contribution_limit():
+    """A traditional-IRA deduction can't exceed the contribution limit ($7,000 for
+    2024). The engine took the user-entered amount at face value, so an over-limit
+    entry under-stated AGI (and could under-tax Social Security too). Age 40, entry
+    $20,000 → capped at $7,000.
+
+    FAILS before the fix: ira_401k_adjustment is $20,000 (uncapped)."""
+    d = compute_us_return([_f("W-2", "US", wages=120000)], 2024,
+                          user_answers={"filing_status": "single", "ira_401k_contributions": "20000",
+                                        "taxpayer_age": "40"})
+    assert d.line_items["ira_401k_adjustment"] == 7000.0
+
+
+def test_us_ira_deduction_catchup_at_age_50():
+    """Age 50+ adds the $1,000 catch-up → $8,000 cap for 2024."""
+    d = compute_us_return([_f("W-2", "US", wages=120000)], 2024,
+                          user_answers={"filing_status": "single", "ira_401k_contributions": "20000",
+                                        "taxpayer_age": "55"})
+    assert d.line_items["ira_401k_adjustment"] == 8000.0
+
+
+def test_us_ira_within_limit_unchanged():
+    """Regression guard: a legitimate $5,000 contribution is unaffected."""
+    d = compute_us_return([_f("W-2", "US", wages=120000)], 2024,
+                          user_answers={"filing_status": "single", "ira_401k_contributions": "5000",
+                                        "taxpayer_age": "40"})
+    assert d.line_items["ira_401k_adjustment"] == 5000.0
+
+
+def test_us_hsa_deduction_capped_family_coverage():
+    """HSA deduction capped at the 2024 family limit ($8,300); default coverage is
+    family. Entry $10,000, age 40 → $8,300."""
+    d = compute_us_return([_f("W-2", "US", wages=120000)], 2024,
+                          user_answers={"filing_status": "single", "hsa_contributions": "10000",
+                                        "taxpayer_age": "40"})
+    assert d.line_items["hsa_deduction"] == 8300.0
+
+
+def test_us_hsa_self_coverage_uses_lower_cap():
+    """Self-only coverage caps at $4,150 (2024). Entry $10,000, self coverage → $4,150."""
+    d = compute_us_return([_f("W-2", "US", wages=120000)], 2024,
+                          user_answers={"filing_status": "single", "hsa_contributions": "10000",
+                                        "hsa_coverage": "self", "taxpayer_age": "40"})
+    assert d.line_items["hsa_deduction"] == 4150.0
+
+
 # --- US: qualifying surviving spouse (QSS) is taxed as MFJ, not single ---
 
 def test_us_qss_uses_mfj_standard_deduction_and_brackets():
