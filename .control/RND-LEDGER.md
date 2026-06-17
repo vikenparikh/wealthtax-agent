@@ -2287,3 +2287,24 @@ Conf 90%. Clone of home_buyers/property_tax pattern (cap, lowest-rate, fold into
 volunteer_firefighter_amount/search_rescue_volunteer_amount; 200hr eligibility = filer's responsibility. Suite 1277->1283.
 #146 + #147 both CLEAN and mutually NON-conflicting -> proves the ledger-free process. NOTE: Cycle 151 was honest
 NOTHING-HIGH-VALUE (recorded in memory only); 152=#144 US energy, 153=#145 CA HBA (both already on main).
+
+---
+
+## Cycle 156 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — US §25E Used Clean Vehicle Credit] (PR #149)
+
+MATRIX | add US §25E Used Clean Vehicle Credit (Form 8936) | us_engine had no §25E (grep 0 hits vehicle/25E/30D). Used-EV buyer got $0 (reproduced: used_clean_vehicle_price=20000 left federal_tax unchanged at 5216). §25E = lesser of $4,000 or 30% of sale price, non-refundable no-carryforward, HARD MAGI cliff (no phaseout) $75k single/$112.5k HoH/$150k MFJ. | fail-before: used_clean_vehicle_credit absent -> pass-after: 30% binds ($10k->$3,000); $4,000 cap binds ($20k/$25k->$4,000); MAGI cliff single $80k->$0 (status-keyed, MFJ $80k->$4,000); non-refundable | gated? N | PR #149
+
+Fixed IRA-2022 non-indexed ($4,000/30%/cliffs). Conf 90%. New clean_vehicle config us/{2023,2024,2025}, key used_clean_vehicle_price,
+MAGI=agi+feie (current-year like NIIT/edu), status-keyed cliff, folds into non-refundable assembly by §25D/§25C. §30D rejected
+(battery-sourcing/MSRP complex); educator-expense $300 is indexed (HOLD). LEDGER-FREE PR (process change from cycle 155).
+
+---
+
+## Cycle 157 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — CA Multigenerational Home Renovation Tax Credit (refundable)] (PR #150)
+
+MATRIX | add CA MHRTC (ITA s.122.92, line 45355, eff 2023) | ca_engine had no MHRTC (grep 0 hits). Filer building a secondary unit for a senior/DTC-eligible relative got $0 (reproduced: $50k expenditure -> refund delta $0). REFUNDABLE 15% x up to $50,000 = max $7,500. | fail-before: mhrtc_credit absent -> pass-after: $50k->$7,500 refund rises exactly $7,500; cap $80k->$7,500; partial $20k->$3,000; REFUNDABLE (zero-tax filer refund>=$7,500); non-resident->$0 | gated? N | PR #150
+
+Fixed 15%/$50k non-indexed. Conf 90%. VALUE-WEIGHED: refundable (helps zero-tax filers) + $7,500 + growing demographic. Probe
+REJECTED IN §80CCD(1)-base as marginal (redundant under shared §80CCE ₹1.5L cap). Refundable -> folds at BALANCE line by
+cwb+cpp_ei_overpayment. Table-driven mhrtc block ca/{2023,2024,2025}, key mhrtc_qualifying_expenditure, resident-only (CWB gate).
+LEDGER-FREE PR. Process holding: US#149 + CA#150 zero conflict (jurisdiction rotation). NOTE: Cycle 151 was NOTHING-HIGH-VALUE.
