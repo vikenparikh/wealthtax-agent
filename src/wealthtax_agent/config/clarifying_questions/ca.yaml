@@ -61,3 +61,28 @@ questions:
     why_it_matters: "Determines whether the full or simplified T1135 reporting method applies."
     answer_type: number
     priority: low
+  - id: home_buyers_amount
+    prompt: "If you bought your first home this year, how much of the $10,000 Home Buyers' Amount are you claiming?"
+    why_it_matters: "A first-time home buyer gets a 15% non-refundable credit on up to $10,000 (line 31270, max $1,500)."
+    answer_type: number
+    priority: medium
+  - id: mhrtc_qualifying_expenditure
+    prompt: "Did you build a secondary suite for a senior or disabled relative? If so, what were the eligible renovation costs?"
+    why_it_matters: "The Multigenerational Home Renovation Tax Credit refunds 15% of up to $50,000 (line 45355, max $7,500)."
+    answer_type: number
+    priority: medium
+  - id: security_option_benefit
+    prompt: "Did you exercise employee stock options this year? If so, what was the taxable benefit (T4 box 38)?"
+    why_it_matters: "Half of a qualifying stock-option benefit is deductible (security options deduction, line 24900)."
+    answer_type: number
+    priority: medium
+  - id: volunteer_firefighter_amount
+    prompt: "Were you a volunteer firefighter with 200+ eligible hours? If so, enter $3,000 to claim the amount."
+    why_it_matters: "The Volunteer Firefighters' Amount is a $3,000 fixed amount -> $450 credit (line 31220)."
+    answer_type: number
+    priority: low
+  - id: search_rescue_volunteer_amount
+    prompt: "Were you a search-and-rescue volunteer with 200+ eligible hours (and not claiming the firefighter amount)? If so, enter $3,000."
+    why_it_matters: "The Search and Rescue Volunteers' Amount is a $3,000 fixed amount -> $450 credit (line 31240); you may claim it OR the firefighter amount, not both."
+    answer_type: number
+    priority: low
