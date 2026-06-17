@@ -2433,3 +2433,26 @@ MATRIX | add Yonkers resident surcharge | engine had NY state + NYC but not Yonk
 Table-driven yonkers_resident_surcharge_rate ny/{2023,2024,2025}, gated state=NY + city_of_residence=yonkers. Completes NY local
 tax (state+NYC+Yonkers). ON+QC+NYC+Yonkers all modeled. 7 sweep bug-fixes + 3 features (#156/158/159/160/161/163/166 fixes;
 #165/167 + earlier features).
+
+---
+
+## Cycle 171 — FULL LIFECYCLE (2026-06-16) [BUG FIX — optimize.py RRSP advice re-caps NOA room] (PR #169)
+
+MATRIX | RRSP top-up advice must use full NOA room | _suggest_ca capped contribution at min(rrsp_room, 18%*employment_income). NOA room is the TOTAL deduction limit (carries forward indefinitely, fully deductible); 18% only GENERATES one year of new room, is NOT a usage ceiling. $50k explicit room + $100k income -> advised only $18k. WRONG financial advice on a common path (action steps tell users to enter NOA room). | fail-before: $50k room -> advice $18k / est_savings $5,337 -> pass-after: contribution $50,000 / est_savings ~$14,825 (= 50000*marginal); estimate path (no room, $5k contributed) -> $13,000 unchanged; room<$1,000 -> no suggestion | gated? N | PR #169
+
+FIX: contribution = rrsp_room (18% cap stays on the estimate branch only). First defect in the ADVICE logic, not the tax engine.
+optimize.py otherwise correct (IRA $7k/401k $23k/FHSA $8k/marginal math). projection.py = disclosed "illustrative" (linear growth).
+
+---
+
+## Cycle 172 — NOTHING-HIGH-VALUE / CONVERGED (2026-06-16) [no code PR]
+
+Adversarial sweep of the last unswept correctness-bearing modules — ingest/dedupe.py (income drop/double-count) and PDF
+generation (pdf_fill/build_return) — returned CLEAN. dedupe: killer multi-employer test PASSES (two distinct-employer T4s/W-2s
+with diff amounts both survive; fingerprint = jurisdiction:form:payer:rounded_key_sum disambiguates; true duplicates dropped
+w/ warning). Only degenerate theoretical collisions (identical wages + identical filename + unextracted employer) — not common,
+not shippable; noted defense-in-depth hardening (field-hash) for future, not a bug. PDF: synthetic draft, transmissible=False,
+refund<-line34 / owing<-line37 NOT swapped, reconciles w/ MeF JSON by construction. CONVERGED: tax-correctness vein exhausted
+after 9 sweep bug-fixes (#156/158/159/160/161/163/166/169 + box) + features (energy/HBA/80GGC/volunteer/25E/MHRTC/80ggc/
+stock-option/FTC/121/NYC/Yonkers). Honest NOTHING-HIGH-VALUE. Remaining unswept = clarify.py/explain_return(LLM)/UI = low
+tax-correctness value.
