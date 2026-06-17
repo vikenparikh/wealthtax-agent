@@ -795,7 +795,16 @@ def compute_us_return(
     # source most filers have). Only the Sch A field was read before, so an
     # itemizer who uploaded a W-2 but no Sch A entry lost their state income tax
     # — usually the largest SALT component — from the deduction.
-    state_income_tax_salt = sch_a_state_local if sch_a_state_local > 0 else _sum_field(extracts, "W-2", "state_income_tax")
+    # Precedence: Schedule A > W-2 box 17 > the `state_taxes_paid` answer. The
+    # question is the fallback for a filer with neither form line (e.g. self-
+    # employed paying estimated state tax); using it last avoids double-counting
+    # state tax already reported on a form.
+    _w2_state_tax = _sum_field(extracts, "W-2", "state_income_tax")
+    state_income_tax_salt = (
+        sch_a_state_local if sch_a_state_local > 0
+        else _w2_state_tax if _w2_state_tax > 0
+        else _to_float(user_answers.get("state_taxes_paid", 0))
+    )
     salt_uncapped = state_income_tax_salt + max(0.0, raw_property_tax_us)
     salt_deduction = min(10000.0, salt_uncapped)
     if salt_uncapped > 10000.0:
