@@ -2404,3 +2404,32 @@ finding = a misleading TEST DOCSTRING (not an engine bug) -> NOT shipped (paddin
 state= kwarg, correctly mapped from state_of_residence by reason_tax.py:71/88; NY HoH brackets verified by existing test;
 NOT dropped. VERDICT: engine CONVERGED on common/material correctness. First honest clean bill of health after 6 sweep-fixes
 (#156/#158/#159/#160/#161/#163). No code PR — honest NOTHING-HIGH-VALUE is a valid ledger outcome.
+
+---
+
+## Cycle 168 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — US NYC resident income tax] (PR #165)
+
+MATRIX | add NYC resident income tax (IT-201) | engine computed NY STATE tax but dropped NYC local tax entirely -> every NYC resident (~8M) silently under-charged. NOT in out-of-scope docstring (undisclosed). | fail-before: nyc_local_tax absent -> pass-after: NY single $88k -> NY taxable $80k -> NYC $2,975.97 additive; state tax unchanged; status-keyed; only in NY; city-string variants | gated? N | PR #165
+
+Progressive 3.078-3.876% on NY taxable income, fixed/non-indexed. Table-driven nyc_resident_tax ny/{2023,2024,2025} (3 statuses),
+gated state=NY + city_of_residence in {nyc,new york city,new york}. Reuses city_of_residence input (was IN-only). Found by
+adversarial sweep of §6654/NY-local/HoH-thresholds (all else CORRECT). GOTCHA: us total_tax is in totals not line_items.
+
+---
+
+## Cycle 169 — FULL LIFECYCLE (2026-06-16) [BUG FIX — form-extractor box-label digit collision] (PR #166)
+
+MATRIX | find_box_amount grabs label digits | prefix [^0-9]* stops at first digit -> "Box 5 Section 199A dividends 4000.00" captures "199" from "199A" not 4000 -> §199A QBI deduction on $199 stub -> OVERSTATES tax. §199A = only box label w/ digits. Repro: $40k REIT slip -> federal tax $5,211.22 vs correct $4,256.00 ($955 overcharge). | fail-before: box5 -> 199.0 -> pass-after: 4000.0; extractor reads $4,000; plain labels + genuine $199 unchanged | gated? N | PR #166
+
+FIX: gap = (?:[^0-9]|[0-9]+[A-Za-z])* skips digit-runs that are part of a word. forms/_helpers.py (backs every box extractor;
+no regression). Found by adversarial audit of ALL extractors (every other box->field map VERIFIED CORRECT).
+
+---
+
+## Cycle 170 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — US Yonkers resident surcharge] (PR #167)
+
+MATRIX | add Yonkers resident surcharge | engine had NY state + NYC but not Yonkers -> Yonkers residents under-charged. 16.75% of net NY state tax (IT-201-ATT, fixed). | fail-before: yonkers_surcharge absent -> pass-after: NY single $88k -> state $4,235 -> Yonkers $709.36 additive; NYC $0 (mutually exclusive); non-Yonkers/non-NY -> $0; string variants | gated? N | PR #167
+
+Table-driven yonkers_resident_surcharge_rate ny/{2023,2024,2025}, gated state=NY + city_of_residence=yonkers. Completes NY local
+tax (state+NYC+Yonkers). ON+QC+NYC+Yonkers all modeled. 7 sweep bug-fixes + 3 features (#156/158/159/160/161/163/166 fixes;
+#165/167 + earlier features).
