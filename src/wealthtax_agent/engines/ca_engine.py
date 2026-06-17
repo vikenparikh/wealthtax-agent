@@ -451,6 +451,9 @@ def compute_ca_return(
     )
     federal_dtc = _federal_dtc(taxable_eligible, taxable_non_eligible, fed_tables)
     federal_tax = max(0.0, federal_tax_before_credits - fed_non_refundable - federal_dtc)
+    # Basic federal tax = tax after non-refundable credits + DTC, BEFORE the OAS
+    # recovery tax. This is the base for the Quebec abatement below.
+    basic_federal_tax = federal_tax
 
     # OAS clawback (recovery tax) — 15% of net income above the year's threshold.
     # The threshold is indexed annually (2023 $86,912; 2024 $90,997; 2025 $93,454),
@@ -470,6 +473,20 @@ def compute_ca_return(
         notes.append(f"OAS recovery tax (clawback): net income > ${oas_threshold:,.0f}; added ${clawback:,.0f}.")
     else:
         clawback = 0.0
+
+    # Federal Quebec abatement (ITA §120(2), T1 line 44000): a Quebec resident on
+    # Dec 31 reduces federal tax by 16.5% of BASIC federal tax (a refundable
+    # abatement, because Quebec administers programs the federal government funds
+    # elsewhere). The base excludes the OAS recovery tax (line 44000 keys off basic
+    # federal tax, line 42900). The 16.5% rate is long-standing and non-indexed.
+    quebec_abatement = 0.0
+    if province.upper() == "QC" and residency_status == "resident":
+        abate_rate = float(fed_tables.get("quebec_abatement_rate", 0.165))
+        quebec_abatement = round(basic_federal_tax * abate_rate, 2)
+        federal_tax = round(max(0.0, federal_tax - quebec_abatement), 2)
+        notes.append(
+            f"Quebec abatement (line 44000): federal tax reduced by 16.5% = ${quebec_abatement:,.2f}."
+        )
 
     provincial_tax_before_credits = compute_progressive_tax(taxable_income, prov_tables.get("brackets", []))
     prov_bpa = float(prov_tables.get("basic_personal_amount", 0))
@@ -663,6 +680,7 @@ def compute_ca_return(
         "federal_tax_before_credits": federal_tax_before_credits,
         "federal_non_refundable_credits": fed_non_refundable,
         "federal_dividend_tax_credit": federal_dtc,
+        "quebec_abatement": quebec_abatement,
         "federal_tax": federal_tax,
         "provincial_tax_before_credits": provincial_tax_before_credits,
         "provincial_non_refundable_credits": prov_non_refundable,
