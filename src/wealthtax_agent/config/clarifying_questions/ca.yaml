@@ -96,3 +96,33 @@ questions:
     why_it_matters: "The Search and Rescue Volunteers' Amount is a $3,000 fixed amount -> $450 credit (line 31240); you may claim it OR the firefighter amount, not both."
     answer_type: number
     priority: low
+  - id: student_loan_interest_ca
+    prompt: "How much interest did you pay on a Canada Student Loan (or provincial equivalent) this year?"
+    why_it_matters: "Interest on a government student loan is a non-refundable credit (line 31900)."
+    answer_type: number
+    priority: medium
+  - id: charitable_donations
+    prompt: "How much did you donate to registered charities (amounts not already on a slip)?"
+    why_it_matters: "Charitable donations fund the donations tax credit (line 34900)."
+    answer_type: number
+    priority: medium
+  - id: property_tax_paid
+    prompt: "How much property tax did you pay on your principal residence this year?"
+    why_it_matters: "Property tax paid feeds benefits like the Ontario Trillium Benefit (line 61120)."
+    answer_type: number
+    priority: medium
+  - id: taxpayer_age
+    prompt: "How old were you at the end of the tax year?"
+    why_it_matters: "The Canada Workers Benefit requires you to be 19 or older at year end."
+    answer_type: number
+    priority: medium
+  - id: full_time_student
+    prompt: "Were you a full-time student for more than 13 weeks this year?"
+    why_it_matters: "Full-time students are generally disqualified from the Canada Workers Benefit."
+    answer_type: yes_no
+    priority: medium
+  - id: has_spouse_or_dependant
+    prompt: "Do you have an eligible spouse or dependant?"
+    why_it_matters: "Having an eligible spouse or dependant unlocks the higher family rate of the Canada Workers Benefit."
+    answer_type: yes_no
+    priority: medium
