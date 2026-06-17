@@ -57,3 +57,35 @@ def test_non_numeric_foreign_inputs_tolerated():
     d = compute_us_return(_w2(), 2024, user_answers={
         "foreign_source_income": "lots", "foreign_tax_paid": "some"})
     assert d.line_items.get("foreign_tax_credit", 0.0) == 0.0
+
+
+def _foreign_heavy():
+    # 60k foreign wages + a US capital loss -> total taxable income falls BELOW
+    # the foreign-source component, so the naive §904 ratio exceeds 1.0.
+    return [
+        FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 60000.0}),
+        FormExtract(form_code="SCH-D", jurisdiction="US", fields={"net_long_term_capital_gain": -3000.0}),
+    ]
+
+
+def test_section_904_limit_never_exceeds_total_us_tax():
+    # §904 ratio (foreign / total taxable) cannot exceed 1.0: the foreign component
+    # is a subset of total taxable income, so the limit caps at the full US tax.
+    ext = _foreign_heavy()
+    pre_credit_tax = compute_us_return(ext, 2024, user_answers={}).line_items["federal_tax"]  # 4856, no other credits
+    d = compute_us_return(ext, 2024, user_answers={
+        "foreign_source_income": "50000", "foreign_tax_paid": "9000"})
+    # FTC must not exceed the total US tax (was $5,726.42 before the clamp).
+    assert d.line_items["foreign_tax_credit"] == pre_credit_tax
+    assert d.line_items["foreign_tax_credit"] <= pre_credit_tax
+    assert d.line_items["federal_tax"] == 0.0
+
+
+def test_section_904_carryforward_note_uses_clamped_excess():
+    ext = _foreign_heavy()
+    pre_credit_tax = compute_us_return(ext, 2024, user_answers={}).line_items["federal_tax"]
+    d = compute_us_return(ext, 2024, user_answers={
+        "foreign_source_income": "50000", "foreign_tax_paid": "9000"})
+    # The disallowed (carryforward) excess is foreign_tax - clamped_limit = 9000 - 4856.
+    expected_excess = round(9000.0 - pre_credit_tax, 2)
+    assert any(f"${expected_excess:,.2f} of foreign tax exceeds" in n for n in d.notes)

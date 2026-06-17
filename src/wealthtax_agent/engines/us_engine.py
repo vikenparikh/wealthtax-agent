@@ -1029,7 +1029,14 @@ def compute_us_return(
     foreign_tax_paid = _to_float(user_answers.get("foreign_tax_paid", 0))
     ftc = 0.0
     if foreign_source_income > 0 and foreign_tax_paid > 0 and taxable_income > 0:
-        ftc_limit = round(federal_tax_before_credits * (foreign_source_income / taxable_income), 2)
+        # The §904 ratio cannot exceed 1.0 — foreign-source taxable income is a
+        # subset of total taxable income — so the limit caps at the full US tax.
+        # A US-source loss can shrink total taxable income below the foreign
+        # component (ratio > 1); without this clamp the limit would exceed the
+        # entire US tax liability and over-state both the credit and the
+        # carryforward-eligible excess.
+        ftc_ratio = min(1.0, foreign_source_income / taxable_income)
+        ftc_limit = round(federal_tax_before_credits * ftc_ratio, 2)
         ftc = round(min(foreign_tax_paid, ftc_limit), 2)
         if ftc > 0:
             notes.append(
