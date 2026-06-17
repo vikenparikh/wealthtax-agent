@@ -679,11 +679,25 @@ def compute_us_return(
     short_gain, long_gain, ordinary_offset, capital_loss_carryover = _net_capital_gains(
         short_gain, long_gain, prior_capital_losses, status
     )
-    if capital_loss_carryover > 0:
-        total_net_loss = ordinary_offset + capital_loss_carryover
+    # §121 principal-residence gain exclusion: up to $250,000 ($500,000 MFJ) of
+    # gain on the sale of a main home is excluded from income. Fixed/non-indexed
+    # since 1997. Subtracting it from long_gain here — after netting, before it
+    # enters AGI — flows correctly everywhere downstream: the preferential-rate
+    # tax, the NIIT base, and NIIT MAGI all read this reduced long_gain, so the
+    # excluded gain leaves income and net investment income in one step. The
+    # excluded amount is capped at the long-term gain actually present (the filer
+    # reports the home-sale gain within their LTCG and asserts how much qualifies).
+    # v1: the 2-of-5-year ownership/use test, §121(c) partial exclusion, §121(b)(5)
+    # non-qualified use, and §1250 depreciation recapture are the filer's
+    # responsibility / not modelled.
+    _sec121_cap = 500000.0 if status == "married_filing_jointly" else 250000.0
+    _pr_gain = _to_float(user_answers.get("principal_residence_gain", 0))
+    section_121_exclusion = min(max(0.0, _pr_gain), _sec121_cap, max(0.0, long_gain))
+    if section_121_exclusion > 0:
+        long_gain = round(long_gain - section_121_exclusion, 2)
         notes.append(
-            f"Net capital loss of ${total_net_loss:,.0f} exceeds the $3,000 annual limit; "
-            f"${ordinary_offset:,.0f} deducted this year, ${capital_loss_carryover:,.0f} carries forward."
+            f"§121 principal-residence exclusion of ${section_121_exclusion:,.2f} applied "
+            "(filer-asserted eligibility; 2-of-5-year ownership/use test not verified)."
         )
 
     # All income other than Social Security. The taxable portion of SS depends
@@ -1202,6 +1216,7 @@ def compute_us_return(
         "qualified_dividends": qualified_dividends,
         "short_term_capital_gain": short_gain,
         "long_term_capital_gain": long_gain,
+        "section_121_exclusion": section_121_exclusion,
         "capital_loss_ordinary_offset": ordinary_offset,
         "capital_loss_carryover": capital_loss_carryover,
         "self_employment_income": self_employment_income,
