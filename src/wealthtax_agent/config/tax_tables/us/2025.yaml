@@ -77,6 +77,13 @@ residential_energy:
   efficient_rate: 0.30           # §25C efficient home improvement
   efficient_general_cap: 1200    # §25C general annual aggregate cap
   efficient_heat_pump_cap: 2000  # §25C separate annual cap: heat pumps / HP water heaters / biomass
+# Form 8936 §25E Used Clean Vehicle Credit — fixed-statutory (IRA-2022, non-indexed through 2032).
+clean_vehicle:
+  used_max_credit: 4000                       # §25E cap
+  used_credit_rate: 0.30                      # 30% of sale price
+  used_magi_cap_single: 75000                 # hard MAGI cliff (no phase-out)
+  used_magi_cap_head_of_household: 112500
+  used_magi_cap_married_filing_jointly: 150000
 amt:
   exemption:
     single: 88100
