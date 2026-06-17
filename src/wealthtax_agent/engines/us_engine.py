@@ -840,7 +840,13 @@ def compute_us_return(
     # = net long-term capital gain + qualified dividends. Omitting that
     # subtraction overstates the deduction for taxpayers with preferential
     # income. (Wage/UBIA limits and the SSTB phase-out are not modelled.)
-    qbi_eligible = max(0.0, sch_c_profit + nec + k1_business)
+    # §1.199A-3(b)(1)(vi): business QBI is net of the deductions attributable to
+    # the trade or business — the deductible 1/2 of SE tax (§164(f)) and the SE
+    # health-insurance deduction (§162(l)), both already computed above. (SE
+    # retirement / SEP-IRA contributions would also reduce QBI but aren't modelled
+    # as a separate line yet.) REIT dividends below are NOT SE income, so they are
+    # not reduced.
+    qbi_eligible = max(0.0, sch_c_profit + nec + k1_business - se_tax_deduction - se_health_deduction)
     # 1099-DIV box 5: §199A REIT dividends (and qualified PTP income) get the 20%
     # QBI deduction too, but — unlike business QBI — they are NOT subject to the
     # W-2/UBIA wage limit. This engine doesn't model that wage limit, so REIT

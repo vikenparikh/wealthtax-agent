@@ -462,3 +462,29 @@ def test_ss_provisional_income_includes_tax_exempt_interest():
     assert draft.line_items["taxable_social_security"] == 9600.0
     # the muni interest itself is NOT added to taxable income
     assert draft.line_items["interest_income"] == 0.0
+
+
+def test_qbi_base_reduced_by_se_tax_deduction():
+    """§199A QBI must be net of the deductible 1/2 SE tax (Treas. Reg.
+    1.199A-3(b)(1)(vi)). For a high-wage + side-business filer the 20%-of-taxable-
+    income limit does NOT bind, so the SE-tax reduction drives the result. Was
+    overstated as 20% of GROSS NEC."""
+    extracts = [
+        FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 100000.0}),
+        FormExtract(form_code="1099-NEC", jurisdiction="US", fields={"nonemployee_compensation": 30000.0}),
+    ]
+    d = compute_us_return(extracts, 2024, user_answers={"filing_status": "single"})
+    # QBI base = 30,000 - se_tax_deduction(2,119.43) = 27,880.57; x 20% = 5,576.11.
+    assert d.line_items["qbi_deduction"] == 5576.11
+
+
+def test_qbi_base_also_reduced_by_se_health_insurance():
+    extracts = [
+        FormExtract(form_code="W-2", jurisdiction="US", fields={"wages": 100000.0}),
+        FormExtract(form_code="1099-NEC", jurisdiction="US", fields={"nonemployee_compensation": 30000.0}),
+    ]
+    base = compute_us_return(extracts, 2024, user_answers={"filing_status": "single"})
+    with_health = compute_us_return(extracts, 2024, user_answers={
+        "filing_status": "single", "self_employed_health_insurance": "4000"})
+    # The SE health-insurance deduction further reduces the QBI base -> smaller QBI deduction.
+    assert with_health.line_items["qbi_deduction"] < base.line_items["qbi_deduction"]
