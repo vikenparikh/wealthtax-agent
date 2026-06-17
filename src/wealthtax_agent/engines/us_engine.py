@@ -1130,6 +1130,7 @@ def compute_us_return(
     # State tax
     state_tax = 0.0
     nyc_local_tax = 0.0
+    yonkers_surcharge = 0.0
     state_breakdown = {}
     if state_tables:
         # Use the filer's own status for the state schedule, falling back to single
@@ -1155,8 +1156,7 @@ def compute_us_return(
         # a progressive local tax (3.078%-3.876%, fixed/non-indexed) on the SAME NY
         # taxable income, ON TOP of NY state tax. Table-driven and self-gating —
         # only NY's table carries `nyc_resident_tax`, and it applies only when the
-        # filer declares NYC residence. (Yonkers' resident surcharge is a separate
-        # follow-up.)
+        # filer declares NYC residence. Yonkers (below) is the sibling local tax.
         _city = (user_answers.get("city_of_residence") or "").strip().lower()
         _nyc_cfg = state_tables.get("nyc_resident_tax", {})
         if _nyc_cfg and _city in {"nyc", "new york city", "new york"}:
@@ -1168,15 +1168,27 @@ def compute_us_return(
                     f"New York City resident income tax of ${nyc_local_tax:,.2f} "
                     "(IT-201) applied on top of New York State tax."
                 )
+        # Yonkers resident income tax surcharge (IT-201-ATT): 16.75% of net NY
+        # State tax. Fixed/non-indexed. A Yonkers resident is not a NYC resident,
+        # so the two are mutually exclusive by city.
+        _yonkers_rate = float(state_tables.get("yonkers_resident_surcharge_rate", 0.0))
+        if _yonkers_rate > 0 and _city == "yonkers":
+            yonkers_surcharge = round(state_tax * _yonkers_rate, 2)
+            if yonkers_surcharge > 0:
+                notes.append(
+                    f"Yonkers resident surcharge of ${yonkers_surcharge:,.2f} "
+                    "(16.75% of New York State tax) applied."
+                )
         state_breakdown = {
             "state_taxable_income": st_taxable,
             "state_standard_deduction": st_std,
             "state_mental_health_surcharge": state_mhs,
             "state_tax": state_tax,
             "nyc_local_tax": nyc_local_tax,
+            "yonkers_surcharge": yonkers_surcharge,
         }
 
-    total_tax = round(federal_tax + state_tax + nyc_local_tax + se_tax, 2)
+    total_tax = round(federal_tax + state_tax + nyc_local_tax + yonkers_surcharge + se_tax, 2)
 
     # Excess Social Security tax: a filer with 2+ employers whose combined SS
     # wages exceed the wage base over-withholds SS tax; the excess is a
