@@ -2486,3 +2486,22 @@ modeled path: SALT still from W-2 box17/Sch-A; itemize auto-optimized). Wiring=s
 shipped (no padding). Remaining IN/CA income-input keys are form-sourced (AIS/26AS/Form-16A), not question-appropriate. Honest
 NOTHING-HIGH-VALUE. Engine is complete on all material correctness + reachability. Future work needs a NEW requirement
 (new-year tables / new jurisdiction / reported defect).
+
+---
+
+## Cycle 178 — FULL LIFECYCLE (2026-06-16) [BUG FIX — SALT drops the state_taxes_paid question] (PR #176)
+
+MATRIX | SALT must honour state income tax from the state_taxes_paid question | SALT read state income tax only from Sch-A.state_local_taxes OR W-2 box17 — never the state_taxes_paid clarifying question (asked but unread = orphan). A filer paying state tax w/o either form line (self-employed paying ESTIMATED state tax) entered the amount and had it SILENTLY DROPPED, overstating federal tax. | fail-before: itemizer ($150k+$25k mortgage) state_taxes_paid=$8,000 -> SALT $0 / $0 benefit -> pass-after: SALT $8,000, tax lower; cap binds ($9k+$5k prop -> $10k); W-2 box17 precedence (no double-count); no tax -> $0 | gated? N | PR #176
+
+FIX: state_income_tax_salt = Sch-A > W-2 box17 > state_taxes_paid question (form precedence). Resolves an orphan question.
+MIRROR-VALUE of the reachability vein: a tax-RELEVANT question read nowhere = dropped user input = real bug.
+
+## Cycle 179 — NOTHING-HIGH-VALUE / CONVERGED (2026-06-16) [no code PR]
+
+Examined the 5 REMAINING orphan clarify questions for state_taxes_paid-style dropped-input bugs: ALL need NEW FEATURES, not
+clean wirings -> NOT shippable. spouse_income (CA engine EXPLICITLY discloses "spousal income is not modelled" in the CWB note);
+roth_conversion (needs modeling conversion as taxable income); fhsa_room_remaining (FHSA optimization feature); marital_status
+(CA redundant w/ has_spouse_or_dependant); dependents (CA dependant-credit feature). All speculative/requirement-less or
+disclosed. Honest NOTHING-HIGH-VALUE. ENGINE NOW FULLY CONVERGED: tax-compute correct + features reachable + dropped tax-inputs
+wired across CA/US/IN (fed + state/provincial + NYC/Yonkers local). Future high-value work requires a NEW REQUIREMENT
+(new-year published tables / new jurisdiction / reported defect / new product direction). No padding.
