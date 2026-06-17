@@ -533,13 +533,30 @@ def compute_ca_return(
                 if province.upper() in {"AB", "QC", "NU"}:
                     notes.append(f"{province.upper()} uses a CWB reconfiguration; the federal estimate may differ.")
 
+    # Multigenerational Home Renovation Tax Credit (MHRTC, s.122.92, line 45355):
+    # a REFUNDABLE 15% credit on up to $50,000 of expenditure to build a secondary
+    # self-contained unit for a senior (65+) or DTC-eligible adult relative -> max
+    # $7,500. The 15% rate and $50,000 cap are fixed (non-indexed). Refundable, so
+    # it folds at the balance line like CWB / the CPP-EI overpayment, paying out
+    # even when there is no tax. Resident-only (mirrors the CWB gate). Years without
+    # an mhrtc table (pre-2023) yield $0. The renovation's eligibility is the
+    # filer's asserted responsibility.
+    mhrtc = 0.0
+    mhrtc_tbl = fed_tables.get("mhrtc", {})
+    raw_mhrtc_expenditure = _to_float(user_answers.get("mhrtc_qualifying_expenditure", 0))
+    if mhrtc_tbl and residency_status == "resident" and raw_mhrtc_expenditure > 0:
+        eligible = min(max(0.0, raw_mhrtc_expenditure), float(mhrtc_tbl.get("expenditure_cap", 50000)))
+        mhrtc = round(eligible * float(mhrtc_tbl.get("rate", 0.15)), 2)
+        if mhrtc > 0:
+            notes.append(f"Multigenerational Home Renovation Tax Credit (refundable, line 45355) of ${mhrtc:,.2f} credited as a payment.")
+
     total_tax = round(federal_tax + provincial_tax, 2)
     if cpp_ei_overpayment > 0:
         notes.append(
             f"Excess CPP/EI of ${cpp_ei_overpayment:,.2f} from multiple employers "
             "is refunded as an overpayment (T1 lines 44800 / 45000)."
         )
-    balance = round(total_tax - fed_tax_withheld - cwb - cpp_ei_overpayment, 2)
+    balance = round(total_tax - fed_tax_withheld - cwb - cpp_ei_overpayment - mhrtc, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
@@ -568,6 +585,8 @@ def compute_ca_return(
         "home_buyers_credit": home_buyers_credit,
         "volunteer_amount_eligible": volunteer_amount_eligible,
         "volunteer_amount_credit": volunteer_amount_credit,
+        "mhrtc_qualifying_expenditure": raw_mhrtc_expenditure,
+        "mhrtc_credit": mhrtc,
         "eligible_tuition_fees": tuition_fees,
         "tuition_credit": tuition_credit,
         "interest_income": interest_income,

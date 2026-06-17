@@ -36,3 +36,9 @@ age_amount:
   maximum: 9028
   net_income_threshold: 45522
   reduction_rate: 0.15
+
+# Multigenerational Home Renovation Tax Credit (MHRTC, s.122.92, line 45355) —
+# refundable, fixed non-indexed (effective 2023).
+mhrtc:
+  rate: 0.15
+  expenditure_cap: 50000
