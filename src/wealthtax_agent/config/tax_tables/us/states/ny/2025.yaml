@@ -60,3 +60,7 @@ nyc_resident_tax:
       - {up_to: 30000, rate: 0.03762}
       - {up_to: 60000, rate: 0.03819}
       - {up_to: null,  rate: 0.03876}
+
+# Yonkers resident income tax surcharge: 16.75% of net New York State tax
+# (IT-201-ATT). Fixed/non-indexed.
+yonkers_resident_surcharge_rate: 0.1675
