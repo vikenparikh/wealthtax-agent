@@ -2308,3 +2308,26 @@ Fixed 15%/$50k non-indexed. Conf 90%. VALUE-WEIGHED: refundable (helps zero-tax 
 REJECTED IN §80CCD(1)-base as marginal (redundant under shared §80CCE ₹1.5L cap). Refundable -> folds at BALANCE line by
 cwb+cpp_ei_overpayment. Table-driven mhrtc block ca/{2023,2024,2025}, key mhrtc_qualifying_expenditure, resident-only (CWB gate).
 LEDGER-FREE PR. Process holding: US#149 + CA#150 zero conflict (jurisdiction rotation). NOTE: Cycle 151 was NOTHING-HIGH-VALUE.
+
+---
+
+## Cycle 158 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — CA Security Options Deduction] (PR #152)
+
+MATRIX | add CA Security Options Deduction (line 24900, ITA s.110(1)(d)) | ca_engine never applied the stock-option deduction (grep 0 hits stock_option/110(1)/24900). The benefit (T4 box 38) is in employment income but the whole thing was taxed instead of half (reproduced: security_option_benefit=40000 -> $0 change). | fail-before: stock_option_deduction absent -> pass-after: $40k benefit -> $20k deduction (50%), net_income falls exactly $20k, tax strictly lower; partial $10k->$5k; no input->$0; non-numeric tolerated (no crash) | gated? N | PR #152
+
+Flat 50% rate (non-indexed). Conf 88% ($200k large-employer vesting cap = filer's responsibility, not modelled). HIGHEST-
+commonness candidate from the convergence sweep (equity comp ubiquitous; app's cross-border wheelhouse). Key
+security_option_benefit, deduction=50%xbenefit subtracted in net_income assembly. GOTCHA: net_income is in totals dict not
+line_items. Ledger-free PR. Probe rejected US §121 (then)/FTC-1116 as larger non-fixed-param builds (now being built).
+
+---
+
+## Cycle 159 — FULL LIFECYCLE (2026-06-16) [BIGGEST-VALUE FEATURE — US Foreign Tax Credit (Form 1116, §904)] (PR #153)
+
+MATRIX | add US Foreign Tax Credit with §904 limitation | us_engine had NO FTC — only advisory strings in cross_border.py foreign_tax_credit_hint() (credits $0). Cross-border filer fully DOUBLE-TAXED (reproduced: $30k foreign-source + $9k foreign tax -> US tax unchanged $18,338.50). | fail-before: foreign_tax_credit absent, tax unchanged -> pass-after: below limit $2k credited full (tax -$2k); §904 limit BINDS $9k->capped $5,219.69 (=18338.50x30000/105400); zero foreign income->$0; non-refundable floor; non-numeric tolerated | gated? N | PR #153
+
+§904 limitation FTC=min(foreign_tax_paid, federal_tax_before_credits x foreign_source_income/taxable_income), non-refundable,
+subtracted in credit assembly. Keys foreign_source_income/foreign_tax_paid. v1: single-basket, current-year (no §904(c)
+carryforward — excess lost+noted), trusts apportionment, FEIE-interaction flagged. Conf 90% (ratio unambiguous). The session's
+highest-value feature — THE anti-double-taxation mechanism for the app's core CA/US/IN cross-border purpose. Stepped UP from
+fixed-param credit-tweaks to a real statutory COMPUTATION. Ledger-free PR.
