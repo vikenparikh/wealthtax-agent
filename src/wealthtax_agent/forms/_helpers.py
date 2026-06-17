@@ -37,9 +37,14 @@ def find_box_amount(text: str, box_label: str) -> Optional[float]:
     """Look for 'Box <label>' or '<label>:' style markers and return the
     nearest number on the same line.
     """
+    # Between the box marker and its amount, skip not only non-digits but also
+    # digit-runs that are part of a WORD (e.g. the "199" in a "Section 199A
+    # dividends" label) — otherwise the amount capture stops on those label
+    # digits and returns a stub (199) instead of the real money figure.
+    _gap = r"(?:[^0-9]|[0-9]+[A-Za-z])*"
     patterns = [
-        rf"box\s*{re.escape(box_label)}\b[^0-9]*({_NUMBER_RE})",
-        rf"\b{re.escape(box_label)}\b[^0-9]*({_NUMBER_RE})",
+        rf"box\s*{re.escape(box_label)}\b{_gap}({_NUMBER_RE})",
+        rf"\b{re.escape(box_label)}\b{_gap}({_NUMBER_RE})",
     ]
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
