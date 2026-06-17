@@ -1129,6 +1129,7 @@ def compute_us_return(
 
     # State tax
     state_tax = 0.0
+    nyc_local_tax = 0.0
     state_breakdown = {}
     if state_tables:
         # Use the filer's own status for the state schedule, falling back to single
@@ -1150,14 +1151,32 @@ def compute_us_return(
         _mhs_cfg = state_tables.get("mental_health_surcharge", {})
         state_mhs = round(float(_mhs_cfg.get("rate", 0.0)) * max(0.0, st_taxable - float(_mhs_cfg.get("threshold", 0.0))), 2)
         state_tax = round(state_tax + state_mhs, 2)
+        # New York City resident personal income tax (IT-201): a NYC resident pays
+        # a progressive local tax (3.078%-3.876%, fixed/non-indexed) on the SAME NY
+        # taxable income, ON TOP of NY state tax. Table-driven and self-gating —
+        # only NY's table carries `nyc_resident_tax`, and it applies only when the
+        # filer declares NYC residence. (Yonkers' resident surcharge is a separate
+        # follow-up.)
+        _city = (user_answers.get("city_of_residence") or "").strip().lower()
+        _nyc_cfg = state_tables.get("nyc_resident_tax", {})
+        if _nyc_cfg and _city in {"nyc", "new york city", "new york"}:
+            _nyc_bbs = _nyc_cfg.get("brackets_by_status", {})
+            _nyc_brackets = _nyc_bbs.get(st_status) or _nyc_bbs.get("single", [])
+            nyc_local_tax = round(compute_progressive_tax(st_taxable, _nyc_brackets), 2)
+            if nyc_local_tax > 0:
+                notes.append(
+                    f"New York City resident income tax of ${nyc_local_tax:,.2f} "
+                    "(IT-201) applied on top of New York State tax."
+                )
         state_breakdown = {
             "state_taxable_income": st_taxable,
             "state_standard_deduction": st_std,
             "state_mental_health_surcharge": state_mhs,
             "state_tax": state_tax,
+            "nyc_local_tax": nyc_local_tax,
         }
 
-    total_tax = round(federal_tax + state_tax + se_tax, 2)
+    total_tax = round(federal_tax + state_tax + nyc_local_tax + se_tax, 2)
 
     # Excess Social Security tax: a filer with 2+ employers whose combined SS
     # wages exceed the wage base over-withholds SS tax; the excess is a
