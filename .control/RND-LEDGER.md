@@ -2352,3 +2352,32 @@ MATRIX | clamp §904 FTC ratio to 1.0 | the §904 limit (shipped #153) computed 
 One-line fix ftc_ratio=min(1.0, ratio). Found by ADVERSARIAL CORRECTNESS SWEEP of the session's features. Angle A other items
 ALL CLEAN (§121, §25E cliff, stock-option net_income floor, MHRTC). Angle B CONVERGED (remaining items niche). VERDICT: feature
 + fixed-param veins converged; going forward = adversarial-correctness sweeps of shipped/core work + honest NOTHING-HIGH-VALUE.
+
+---
+
+## Cycle 163 — FULL LIFECYCLE (2026-06-16) [BUG FIX — CA Ontario provincial surtax] (PR #159)
+
+MATRIX | apply Ontario surtax (ON428) | ca_engine stopped at basic provincial tax — no surtax. Every meaningful-income ON filer (DEFAULT province) under-taxed; flows into NETFILE artifact. Undisclosed. Repro: $120k ON 2024 -> provincial_tax $8,588.39 vs correct $9,728.21 (surtax $1,139.82 missing, ~13%). | fail-before: ON $120k no surtax -> pass-after: provincial_surtax 1139.82, provincial_tax 9728.21; $60k below threshold -> 0; AB no surtax table unchanged | gated? N | PR #159
+
+ON surtax = 20% over T1 + 36% over T2 (separate tiers, CUMULATIVE). Table-driven surtax stage after credit assembly; config
+on/2023 ($5,315/$6,802) + on/2024 ($5,554/$7,108) CONFIRMED CRA. 2025 (indexed, unconfirmed) + OHP deferred. CAUGHT PROBE
+ERROR: probe used 16% for tier-2 -> $843.74 WRONG; recomputed from statute. Found by adversarial sweep of CA provincial.
+
+---
+
+## Cycle 164 — FULL LIFECYCLE (2026-06-16) [BUG FIX — IN §87A rebate ignores capital gains] (PR #160)
+
+MATRIX | §87A rebate eligibility must use total income incl capital gains | §87A gated on slab_income only, NOT total income per §2(45) (incl special-rate CG). Salaried filer with big equity/property gain slips under ₹7L(new)/₹5L(old) -> slab tax wrongly rebated. BOTH regimes, undisclosed, common. Repro: salary ₹6.5L + ₹10L LTCG-other -> engine rebate ₹20k tax ₹2,08,000 vs correct rebate 0 tax ₹2,28,800 (under ₹20,800). | fail-before both regimes rebate granted -> pass-after: new rebate 0 tax ₹2,28,800; old rebate 0 tax ₹1,57,560; salary-only ₹5L rebate ₹10k tax 0; boundary total exactly ₹7L allowed | gated? N | PR #160
+
+total_income_for_87a = total_income + stcg_equity_total + ltcg_equity_taxable(post-exemption) + ltcg_other_total; gate if +
+marginal-relief elif + NR-note. Rebate AMOUNT stays min(slab_tax,max_credit). Found by adversarial sweep of IN engine.
+
+---
+
+## Cycle 165 — FULL LIFECYCLE (2026-06-16) [BUG FIX — CA Ontario Health Premium] (PR #161)
+
+MATRIX | apply Ontario Health Premium (ON428) | OHP (premium on taxable income, up to $900, part of ON tax payable) not modelled -> every ON filer >$20k taxable under-charged $300-900. Fixed non-indexed since 2004. Deferred from #159. | fail-before: ohp absent + surtax tests asserted pre-OHP provincial_tax -> pass-after: schedule boundaries 25k->300/36k->300/48k->450/48.6k->600/72.6k->750/200.6k->900; folds into provincial_tax; AB->0 | gated? N | PR #161
+
+Modelled as SUM OF CAPPED RAMPS: sum(min(cap, rate*max(0,TI-over))) over [20k/.06/300, 36k/.06/150, 48k/.25/150, 72k/.25/150,
+200k/.25/150]. Config on/{2023,2024,2025} identical (non-indexed). Updated 2 surtax tests for new provincial_tax. ON now
+COMPLETE (fed+prov brackets+surtax+OHP). 5 adversarial-sweep bugs/gaps in 5 cycles (#156/#158/#159/#160/#161).
