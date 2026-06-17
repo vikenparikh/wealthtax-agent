@@ -15,3 +15,10 @@ donation_credit_high_rate: 0.1116
 dividend:
   eligible: 0.10
   non_eligible: 0.029863
+
+# Ontario surtax (ON428): 20% over the first threshold + 36% over the second,
+# on basic provincial tax after non-refundable credits. Rates fixed; thresholds
+# indexed (2024 values).
+surtax:
+  - {threshold: 5554, rate: 0.20}
+  - {threshold: 7108, rate: 0.36}

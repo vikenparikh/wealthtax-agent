@@ -14,3 +14,8 @@ donation_credit_high_rate: 0.1116
 dividend:
   eligible: 0.10
   non_eligible: 0.029863
+
+# Ontario surtax (ON428) — 2023 thresholds.
+surtax:
+  - {threshold: 5315, rate: 0.20}
+  - {threshold: 6802, rate: 0.36}

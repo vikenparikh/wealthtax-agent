@@ -510,6 +510,19 @@ def compute_ca_return(
     prov_dtc = _province_dtc(taxable_eligible, taxable_non_eligible, prov_tables)
     provincial_tax = max(0.0, provincial_tax_before_credits - prov_non_refundable - prov_dtc)
 
+    # Provincial surtax (e.g. Ontario ON428): a surtax levied on basic provincial
+    # tax AFTER non-refundable credits — each tier adds rate × the excess over its
+    # threshold (Ontario: 20% over the first + 36% over the second, cumulative).
+    # Table-driven, so provinces/years without a surtax table are unaffected
+    # (zero regression for AB/BC/QC and years pending confirmed thresholds).
+    provincial_surtax = round(sum(
+        float(tier.get("rate", 0)) * max(0.0, provincial_tax - float(tier.get("threshold", 0)))
+        for tier in prov_tables.get("surtax", [])
+    ), 2)
+    provincial_tax = round(provincial_tax + provincial_surtax, 2)
+    if provincial_surtax > 0:
+        notes.append(f"{province.upper()} provincial surtax of ${provincial_surtax:,.2f} applied.")
+
     # Pension income splitting with spouse (line 21000 / 11600 reciprocal)
     pension_split_pct = _to_float(user_answers.get("pension_split_pct", 0))
     if pension_split_pct > 0 and eligible_pension > 0:
@@ -645,6 +658,7 @@ def compute_ca_return(
         "provincial_medical_credit": medical_credit_prov,
         "provincial_donations_credit": donations_credit_prov,
         "provincial_dividend_tax_credit": prov_dtc,
+        "provincial_surtax": provincial_surtax,
         "provincial_tax": provincial_tax,
         "tax_withheld": fed_tax_withheld,
         "cpp_contributions": cpp_contributions,
