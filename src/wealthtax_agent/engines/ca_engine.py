@@ -280,9 +280,22 @@ def compute_ca_return(
     # Northern Residents Deduction reduces net income (line 25500). RPP
     # contributions (20700) and union/professional dues (21200) likewise reduce
     # income on the way to net income.
-    net_income = max(0.0, total_income - rrsp_deduction - rpp_contributions - union_dues - nrd)
+    # Security options deduction (line 24900, ITA s.110(1)(d)/(d.1)): the stock-
+    # option benefit (T4 box 38) is included in employment income (box 14); half
+    # of it is then deductible, so only 50% is taxed. The 50% rate is a flat
+    # statutory fraction (non-indexed). The $200,000 annual vesting cap on large-
+    # employer options is the filer's asserted eligibility (not modelled here).
+    security_option_benefit = _to_float(user_answers.get("security_option_benefit", 0))
+    stock_option_deduction = round(max(0.0, security_option_benefit) * 0.50, 2)
+    net_income = max(0.0, total_income - rrsp_deduction - rpp_contributions
+                     - union_dues - nrd - stock_option_deduction)
     if nrd > 0:
         notes.append(f"Applied ${nrd:,.0f} Northern Residents Deduction (T2222 / line 25500).")
+    if stock_option_deduction > 0:
+        notes.append(
+            f"Security options deduction (line 24900) of ${stock_option_deduction:,.2f} "
+            "= 50% of the stock-option benefit (s.110(1)(d))."
+        )
     taxable_income = net_income
 
     # ---- Tax + credits ----
@@ -599,6 +612,8 @@ def compute_ca_return(
         "taxable_capital_gains": taxable_capital_gains,
         "net_rental_income": net_rental + t5013_rental,
         "net_business_income": net_business + t5013_business,
+        "security_option_benefit": security_option_benefit,
+        "stock_option_deduction": stock_option_deduction,
         "rrsp_withdrawals": rrsp_withdrawals,
         "rrif_income": rrif_income,
         "pension_income": pension_income,
