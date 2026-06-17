@@ -1001,7 +1001,34 @@ def compute_us_return(
             f"the ${_magi_cap:,.0f} limit for this filing status."
         )
 
-    federal_tax = max(0.0, federal_tax_before_credits - ctc - odc - ptc_credit
+    # Foreign Tax Credit (Form 1116, IRC §901/§904): foreign income tax paid is
+    # credited against US tax, limited by §904 to the US tax attributable to the
+    # foreign-source income — FTC = min(foreign_tax_paid, tax_before_credits ×
+    # foreign_source_income / taxable_income). Non-refundable. This is the core
+    # anti-double-taxation mechanism for cross-border filers.
+    # v1 simplifications (noted): single basket (no §904(d) passive/general
+    # categories), current-year only (no §904(c) carryforward/carryback — excess
+    # over the limit is lost), and the filer supplies the foreign-source taxable
+    # amount (no re-sourcing). A filer also claiming the FEIE (Form 2555) must
+    # exclude that income from the FTC base manually.
+    foreign_source_income = _to_float(user_answers.get("foreign_source_income", 0))
+    foreign_tax_paid = _to_float(user_answers.get("foreign_tax_paid", 0))
+    ftc = 0.0
+    if foreign_source_income > 0 and foreign_tax_paid > 0 and taxable_income > 0:
+        ftc_limit = round(federal_tax_before_credits * (foreign_source_income / taxable_income), 2)
+        ftc = round(min(foreign_tax_paid, ftc_limit), 2)
+        if ftc > 0:
+            notes.append(
+                f"Foreign Tax Credit (Form 1116) of ${ftc:,.2f} (§904 limit "
+                f"${ftc_limit:,.2f} on ${foreign_source_income:,.0f} foreign-source income)."
+            )
+            if foreign_tax_paid > ftc_limit:
+                notes.append(
+                    f"${foreign_tax_paid - ftc_limit:,.2f} of foreign tax exceeds the §904 "
+                    "limit and is not credited this year (carryforward not modelled)."
+                )
+
+    federal_tax = max(0.0, federal_tax_before_credits - ftc - ctc - odc - ptc_credit
                       - education_nonref - dependent_care_credit
                       - sec_25d - sec_25c - sec_25e) + ptc_repayment
 
@@ -1230,6 +1257,7 @@ def compute_us_return(
         "residential_clean_energy_credit": sec_25d,
         "energy_efficient_home_credit": sec_25c,
         "used_clean_vehicle_credit": sec_25e,
+        "foreign_tax_credit": ftc,
         "federal_tax": federal_tax,
         "self_employment_tax": se_tax,
         "tax_withheld": fed_withheld,
@@ -1256,6 +1284,7 @@ def compute_us_return(
         "premium_tax_credit": ptc_credit,
         "qbi_deduction": qbi_deduction,
         "education_credit": education["chosen"],
+        "foreign_tax_credit": ftc,
     }
 
     return DraftReturn(
