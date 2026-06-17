@@ -86,7 +86,8 @@ def _surcharge(
     total_income: float,
     tables: Dict[str, Any],
     regime: str,
-) -> float:
+    brackets: List[Dict[str, float]],
+) -> Tuple[float, float]:
     """Tiered surcharge on income tax (not on income directly).
 
     The tier rate is set by total income, but two caps apply:
@@ -96,19 +97,43 @@ def _surcharge(
       total-income tier (a proviso in Part I of the Finance Act). So a >₹2cr / >₹5cr
       filer pays the full tier rate on slab tax but only 15% surcharge on CG tax.
 
-    Note: surcharge marginal relief at the tier thresholds is not modelled (a
-    pre-existing simplification); the 15% cap on dividend surcharge is also not
-    modelled because dividends flow through the slab and are not separable here.
+    Marginal relief: just above a tier threshold T the extra surcharge can exceed
+    the extra income earned above T (a cliff). The Act caps the income-tax-plus-
+    surcharge at (tax on income exactly T) + (income − T). Relief is the excess
+    over that cap, subtracted from the surcharge. Because the special-rate CG tax
+    does not change as total income crosses T, the at-threshold CG tax equals the
+    actual CG tax and cancels — so the relief reduces to a slab-tax comparison.
+    Self-limiting: relief reaches 0 once full surcharge ≤ (income − T).
+
+    The dividend-surcharge 15% cap is still not modelled (dividends flow through
+    the slab and are not separable here).
+
+    Returns ``(surcharge, relief)`` — relief>0 only inside a threshold's cliff zone.
     """
     tiers = tables.get("surcharge", [])
     rate = 0.0
+    threshold = 0.0
     for tier in tiers:
         if total_income > float(tier["income_above"]):
             rate = float(tier["rate"])
+            threshold = float(tier["income_above"])
     if regime == "new":
         rate = min(rate, float(tables.get("surcharge_new_regime_cap", 0.25)))
     cg_rate = min(rate, float(tables.get("surcharge_capital_gains_cap", 0.15)))
-    return round(slab_tax_after_rebate * rate + cg_tax * cg_rate, 2)
+    surcharge = round(slab_tax_after_rebate * rate + cg_tax * cg_rate, 2)
+
+    relief = 0.0
+    if surcharge > 0 and threshold > 0:
+        # Slab tax on income exactly at the binding threshold T (CG tax cancels).
+        slab_tax_at_threshold = compute_progressive_tax(threshold, brackets)
+        excess_over_threshold = total_income - threshold
+        relief = max(
+            0.0,
+            (slab_tax_after_rebate + surcharge) - slab_tax_at_threshold - excess_over_threshold,
+        )
+        relief = round(relief, 2)
+        surcharge = round(surcharge - relief, 2)
+    return surcharge, relief
 
 
 def _capital_gains_split(
@@ -617,7 +642,9 @@ def _compute_one_regime(
     # Split the surcharge base: §87A rebate only ever reduces slab tax (never CG
     # tax), so the post-rebate slab portion is slab_tax - rebate; the CG-tax portion
     # is surcharged at the capped rate inside _surcharge.
-    surcharge = _surcharge(max(0.0, slab_tax - rebate), cg_tax, total_income, tables, regime)
+    surcharge, surcharge_relief = _surcharge(
+        max(0.0, slab_tax - rebate), cg_tax, total_income, tables, regime, brackets
+    )
     tax_with_surcharge = tax_after_rebate + surcharge
 
     # 4% Health & Education Cess
@@ -705,6 +732,11 @@ def _compute_one_regime(
     notes.append(f"Regime: {regime}. Total income ₹{total_income:,.0f}. Total tax ₹{total_tax:,.0f}.")
     if surcharge > 0:
         notes.append(f"Surcharge ₹{surcharge:,.0f} applied (income > ₹50 lakh tier).")
+    if surcharge_relief > 0:
+        notes.append(
+            f"Surcharge marginal relief of ₹{surcharge_relief:,.0f} applied (income just "
+            "above a surcharge tier threshold)."
+        )
     if rebate > 0:
         notes.append(f"Section 87A rebate of ₹{rebate:,.0f} applied (income ≤ rebate threshold).")
     if cg["ltcg_equity_exempt"] > 0:
