@@ -71,6 +71,11 @@ questions:
     why_it_matters: "A first-time home buyer gets a 15% non-refundable credit on up to $10,000 (line 31270, max $1,500)."
     answer_type: number
     priority: medium
+  - id: medical_expenses
+    prompt: "What total medical expenses (receipts only — never on a slip) did you pay this year for yourself and your family?"
+    why_it_matters: "The Medical Expense Tax Credit (line 33099) gives a 15% non-refundable credit on costs exceeding the lesser of 3% of net income or ~$2,759."
+    answer_type: number
+    priority: medium
   - id: mhrtc_qualifying_expenditure
     prompt: "Did you build a secondary suite for a senior or disabled relative? If so, what were the eligible renovation costs?"
     why_it_matters: "The Multigenerational Home Renovation Tax Credit refunds 15% of up to $50,000 (line 45355, max $7,500)."
