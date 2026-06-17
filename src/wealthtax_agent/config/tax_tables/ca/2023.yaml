@@ -53,3 +53,7 @@ age_amount:
 mhrtc:
   rate: 0.15
   expenditure_cap: 50000
+
+# Federal Quebec abatement (ITA s.120(2), line 44000): 16.5% of basic federal
+# tax for Quebec residents. Long-standing, non-indexed.
+quebec_abatement_rate: 0.165
