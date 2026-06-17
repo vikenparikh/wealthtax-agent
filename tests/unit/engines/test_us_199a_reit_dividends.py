@@ -44,9 +44,12 @@ def test_no_reit_no_business_zero_qbi():
 
 
 def test_reit_plus_business_combined_base():
-    # $30k Sch C + $10k REIT → 20% of $40k = $8,000 (income limit doesn't bind).
+    # $30k Sch C + $10k REIT, income limit doesn't bind. The Sch C (SE) component
+    # is net of the deductible 1/2 SE tax ($2,119.43) per §1.199A-3(b)(1)(vi):
+    # base = (30,000 - 2,119.43) + 10,000 = 37,880.57; x 20% = $7,576.11. The REIT
+    # component is not SE income, so it is not reduced.
     d = _single(_w2(80000.0), _sch_c(30000.0), _div(10000.0, reit=10000.0))
-    assert d.line_items["qbi_deduction"] == 8000.0
+    assert d.line_items["qbi_deduction"] == 7576.11
 
 
 def test_income_limit_caps_combined_deduction():
