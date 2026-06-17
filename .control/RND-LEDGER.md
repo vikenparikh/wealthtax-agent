@@ -2381,3 +2381,26 @@ MATRIX | apply Ontario Health Premium (ON428) | OHP (premium on taxable income, 
 Modelled as SUM OF CAPPED RAMPS: sum(min(cap, rate*max(0,TI-over))) over [20k/.06/300, 36k/.06/150, 48k/.25/150, 72k/.25/150,
 200k/.25/150]. Config on/{2023,2024,2025} identical (non-indexed). Updated 2 surtax tests for new provincial_tax. ON now
 COMPLETE (fed+prov brackets+surtax+OHP). 5 adversarial-sweep bugs/gaps in 5 cycles (#156/#158/#159/#160/#161).
+
+---
+
+## Cycle 166 — FULL LIFECYCLE (2026-06-16) [BUG FIX — CA federal Quebec abatement] (PR #163)
+
+MATRIX | apply federal Quebec abatement (ITA s.120(2), line 44000) | a QC resident gets a refundable federal abatement = 16.5% of basic federal tax (QC administers programs the feds fund elsewhere). Engine computed QC federal_tax IDENTICALLY to other provinces -> every QC resident over-taxed federally. Distinct from the disclosed QC provincial TP-1 estimate. Repro: $100k QC 2024 -> federal_tax $14,856.61 (=ON) vs correct $12,405.27 (abatement $2,451.34). | fail-before: QC federal_tax == ON -> pass-after: QC abatement 2451.34, federal_tax 12405.27 < ON; ==16.5% of basic (from line_items); clawback-excluded (base pre-OAS-recovery); ON/AB/BC + QC-NR no abatement | gated? N | PR #163
+
+16.5% of BASIC federal tax (after non-refundable+DTC, BEFORE OAS recovery tax — so seniors not over-abated). basic_federal_tax
+captured at line 453 before clawback. Table-driven quebec_abatement_rate:0.165 in ca/{2023,2024,2025}, QC residents only.
+Found by adversarial sweep. Other CA-provincial verified clean (BC/AB brackets; only ON needs surtax; 50% cap-gains inclusion
+correct-as-enacted; QC TP-1 disclosed).
+
+---
+
+## Cycle 167 — NOTHING-HIGH-VALUE / CONVERGED (2026-06-16) [no PR]
+
+Adversarial sweep of the LEAST-checked areas (US California state tax, CA-540 serializer, cross-border FTC/RSU/student-loan,
+IN/US-MeF serializers) returned CLEAN — concrete hand-verification vs statute all matched (CA brackets $194,460->$14,627.14,
+std ded $5,540/$11,080, MHS 1%>$1M, CA-540 reconcile, US-MeF reconcile, IN new-regime 85,800, IN std-ded year-map). Only
+finding = a misleading TEST DOCSTRING (not an engine bug) -> NOT shipped (padding). My own NY-state spot-check: state tax is a
+state= kwarg, correctly mapped from state_of_residence by reason_tax.py:71/88; NY HoH brackets verified by existing test;
+NOT dropped. VERDICT: engine CONVERGED on common/material correctness. First honest clean bill of health after 6 sweep-fixes
+(#156/#158/#159/#160/#161/#163). No code PR — honest NOTHING-HIGH-VALUE is a valid ledger outcome.
