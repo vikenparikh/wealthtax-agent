@@ -63,7 +63,14 @@ def _suggest_ca(extracts: List[FormExtract], draft: DraftReturn, year: int, user
         # Estimate using 18% of prior-year earned income as a rough cap
         rrsp_room = max(0.0, employment_income * 0.18 - rrsp_contributed)
     if rrsp_room > 1000:
-        contribution = min(rrsp_room, employment_income * 0.18)
+        # `rrsp_room` is the user's TOTAL deduction limit — a CRA Notice-of-
+        # Assessment figure already rolls in all prior years' unused room plus the
+        # current 18% accrual, and it is fully deductible this year (room carries
+        # forward indefinitely). Do NOT re-cap it at one year's 18% accrual; the
+        # 18% cap is applied only on the estimate branch above when no NOA room is
+        # supplied. (Re-capping told a filer with $50k of real room to contribute
+        # only $18k.)
+        contribution = rrsp_room
         out.append(OptimizationSuggestion(
             id="rrsp_topup",
             jurisdiction="CA",
