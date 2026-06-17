@@ -16,6 +16,11 @@ questions:
     why_it_matters: "Triggers a T1135 Foreign Income Verification Statement (separate filing)."
     answer_type: yes_no
     priority: high
+  - id: taxpayer_age_65_or_older
+    prompt: "Were you age 65 or older at the end of the tax year?"
+    why_it_matters: "Unlocks the federal age amount credit (line 30100) and RRIF pension-income eligibility."
+    answer_type: yes_no
+    priority: medium
   - id: is_us_person
     prompt: "Are you a US citizen or green card holder?"
     why_it_matters: "Triggers US tax filing obligations regardless of residence; affects TFSA usefulness."

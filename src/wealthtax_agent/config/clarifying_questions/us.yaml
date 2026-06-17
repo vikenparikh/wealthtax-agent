@@ -30,6 +30,26 @@ questions:
     why_it_matters: "Deductible traditional IRA contributions reduce AGI; Roth contributions affect phase-outs."
     answer_type: number
     priority: medium
+  - id: taxpayer_age_65_or_older
+    prompt: "Were you age 65 or older at the end of the tax year?"
+    why_it_matters: "Adds an additional standard deduction amount on top of the base standard deduction."
+    answer_type: yes_no
+    priority: medium
+  - id: taxpayer_blind
+    prompt: "Were you blind at the end of the tax year?"
+    why_it_matters: "Adds an additional standard deduction amount on top of the base standard deduction."
+    answer_type: yes_no
+    priority: medium
+  - id: spouse_age_65_or_older
+    prompt: "If married filing jointly, was your spouse age 65 or older at the end of the tax year?"
+    why_it_matters: "Adds a further additional standard deduction amount for a 65+ spouse on a joint return."
+    answer_type: yes_no
+    priority: medium
+  - id: spouse_blind
+    prompt: "If married filing jointly, was your spouse blind at the end of the tax year?"
+    why_it_matters: "Adds a further additional standard deduction amount for a blind spouse on a joint return."
+    answer_type: yes_no
+    priority: medium
   - id: foreign_accounts_over_10k
     prompt: "Did your foreign financial accounts exceed $10,000 USD aggregate at any time?"
     why_it_matters: "Triggers FBAR (FinCEN 114) and possibly FATCA Form 8938."
