@@ -10,6 +10,11 @@ questions:
     why_it_matters: "State income tax (or lack thereof) and state-specific credits."
     answer_type: text
     priority: high
+  - id: city_of_residence
+    prompt: "Which city did you live in (e.g. New York City, Yonkers)?"
+    why_it_matters: "Some cities levy a local income tax — e.g. New York City resident tax and the Yonkers resident surcharge — on top of state tax."
+    answer_type: text
+    priority: medium
   - id: num_dependents
     prompt: "How many dependents will you claim?"
     why_it_matters: "Child Tax Credit, EITC, dependent care credit."
