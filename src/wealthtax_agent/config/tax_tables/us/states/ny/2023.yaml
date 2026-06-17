@@ -40,3 +40,23 @@ standard_deduction:
   single: 8000
   married_filing_jointly: 16050
   head_of_household: 11200   # NY IT-201 HoH standard deduction (statutory, R&TC §614; fixed, not indexed)
+
+# New York City resident personal income tax (IT-201) — progressive 3.078%-3.876%
+# on NY taxable income. Fixed/non-indexed (stable since the early 2010s).
+nyc_resident_tax:
+  brackets_by_status:
+    single:
+      - {up_to: 12000, rate: 0.03078}
+      - {up_to: 25000, rate: 0.03762}
+      - {up_to: 50000, rate: 0.03819}
+      - {up_to: null,  rate: 0.03876}
+    married_filing_jointly:
+      - {up_to: 21600, rate: 0.03078}
+      - {up_to: 45000, rate: 0.03762}
+      - {up_to: 90000, rate: 0.03819}
+      - {up_to: null,  rate: 0.03876}
+    head_of_household:
+      - {up_to: 14400, rate: 0.03078}
+      - {up_to: 30000, rate: 0.03762}
+      - {up_to: 60000, rate: 0.03819}
+      - {up_to: null,  rate: 0.03876}
