@@ -2456,3 +2456,33 @@ refund<-line34 / owing<-line37 NOT swapped, reconciles w/ MeF JSON by constructi
 after 9 sweep bug-fixes (#156/158/159/160/161/163/166/169 + box) + features (energy/HBA/80GGC/volunteer/25E/MHRTC/80ggc/
 stock-option/FTC/121/NYC/Yonkers). Honest NOTHING-HIGH-VALUE. Remaining unswept = clarify.py/explain_return(LLM)/UI = low
 tax-correctness value.
+
+---
+
+## Cycles 173-176 — FEATURE REACHABILITY PASS (2026-06-16) [activate dormant shipped features] (PRs #171/#172/#173/#174)
+
+DISCOVERY: a reachability audit found ALL 13 new-feature input keys shipped this session were surfaced NOWHERE in the clarify
+configs or intake wizard -> every feature gated on a new user_answers key was DORMANT (engine correct but unreachable; no user
+could supply the input). PRINCIPLE: reachability is part of "done" — a feature gated on a new user_answers key is dead code
+until the intake flow surfaces that key.
+
+| Cycle | PR | Batch | Activated |
+|---|---|---|---|
+| 173 | #171 | city_of_residence -> us.yaml | NYC tax (#165) + Yonkers surcharge (#167) |
+| 174 | #172 | 5 CA inputs -> ca.yaml | Home Buyers' (#145), MHRTC (#150), stock-option (#152), volunteer x2 (#147) |
+| 175 | #173 | 7 US inputs -> us.yaml | energy §25D/C (#144), §25E used-EV (#149), FTC (#153), §121 (#155) |
+| 176 | #174 | 8 IN Chapter VI-A -> in.yaml | 80CCD1B, 80D-parents, 80DDB (#132), 80EEB (#133), 80G, 80GGC (#146), 80U/80DD (#130) |
+
+Each: fail-before (id NOT in pending questions) / pass-after (surfaced) + not-re-asked-once-answered + full-suite no-regression.
+Config-only (engine math already existed+tested). ~$15k+ of dormant tax features activated. NOTE (ca.yaml had yes/no
+home_buyer_first but NOT the dollar home_buyers_amount key the engine reads).
+
+## Cycle 177 — NOTHING-HIGH-VALUE / CONVERGED (2026-06-16) [no code PR]
+
+Both veins exhausted: tax-compute correctness CONVERGED (9 sweep bug-fixes #156/158/159/160/161/163/166/169 + box) and
+feature-reachability COMPLETE (#171-174). Orphan-question check found 6 clarify ids read nowhere (fhsa_room_remaining,
+spouse_income, state_taxes_paid, itemize_or_standard, marital_status, roth_conversion) — but LOW-VALUE (don't mistax any
+modeled path: SALT still from W-2 box17/Sch-A; itemize auto-optimized). Wiring=speculative feature, removal=cosmetic. NOT
+shipped (no padding). Remaining IN/CA income-input keys are form-sourced (AIS/26AS/Form-16A), not question-appropriate. Honest
+NOTHING-HIGH-VALUE. Engine is complete on all material correctness + reachability. Future work needs a NEW requirement
+(new-year tables / new jurisdiction / reported defect).
