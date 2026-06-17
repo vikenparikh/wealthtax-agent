@@ -115,3 +115,13 @@ questions:
     why_it_matters: "§121 excludes up to $250,000 ($500,000 if married filing jointly) of gain on a principal residence."
     answer_type: number
     priority: medium
+  - id: dependent_care_expenses
+    prompt: "How much did you pay for child or dependent care so you could work (e.g. daycare, after-school care)?"
+    why_it_matters: "Qualifying care expenses fund the Form 2441 Child & Dependent Care Credit (§21), a credit against your tax."
+    answer_type: number
+    priority: medium
+  - id: num_dependent_care_persons
+    prompt: "How many qualifying persons (children under 13, or a disabled spouse/dependent) did that care cover?"
+    why_it_matters: "The §21 dependent-care credit caps eligible expenses at $3,000 for one qualifying person and $6,000 for two or more (Form 2441)."
+    answer_type: number
+    priority: medium
