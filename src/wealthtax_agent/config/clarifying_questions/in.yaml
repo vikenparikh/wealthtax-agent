@@ -21,7 +21,7 @@ questions:
     answer_type: number
     priority: medium
   - id: section_80c_ppf
-    prompt: "PPF / NSC / EPF / tax-saving FD contributions this year?"
+    prompt: "PPF / NSC / 5-year tax-saving FD / Sukanya Samriddhi contributions this year (do NOT include EPF, LIC, home-loan principal, or ELSS — those have their own questions)?"
     why_it_matters: "Section 80C deduction (old regime) — cap ₹1.5 lakh combined."
     answer_type: number
     priority: medium
@@ -91,4 +91,59 @@ questions:
     why_it_matters: "Section 80DD gives a fixed deduction: Rs 75,000 (normal) or Rs 1,25,000 (severe)."
     answer_type: choice
     options: [none, normal, severe]
+    priority: low
+  - id: section_80c_lic
+    prompt: "How much did you pay in life-insurance premiums (LIC) this year?"
+    why_it_matters: "Life-insurance premiums count toward the §80C deduction (₹1.5 lakh combined cap, old regime)."
+    answer_type: number
+    priority: medium
+  - id: section_80c_epf
+    prompt: "How much was your employee Provident Fund (EPF) contribution this year?"
+    why_it_matters: "EPF contributions count toward the §80C deduction (₹1.5 lakh combined cap, old regime)."
+    answer_type: number
+    priority: medium
+  - id: section_80c_home_loan_principal
+    prompt: "How much home-loan principal did you repay this year?"
+    why_it_matters: "Home-loan principal repayment counts toward the §80C deduction (₹1.5 lakh combined cap, old regime)."
+    answer_type: number
+    priority: medium
+  - id: section_80c_elss
+    prompt: "How much did you invest in ELSS (tax-saving mutual funds) this year?"
+    why_it_matters: "ELSS investments count toward the §80C deduction (₹1.5 lakh combined cap, old regime)."
+    answer_type: number
+    priority: medium
+  - id: section_80d_declared
+    prompt: "What is your total §80D health-insurance premium (self, family and parents combined)?"
+    why_it_matters: "Overrides the per-bucket §80D health-premium deduction with a single declared amount."
+    answer_type: number
+    priority: medium
+  - id: years_since_first_80e
+    prompt: "How many years has it been since you first claimed an education-loan interest deduction (§80E)?"
+    why_it_matters: "The §80E deduction is only available for the first 8 years of repayment."
+    answer_type: number
+    priority: medium
+  - id: professional_tax_paid
+    prompt: "How much professional tax was deducted from your salary this year?"
+    why_it_matters: "Professional tax is deductible under §16(iii), capped at ₹2,500."
+    answer_type: number
+    priority: medium
+  - id: municipal_tax_paid
+    prompt: "How much municipal (property) tax did you pay on a let-out property?"
+    why_it_matters: "Municipal tax paid on a let-out property is deductible from house-property income."
+    answer_type: number
+    priority: medium
+  - id: home_loan_interest_let_out
+    prompt: "How much home-loan interest did you pay on a let-out property?"
+    why_it_matters: "Interest on a let-out property is deductible under §24(b) (no ₹2 lakh cap on let-out)."
+    answer_type: number
+    priority: medium
+  - id: section_80ccd_2_employer_nps
+    prompt: "How much did your employer contribute to your NPS account (§80CCD(2))?"
+    why_it_matters: "Employer NPS contributions are deductible under §80CCD(2) — allowed in the new regime too."
+    answer_type: number
+    priority: medium
+  - id: salary_is_foreign
+    prompt: "Was your salary income earned and received outside India?"
+    why_it_matters: "Non-resident / RNOR filers can exclude foreign-sourced salary from Indian tax."
+    answer_type: yes_no
     priority: low

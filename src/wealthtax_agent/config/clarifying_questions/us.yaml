@@ -65,6 +65,11 @@ questions:
     why_it_matters: "SALT deduction is capped at $10,000 on Schedule A."
     answer_type: number
     priority: low
+  - id: state_local_property_tax
+    prompt: "How much did you pay in real-estate property tax on your home/land this year (property tax only — NOT state income tax)?"
+    why_it_matters: "The property-tax component of SALT on Schedule A; combined with state income tax it is capped at $10,000 (distinct from the state income tax in the previous question)."
+    answer_type: number
+    priority: medium
   - id: prior_capital_losses
     prompt: "How much in prior-year net capital losses are you carrying forward?"
     why_it_matters: "Offsets current capital gains; up to $3,000 can also offset ordinary income."
@@ -123,5 +128,51 @@ questions:
   - id: num_dependent_care_persons
     prompt: "How many qualifying persons (children under 13, or a disabled spouse/dependent) did that care cover?"
     why_it_matters: "The §21 dependent-care credit caps eligible expenses at $3,000 for one qualifying person and $6,000 for two or more (Form 2441)."
+    answer_type: number
+    priority: medium
+  - id: num_other_dependents
+    prompt: "How many non-child dependents (e.g. parents, adult relatives) will you claim?"
+    why_it_matters: "Each qualifying non-child dependent gives the $500 Credit for Other Dependents (ODC)."
+    answer_type: number
+    priority: medium
+  - id: num_eitc_qualifying_children
+    prompt: "How many qualifying children do you have for the Earned Income Tax Credit?"
+    why_it_matters: "The EITC amount and phase-out depend on the number of qualifying children."
+    answer_type: number
+    priority: medium
+  - id: taxpayer_age
+    prompt: "How old were you at the end of the tax year?"
+    why_it_matters: "Gates HSA 55+ and IRA 50+ catch-up contributions and the EITC 25-64 age requirement."
+    answer_type: number
+    priority: medium
+  - id: hsa_coverage
+    prompt: "Was your High Deductible Health Plan self-only or family coverage?"
+    why_it_matters: "The HSA contribution cap is $4,150 for self-only vs $8,300 for family coverage."
+    answer_type: choice
+    options: [self, family]
+    priority: medium
+  - id: self_employed_health_insurance
+    prompt: "How much did you pay in health insurance premiums as a self-employed person?"
+    why_it_matters: "The §162(l) self-employed health insurance deduction is an above-the-line deduction."
+    answer_type: number
+    priority: medium
+  - id: qualified_education_expense
+    prompt: "How much did you pay in tuition or education expenses not already reported on a 1098-T?"
+    why_it_matters: "Qualified education expenses fund the American Opportunity and Lifetime Learning credits."
+    answer_type: number
+    priority: medium
+  - id: num_students
+    prompt: "For how many students did you pay qualified education expenses?"
+    why_it_matters: "Education credits (AOTC/LLC) are computed per student."
+    answer_type: number
+    priority: medium
+  - id: aotc_eligible
+    prompt: "Is the student in their first four years of post-secondary education and pursuing a degree?"
+    why_it_matters: "Eligibility decides whether the more generous American Opportunity Credit (partly refundable) applies instead of the Lifetime Learning Credit."
+    answer_type: yes_no
+    priority: medium
+  - id: spouse_earned_income
+    prompt: "If married filing jointly, what was your spouse's earned income for the year?"
+    why_it_matters: "Form 2441 limits the dependent-care credit to the lower of each spouse's earned income."
     answer_type: number
     priority: medium
