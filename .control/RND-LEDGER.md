@@ -2331,3 +2331,24 @@ subtracted in credit assembly. Keys foreign_source_income/foreign_tax_paid. v1: 
 carryforward — excess lost+noted), trusts apportionment, FEIE-interaction flagged. Conf 90% (ratio unambiguous). The session's
 highest-value feature — THE anti-double-taxation mechanism for the app's core CA/US/IN cross-border purpose. Stepped UP from
 fixed-param credit-tweaks to a real statutory COMPUTATION. Ledger-free PR.
+
+---
+
+## Cycle 160 — FULL LIFECYCLE (2026-06-16) [NEW FEATURE — US §121 principal-residence gain exclusion] (PR #155)
+
+MATRIX | add US §121 home-sale gain exclusion ($250k single / $500k MFJ) | us_engine had no §121 (grep 0 hits). A filer entering a primary-residence sale gain was taxed on ALL of it (reproduced: $400k gain -> federal_tax unchanged $90,952). | fail-before: section_121_exclusion absent, gain fully taxed -> pass-after: under cap $200k fully excluded (LTCG->0); over cap $400k->excluded $250k taxable $150k; MFJ $500k cap; NIIT base excludes excluded gain (load-bearing); over-assert clamps long_gain to 0 | gated? N | PR #155
+
+$250k/$500k fixed non-indexed since 1997. Conf 92%. ELEGANT: subtract section_121_exclusion from long_gain ONCE after
+_net_capital_gains netting (~681) before AGI sum (~705) -> flows to preferential tax + NIIT base (investment_income) +
+niit_magi automatically (excluded gain never in gross income -> not NII). Excluded = min(pr_gain, cap, long_gain_present).
+Key principal_residence_gain. v1: 2-of-5-yr test / §121(c) partial / non-qualified use / §1250 recapture = filer's responsibility.
+
+---
+
+## Cycle 161 — FULL LIFECYCLE (2026-06-16) [BUG FIX — §904 FTC ratio clamp (own #153)] (PR #156)
+
+MATRIX | clamp §904 FTC ratio to 1.0 | the §904 limit (shipped #153) computed federal_tax_before_credits x (foreign_source_income/taxable_income) with NO clamp. US-source loss shrinks taxable below foreign component -> ratio>1 -> limit exceeds entire US tax (impossible). Reproduced: 60k foreign + 3k US loss + 9k foreign tax -> FTC $5,726.42 > US tax $4,856; carryforward understated $3,273.58 vs correct $4,144. | fail-before: ratio>1 credited $5,726.42 -> pass-after: ftc==pre_credit_tax $4,856, <=it, federal_tax 0, carryforward $4,144; 5 original FTC tests unchanged (clamp inert below limit) | gated? N | PR #156
+
+One-line fix ftc_ratio=min(1.0, ratio). Found by ADVERSARIAL CORRECTNESS SWEEP of the session's features. Angle A other items
+ALL CLEAN (§121, §25E cliff, stock-option net_income floor, MHRTC). Angle B CONVERGED (remaining items niche). VERDICT: feature
++ fixed-param veins converged; going forward = adversarial-correctness sweeps of shipped/core work + honest NOTHING-HIGH-VALUE.
