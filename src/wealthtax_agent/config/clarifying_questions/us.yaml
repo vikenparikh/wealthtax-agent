@@ -60,3 +60,38 @@ questions:
     why_it_matters: "Adds taxable income now; pays no future tax on growth — bracket-management opportunity."
     answer_type: yes_no
     priority: low
+  - id: residential_clean_energy_cost
+    prompt: "Did you install solar, battery, wind, or geothermal at home? If so, what was the cost?"
+    why_it_matters: "The §25D Residential Clean Energy Credit is 30% of the cost with no cap (Form 5695)."
+    answer_type: number
+    priority: medium
+  - id: energy_efficient_improvements
+    prompt: "Did you make energy-efficient home improvements (insulation, windows, doors)? If so, what was the cost?"
+    why_it_matters: "The §25C credit is 30% of cost, capped at $1,200/year (Form 5695)."
+    answer_type: number
+    priority: low
+  - id: heat_pump_cost
+    prompt: "Did you install a heat pump, heat-pump water heater, or biomass stove? If so, what was the cost?"
+    why_it_matters: "The §25C credit gives a separate $2,000/year cap for heat pumps (Form 5695)."
+    answer_type: number
+    priority: low
+  - id: used_clean_vehicle_price
+    prompt: "Did you buy a qualifying used clean vehicle (EV) from a dealer? If so, what was the sale price?"
+    why_it_matters: "The §25E credit is the lesser of $4,000 or 30% of price (income limits apply; Form 8936)."
+    answer_type: number
+    priority: medium
+  - id: foreign_source_income
+    prompt: "Did you have foreign-source income taxed by another country? If so, how much (the taxable amount)?"
+    why_it_matters: "Used with foreign tax paid for the Foreign Tax Credit's §904 limitation (Form 1116)."
+    answer_type: number
+    priority: medium
+  - id: foreign_tax_paid
+    prompt: "How much foreign income tax did you actually pay?"
+    why_it_matters: "The Foreign Tax Credit offsets US tax for taxes paid to another country (Form 1116)."
+    answer_type: number
+    priority: medium
+  - id: principal_residence_gain
+    prompt: "Did you sell your main home at a gain this year? If so, what was the gain (already in your capital gains)?"
+    why_it_matters: "§121 excludes up to $250,000 ($500,000 if married filing jointly) of gain on a principal residence."
+    answer_type: number
+    priority: medium
