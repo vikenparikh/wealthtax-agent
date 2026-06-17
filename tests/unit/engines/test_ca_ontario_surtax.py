@@ -20,14 +20,16 @@ def test_ontario_surtax_both_tiers_2024():
     # basic ON tax (post-credit) = 8,588.39.
     # surtax = 20%x(8588.39-5554) + 36%x(8588.39-7108) = 606.88 + 532.94 = 1,139.82
     assert d.line_items["provincial_surtax"] == 1139.82
-    assert d.line_items["provincial_tax"] == 9728.21
+    # provincial_tax now includes the Ontario Health Premium ($750 at $120k taxable).
+    assert d.line_items["provincial_tax"] == 10478.21
 
 
 def test_no_surtax_below_first_threshold():
     # $60k -> basic ON tax 2,754.56 < $5,554 -> no surtax.
     d = compute_ca_return(_t4(60000.0), 2024, province="ON", user_answers={})
     assert d.line_items["provincial_surtax"] == 0.0
-    assert d.line_items["provincial_tax"] == 2754.56
+    # provincial_tax now includes the Ontario Health Premium ($600 at $60k taxable).
+    assert d.line_items["provincial_tax"] == 3354.56
 
 
 def test_ontario_surtax_2023_thresholds():

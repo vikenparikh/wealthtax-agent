@@ -22,3 +22,12 @@ dividend:
 surtax:
   - {threshold: 5554, rate: 0.20}
   - {threshold: 7108, rate: 0.36}
+
+# Ontario Health Premium (ON428) — sum of capped ramps on taxable income.
+# Non-indexed since 2004 (identical every year). Max $900.
+health_premium:
+  - {over: 20000, rate: 0.06, cap: 300}
+  - {over: 36000, rate: 0.06, cap: 150}
+  - {over: 48000, rate: 0.25, cap: 150}
+  - {over: 72000, rate: 0.25, cap: 150}
+  - {over: 200000, rate: 0.25, cap: 150}

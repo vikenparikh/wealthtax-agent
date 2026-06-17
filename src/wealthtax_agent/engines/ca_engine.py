@@ -523,6 +523,19 @@ def compute_ca_return(
     if provincial_surtax > 0:
         notes.append(f"{province.upper()} provincial surtax of ${provincial_surtax:,.2f} applied.")
 
+    # Ontario Health Premium (ON428): a premium on TAXABLE income, expressible as
+    # a sum of capped ramps (non-indexed since 2004 -> identical every year).
+    # Table-driven: provinces without a health_premium table yield $0. It is part
+    # of Ontario tax payable, so it adds to provincial_tax.
+    ontario_health_premium = round(sum(
+        min(float(seg.get("cap", 0)),
+            float(seg.get("rate", 0)) * max(0.0, taxable_income - float(seg.get("over", 0))))
+        for seg in prov_tables.get("health_premium", [])
+    ), 2)
+    provincial_tax = round(provincial_tax + ontario_health_premium, 2)
+    if ontario_health_premium > 0:
+        notes.append(f"Ontario Health Premium of ${ontario_health_premium:,.2f} applied.")
+
     # Pension income splitting with spouse (line 21000 / 11600 reciprocal)
     pension_split_pct = _to_float(user_answers.get("pension_split_pct", 0))
     if pension_split_pct > 0 and eligible_pension > 0:
@@ -659,6 +672,7 @@ def compute_ca_return(
         "provincial_donations_credit": donations_credit_prov,
         "provincial_dividend_tax_credit": prov_dtc,
         "provincial_surtax": provincial_surtax,
+        "ontario_health_premium": ontario_health_premium,
         "provincial_tax": provincial_tax,
         "tax_withheld": fed_tax_withheld,
         "cpp_contributions": cpp_contributions,
