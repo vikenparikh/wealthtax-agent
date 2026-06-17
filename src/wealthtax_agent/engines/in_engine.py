@@ -579,7 +579,19 @@ def _compute_one_regime(
     # RNOR is a *resident* under the Act (only its foreign income is exempt), so it
     # keeps the rebate — gate on the literal "NR", NOT is_nr_or_rnor.
     is_resident_for_87a = residency_status != "NR"
-    if is_resident_for_87a and total_income <= threshold:
+    # §87A eligibility is on TOTAL income per §2(45), which INCLUDES special-rate
+    # capital gains — not just slab income. (stcg_other is already inside
+    # slab_income/total_income; the exempt LTCG-equity portion is not income, so
+    # use the post-exemption taxable amount.) Without this a salaried filer with a
+    # large equity/other capital gain wrongly slipped under the threshold and had
+    # their slab tax rebated away. The rebate AMOUNT stays slab-tax-only below.
+    total_income_for_87a = (
+        total_income
+        + cg["stcg_equity_total"]
+        + cg["ltcg_equity_taxable"]
+        + cg["ltcg_other_total"]
+    )
+    if is_resident_for_87a and total_income_for_87a <= threshold:
         # §87A rebates tax on normal income only — it never offsets tax on
         # capital gains taxed at special rates (e.g. equity LTCG u/s 112A). Base
         # it on slab_tax, consistent with the marginal-relief branch below; using
@@ -593,9 +605,9 @@ def _compute_one_regime(
         # Based on slab_tax only: §87A never rebates tax on capital gains taxed
         # at special rates. Self-limiting — relief reaches 0 once the slab tax
         # no longer exceeds the excess, so higher incomes are unaffected.
-        excess = total_income - threshold
+        excess = total_income_for_87a - threshold
         rebate = max(0.0, slab_tax - excess)
-    if not is_resident_for_87a and total_income <= threshold:
+    if not is_resident_for_87a and total_income_for_87a <= threshold:
         notes.append(
             "Section 87A rebate not available to a non-resident (NR); rebate set to ₹0."
         )
