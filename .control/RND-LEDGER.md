@@ -2505,3 +2505,29 @@ roth_conversion (needs modeling conversion as taxable income); fhsa_room_remaini
 disclosed. Honest NOTHING-HIGH-VALUE. ENGINE NOW FULLY CONVERGED: tax-compute correct + features reachable + dropped tax-inputs
 wired across CA/US/IN (fed + state/provincial + NYC/Yonkers local). Future high-value work requires a NEW REQUIREMENT
 (new-year published tables / new jurisdiction / reported defect / new product direction). No padding.
+
+## Cycle 180 — FULL LIFECYCLE (2026-06-16) [BUG FIX — IN surcharge missing marginal relief] (PR #178)
+
+MATRIX | India surcharge must apply marginal relief at the tier thresholds | The IN engine levied the full surcharge rate the instant income crossed a tier (₹50L/₹1cr/₹2cr/₹5cr) with no marginal relief, so income just over a threshold could owe MORE total tax than income just under it — a non-monotonic, statutorily-wrong jump. | fail-before: income = T+₹1 owes more than T; pass-after: relief caps the (tax+surcharge) increment at the income increment over T, monotonic across all four tiers | gated? N | PR #178
+
+FIX: `_surcharge(income, base_tax, brackets)` now returns `(surcharge, relief)` where relief = max(0, (pre_surcharge_income_tax + surcharge) − slab_tax_at_T − (income − T)) at the binding tier threshold T. CG tax cancels in the difference, so tax_at_T = compute_progressive_tax(T, brackets) is exact (resolves the historically "entangled" tax_at_T that blocked earlier cycles).
+
+## Cycle 181 — FULL LIFECYCLE (2026-06-16) [REACHABILITY — dormant age-65+/blindness inputs] (PR #179)
+
+MATRIX | US & CA filers must be asked the age-65+/blindness inputs the engines read | US additional-standard-deduction (taxpayer_age_65_or_older / taxpayer_blind / spouse_*) and CA age-amount inputs were read by the engines but no clarify question surfaced them — dormant feature, never reachable from the UI. | fail-before: pending-id set lacks the keys; engine delta = $0 because never answered -> pass-after: questions surface (priority medium, never force awaiting_clarification), char-for-char id match, engine delta non-zero when answered | gated? N | PR #179
+
+## Cycle 182 — FULL LIFECYCLE (2026-06-16) [REACHABILITY — dormant CA medical_expenses (METC)] (PR #180)
+
+MATRIX | CA filers must be asked for medical_expenses (METC, line 33099) | ca_engine read user_answers["medical_expenses"] for the Medical Expense Tax Credit but no clarify question surfaced it — orphan input, METC unreachable. | fail-before: medical_expenses absent from CA pending-id set; credit = $0 -> pass-after: question surfaces, answered value lowers CA tax via METC | gated? N | PR #180
+
+## Cycle 183 — FULL LIFECYCLE (2026-06-16) [REACHABILITY — dormant US dependent-care credit] (PR #181)
+
+MATRIX | US filers must be asked the §21 dependent-care inputs (Form 2441) | _compute_dependent_care_credit required BOTH dependent_care_expenses AND num_dependent_care_persons from user_answers, neither surfaced by a clarify question — credit dormant. | fail-before: both keys absent from US pending-id set; credit = $0 -> pass-after: both questions surface, answered values yield the §21 credit | gated? N | PR #181
+
+## Cycle 184 — FULL LIFECYCLE (2026-06-16) [REACHABILITY BATCH — surface ALL remaining un-surfaced calc inputs] (PR #182)
+
+MATRIX | Surface the COMPLETE remaining set of dormant calc inputs across US/CA/IN in ONE batched PR | After per-field cycles, an audit found 26 distinct engine-read user_answers keys with no clarify question (US: num_other_dependents, num_eitc_qualifying_children, taxpayer_age, hsa_coverage, self_employed_health_insurance, qualified_education_expense, num_students, aotc_eligible, spouse_earned_income, state_local_property_tax; CA: student_loan_interest_ca, charitable_donations, property_tax_paid, taxpayer_age, full_time_student, has_spouse_or_dependant; IN: section_80c_lic/epf/home_loan_principal/elss, section_80d_declared, years_since_first_80e, professional_tax_paid, municipal_tax_paid, home_loan_interest_let_out, section_80ccd_2_employer_nps, salary_is_foreign). | fail-before: each id absent from its jurisdiction pending-id set -> pass-after: parametrized surfacing + char-for-char id + suppression for all 26; reachability-delta guards (IN section_80c_lic −₹46,800; US num_other_dependents −$1,000; CA property_tax_paid −$1,200; IN section_80c_elss −₹46,800; US state_local_property_tax −$1,920 on an itemizer) | gated? N | PR #182
+
+DEDUPE: the pre-existing section_80c_ppf prompt narrowed to "PPF/NSC/5-yr FD/Sukanya … do NOT include EPF, LIC, home-loan principal, or ELSS" so the new §80C sub-inputs don't double-count against the ₹1.5L cap.
+CONVERGENCE PROVEN: post-batch EXCLUDE table shows only income lines, prepaid-tax, and note-only-dead-code (pension_split_pct) remain un-surfaced — nothing material. Feature-reachability vein EXHAUSTED.
+LEDGER PROCESS: per operator steer, feature PRs (#178–#182) are ledger-free; this entry is the batched chore(ledger) record (mirrors PR #177's pattern for #176).
