@@ -15,6 +15,7 @@ from wealthtax_agent.filing.in_itr import serialize_itr
 from wealthtax_agent.filing.pdf_fill import fill_form
 from wealthtax_agent.filing.quarterly import quarterly_ca_instalments, quarterly_us_1040es
 from wealthtax_agent.filing.us_mef import serialize_1040
+from wealthtax_agent.llm import sanitize_runtime_error
 from wealthtax_agent.logging_utils import get_logger
 from wealthtax_agent.projection import project_future_years
 from wealthtax_agent.state import DraftReturn, FilingArtifact, FormExtract, GraphState
@@ -227,7 +228,7 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
                     f"${row['total_tax']:>12,.0f}  {ref_owe:>14}"
                 )
     except Exception as exc:
-        lines.append(f"  (projection unavailable: {exc})")
+        lines.append(f"  (projection unavailable: {sanitize_runtime_error(str(exc))})")
 
     lines.append("")
     if state.optimization_suggestions:
@@ -307,7 +308,7 @@ def build_return_node(state: GraphState) -> GraphState:
             elif jurisdiction == "IN":
                 artifacts.update(_in_artifacts(draft, extracts, year, user_answers))
         except Exception as exc:
-            state.warnings.append(f"Filing artifact generation failed for {jurisdiction}: {exc}")
+            state.warnings.append(f"Filing artifact generation failed for {jurisdiction}: {sanitize_runtime_error(str(exc))}")
             _log.error(
                 "build_return_failed",
                 extra={"jurisdiction": jurisdiction, "year": year, "error": str(exc)},
@@ -317,11 +318,11 @@ def build_return_node(state: GraphState) -> GraphState:
         try:
             artifacts["yoy_planning"] = _planning_artifact(state)
         except Exception as exc:
-            state.warnings.append(f"YoY planning artifact failed: {exc}")
+            state.warnings.append(f"YoY planning artifact failed: {sanitize_runtime_error(str(exc))}")
         try:
             artifacts.update(_amendment_artifacts(state))
         except Exception as exc:
-            state.warnings.append(f"Amendment artifact failed: {exc}")
+            state.warnings.append(f"Amendment artifact failed: {sanitize_runtime_error(str(exc))}")
 
     state.filing_artifacts = artifacts
     return state
