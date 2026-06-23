@@ -243,7 +243,7 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
     lines.append("")
     lines.append("DRAFT — not transmitted. Use as a planning checklist.")
     return FilingArtifact(
-        jurisdiction="CA" if "CA" in state.draft_returns else "US",
+        jurisdiction=next((j for j in ("CA", "US", "IN") if j in state.draft_returns), "US"),
         form_code="PLAN",
         filename=f"wealthtax_yoy_planning_{year}.txt",
         mime_type="text/plain",
