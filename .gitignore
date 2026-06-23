@@ -46,3 +46,6 @@ target/
 # Ralph backup directories (created by migration)
 .ralph_backup_*
 .venv/
+
+# Format-output debug dump (must never be tracked; PII-at-rest)
+format_llm_response_debug.txt

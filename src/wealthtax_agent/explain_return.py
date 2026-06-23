@@ -183,11 +183,6 @@ def generate_dual_outputs(state: GraphState) -> GraphState:
 			try:
 				state.draft_summary_text = _extract_code_block(content, "text")
 			except Exception as exc_text:
-				# Log the full LLM response for debugging
-				with open("format_llm_response_debug.txt", "w", encoding="utf-8") as f:
-					f.write("--- LLM RAW RESPONSE ---\n")
-					f.write(content)
-					f.write("\n--- END ---\n")
 				# Try to extract the first code block as a fallback
 				import re
 				match = re.search(r"```text\\s*(.*?)```", content, flags=re.DOTALL | re.IGNORECASE)
@@ -196,19 +191,14 @@ def generate_dual_outputs(state: GraphState) -> GraphState:
 				else:
 					# As a last resort, use the whole content
 					state.draft_summary_text = content.strip()
-				state.warnings.append(f"Output formatting fallback used: Missing text code block. Full response logged.")
+				state.warnings.append(f"Output formatting fallback used: Missing text code block.")
 			try:
 				state.draft_pseudo_xml = _extract_code_block(content, "xml")
 			except Exception as exc_xml:
 				state.draft_pseudo_xml = ""
 				state.warnings.append(f"Output formatting fallback used: Missing xml code block.")
 		except Exception as exc:
-			# Log the full exception and response for debugging
-			with open("format_llm_response_debug.txt", "w", encoding="utf-8") as f:
-				f.write("--- LLM RAW RESPONSE ---\n")
-				f.write(str(getattr(exc, 'response', '')))
-				f.write("\n--- END ---\n")
-			state.warnings.append(f"Output formatting fallback used: {_sanitize_error_message(str(exc))}. Full response logged.")
+			state.warnings.append(f"Output formatting fallback used: {_sanitize_error_message(str(exc))}.")
 			summary_text, pseudo_xml = _build_dual_output_fallback(state)
 			state.draft_summary_text = summary_text
 			state.draft_pseudo_xml = pseudo_xml
