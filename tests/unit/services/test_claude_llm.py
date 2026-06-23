@@ -183,3 +183,43 @@ def test_get_tax_llm_is_cached(fake_run):
         assert claude_llm.get_tax_llm() is claude_llm.get_tax_llm()
     finally:
         claude_llm.get_tax_llm.cache_clear()
+
+
+# --- complete() guard when not available (line 169) --------------------------
+
+
+def test_cli_complete_raises_when_not_available(fake_run):
+    """complete() must refuse to shell out if validate() never marked the
+    instance available — the binary-not-found guard at the top of complete()."""
+    llm = ClaudeCLILLM(binary="claude")
+    llm.available = False
+    with pytest.raises(LLMError, match="claude CLI binary not found"):
+        llm.complete("anything")
+
+
+# --- complete_json() return paths (lines 209-212) ----------------------------
+
+
+def test_cli_complete_json_returns_parsed_json_on_success(fake_run):
+    """When the completion parses to JSON, complete_json returns that dict (209-210)."""
+    llm = ClaudeCLILLM(binary="claude")
+    out = llm.complete_json("Extract year", '{"tax_year": 0}', default={"k": 1})
+    assert out == {"tax_year": 2024}
+
+
+def test_cli_complete_json_falls_back_to_default_when_json_unparseable(fake_run):
+    """When the completion has no parseable JSON, complete_json returns the
+    provided default (211-212) rather than the {"raw": ...} fallback."""
+    fake_run.completion = SimpleNamespace(returncode=0, stdout="no json here", stderr="")
+    llm = ClaudeCLILLM(binary="claude")
+    out = llm.complete_json("chat", '{"k": 0}', default={"k": 7})
+    assert out == {"k": 7}
+
+
+def test_cli_complete_json_raw_fallback_when_no_default(fake_run):
+    """With no default and unparseable output, complete_json wraps the raw text
+    under a "raw" key (line 212 default branch)."""
+    fake_run.completion = SimpleNamespace(returncode=0, stdout="just prose", stderr="")
+    llm = ClaudeCLILLM(binary="claude")
+    out = llm.complete_json("chat", '{"k": 0}')
+    assert out == {"raw": "just prose"}
