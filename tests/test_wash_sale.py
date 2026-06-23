@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
-from wealthtax_agent.engines.wash_sale import LotRecord, WashSaleResult, detect_wash_sales
+from wealthtax_agent.engines.wash_sale import (
+    LotRecord,
+    WashSaleResult,
+    _normalise_date,
+    detect_wash_sales,
+)
 
 
 def _lot(id: str, ticker: str, side: str, trade_date: date, qty: int, basis_cents: int) -> LotRecord:
@@ -218,3 +223,126 @@ class TestWashSaleEdgeCases:
             "Option ticker without CUSIP mapping should NOT trigger wash-sale; "
             "caller must resolve options to underlying before calling detect_wash_sales()"
         )
+
+
+class TestLotRecordProperties:
+    """Cover LotRecord.price_cents and effective_basis_cents (L54, L58-60)."""
+
+    def test_price_cents_divides_basis_by_quantity(self):
+        lot = _lot("x", "QQQ", "buy", date(2024, 1, 1), 10, 50_000)
+        assert lot.price_cents == 5_000  # 50_000 // 10
+
+    def test_effective_basis_falls_back_to_original_when_adjusted_unset(self):
+        lot = _lot("x", "QQQ", "buy", date(2024, 1, 1), 10, 50_000)
+        assert lot.adjusted_basis_cents is None
+        assert lot.effective_basis_cents == 50_000
+
+    def test_effective_basis_uses_adjusted_when_set(self):
+        lot = _lot("x", "QQQ", "buy", date(2024, 1, 1), 10, 50_000)
+        lot.adjusted_basis_cents = 99_999
+        assert lot.effective_basis_cents == 99_999
+
+
+class TestNormaliseDate:
+    """Cover _normalise_date datetime/str branches (L82, L85)."""
+
+    def test_normalise_accepts_datetime_returns_date(self):
+        assert _normalise_date(datetime(2024, 1, 1, 12, 30)) == date(2024, 1, 1)
+
+    def test_normalise_accepts_date_unchanged(self):
+        assert _normalise_date(date(2024, 1, 1)) == date(2024, 1, 1)
+
+    def test_normalise_rejects_str(self):
+        with pytest.raises(TypeError):
+            _normalise_date("2024-01-01")
+
+    def test_detect_handles_datetime_trade_dates(self):
+        """Lots carrying datetime trade_date run through detect (exercises L82)."""
+        lots = [
+            _lot("b1", "QQQ", "buy",  datetime(2024, 6, 1, 9, 30), 100, 500_000),
+            _lot("s1", "QQQ", "sell", datetime(2024, 6, 15, 9, 30), 100, 480_000),
+            _lot("b2", "QQQ", "buy",  datetime(2024, 6, 20, 9, 30), 100, 490_000),
+        ]
+        lots[1].adjusted_basis_cents = 500_000
+        _, results = detect_wash_sales(lots)
+        assert len(results) == 1
+        assert results[0].sell_lot_id == "s1"
+        assert results[0].disallowed_loss_cents == 20_000
+
+
+class TestReplacementBranches:
+    """Cover same-day skip (L180), pre-flagged skip (L182), full-cover break (L212)."""
+
+    def test_same_day_buy_is_not_a_replacement(self):
+        lots = [
+            _lot("b1", "QQQ", "buy",  date(2024, 6, 1), 100, 500_000),
+            _lot("s1", "QQQ", "sell", date(2024, 6, 15), 100, 480_000),
+            _lot("b2", "QQQ", "buy",  date(2024, 6, 15), 100, 490_000),  # same day as sell
+        ]
+        lots[1].adjusted_basis_cents = 500_000
+        _, results = detect_wash_sales(lots)
+        assert results == []
+
+    def test_preflagged_replacement_buy_is_skipped(self):
+        """A buy already marked is_wash_sale=True is skipped; the next valid buy is used."""
+        lots = [
+            _lot("b1", "QQQ", "buy",  date(2024, 6, 1), 100, 500_000),
+            _lot("s1", "QQQ", "sell", date(2024, 6, 15), 100, 480_000),
+            _lot("bf", "QQQ", "buy",  date(2024, 6, 18), 100, 491_000),  # flagged → skipped
+            _lot("b2", "QQQ", "buy",  date(2024, 6, 20), 100, 490_000),  # next valid replacement
+        ]
+        lots[1].adjusted_basis_cents = 500_000
+        lots[2].is_wash_sale = True
+        _, results = detect_wash_sales(lots)
+        assert len(results) == 1
+        assert results[0].replacement_lot_id == "b2"
+        assert results[0].disallowed_loss_cents == 20_000
+
+    def test_full_coverage_breaks_before_later_replacement(self):
+        """When the first replacement fully covers the sold qty, the loop breaks and a
+        later in-window buy is never touched (its adjusted_basis_cents stays None)."""
+        lots = [
+            _lot("b1", "QQQ", "buy",  date(2024, 6, 1), 100, 500_000),
+            _lot("s1", "QQQ", "sell", date(2024, 6, 15), 100, 480_000),
+            _lot("b2", "QQQ", "buy",  date(2024, 6, 18), 100, 490_000),  # full coverage
+            _lot("b3", "QQQ", "buy",  date(2024, 6, 20), 100, 492_000),  # never reached → break
+        ]
+        lots[1].adjusted_basis_cents = 500_000
+        adjusted, results = detect_wash_sales(lots)
+        assert len(results) == 1
+        assert results[0].replacement_lot_id == "b2"
+        b3 = next(l for l in adjusted if l.id == "b3")
+        assert b3.adjusted_basis_cents is None
+
+    def test_second_sell_skips_fully_consumed_replacement(self):
+        """L218: a later loss sell finds available_qty<=0 on the only replacement buy.
+
+        Two loss sells of the same ticker share ONE replacement buy whose shares
+        are fully consumed by the FIRST (earlier) sell. When the SECOND sell reaches
+        that same buy in the inner loop, ``available_qty <= 0`` so the buy is
+        skipped via ``continue`` (L218). Per §1091 the second sell's loss is then
+        ALLOWED (no remaining replacement shares to disallow against).
+        """
+        src = _lot("src", "QQQ", "buy", date(2024, 3, 1), 20, 200_000)
+        s1 = _lot("s1", "QQQ", "sell", date(2024, 3, 10), 10, 90_000)
+        s1.adjusted_basis_cents = 100_000          # loss 10_000
+        s2 = _lot("s2", "QQQ", "sell", date(2024, 3, 11), 10, 85_000)
+        s2.adjusted_basis_cents = 100_000          # loss 15_000
+        # ONE replacement buy, 10 shares — fully consumed by s1; in both windows.
+        rep = _lot("rep", "QQQ", "buy", date(2024, 3, 20), 10, 95_000)
+
+        adjusted, results = detect_wash_sales([src, s1, s2, rep])
+
+        # Only s1's loss is disallowed; rep has no shares left for s2.
+        assert len(results) == 1
+        assert results[0].sell_lot_id == "s1"
+        assert results[0].replacement_lot_id == "rep"
+        assert results[0].disallowed_loss_cents == 10_000
+
+        # rep basis bumped by s1's loss exactly once (95_000 + 10_000), never inflated.
+        rep_lot = next(l for l in adjusted if l.id == "rep")
+        assert rep_lot.adjusted_basis_cents == 105_000
+
+        # s2's loss survives — no replacement capacity remained (L218 continue).
+        s2_lot = next(l for l in adjusted if l.id == "s2")
+        assert s2_lot.is_wash_sale is False
