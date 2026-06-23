@@ -5,7 +5,8 @@ JSON object and run through ``scrub_pii`` first. PII patterns we never want to
 appear in logs:
 
 * SSN-shaped ``\\b\\d{3}-\\d{2}-\\d{4}\\b``  (US Social Security Number)
-* SIN-shaped ``\\b\\d{9}\\b``                (Canadian Social Insurance Number)
+* SIN-shaped ``\\b\\d{9}\\b``                (Canadian Social Insurance Number;
+  separated print/entry forms ``NNN-NNN-NNN`` and ``NNN NNN NNN`` also covered)
 * PAN-shaped ``\\b[A-Z]{5}\\d{4}[A-Z]\\b``    (India Permanent Account Number)
 
 P2-AC8 wires this into ``llm.py``, ``graph.py``, and ``build_return.py`` so the
@@ -26,6 +27,11 @@ from typing import Any, Dict, Iterable, Optional
 # ---------------------------------------------------------------------------
 _SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 _SIN_RE = re.compile(r"\b\d{9}\b")
+# Separated SIN print/entry forms NNN-NNN-NNN and NNN NNN NNN. The \1
+# backreference forces a consistent separator (blocks mixed 123-456 789), and
+# the 3-3-3 shape won't match 3-3-4 phone numbers; 3-2-4 SSNs are handled by
+# _SSN_RE.
+_SIN_SEP_RE = re.compile(r"\b\d{3}([- ])\d{3}\1\d{3}\b")
 _PAN_RE = re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")
 
 _REDACTED = "[REDACTED]"
@@ -40,6 +46,8 @@ def scrub_pii(value: Any) -> Any:
     if isinstance(value, str):
         out = _SSN_RE.sub(_REDACTED, value)
         out = _PAN_RE.sub(_REDACTED, out)
+        # Separated-form SIN before the contiguous SIN regex.
+        out = _SIN_SEP_RE.sub(_REDACTED, out)
         # SIN regex runs last because it would otherwise eat the 9 digits in
         # the SSN before the dashes had a chance to anchor the SSN regex.
         out = _SIN_RE.sub(_REDACTED, out)
