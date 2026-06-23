@@ -86,6 +86,32 @@ def test_scrub_pii_leaves_non_pii_alone() -> None:
     assert scrub_pii("order 12345678 confirmed") == "order 12345678 confirmed"
 
 
+def test_scrub_pii_redacts_dash_separated_sin() -> None:
+    out = scrub_pii("SIN 123-456-789 end")
+    assert "123-456-789" not in out
+    assert "[REDACTED]" in out
+
+
+def test_scrub_pii_redacts_space_separated_sin() -> None:
+    out = scrub_pii("SIN 123 456 789 end")
+    assert "123 456 789" not in out
+    assert "[REDACTED]" in out
+
+
+def test_scrub_pii_still_redacts_contiguous_sin() -> None:
+    assert "123456789" not in scrub_pii("SIN 123456789")
+
+
+def test_scrub_pii_does_not_redact_phone_number() -> None:
+    # 3-3-4 phone, not a 3-3-3 SIN.
+    assert "416-555-1234" in scrub_pii("call 416-555-1234")
+
+
+def test_scrub_pii_preserves_ssn_redaction() -> None:
+    # 3-2-4 SSN still handled by _SSN_RE.
+    assert "123-45-6789" not in scrub_pii("SSN 123-45-6789")
+
+
 def test_formatter_emits_valid_json_with_extras() -> None:
     formatter = JSONFormatter()
     record = logging.LogRecord(
