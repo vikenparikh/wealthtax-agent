@@ -878,14 +878,14 @@ def _render_wizard_step_5(user: "CurrentUser", wizard: WizardState, graph) -> No
         "Groq's [Privacy Policy](https://groq.com/privacy-policy) governs how they handle this data. "
         "All filing artifacts remain `transmissible=false` and stay on your device."
     )
-    consent = st.checkbox(
+    st.checkbox(
         "I consent to sending the above information to Groq to generate my draft return.",
         key="llm_consent_given",
         value=st.session_state.get("llm_consent_given", False),
     )
-    # Sync consent into session state so it survives reruns within step 5.
-    if consent:
-        st.session_state["llm_consent_given"] = True
+    # The checkbox's ``key="llm_consent_given"`` already syncs its value into
+    # ``st.session_state``; re-assigning it here is redundant *and* raises a
+    # StreamlitAPIException (mutating a widget-bound key after instantiation).
 
     st.markdown("---")
     nav_cols = st.columns(2)

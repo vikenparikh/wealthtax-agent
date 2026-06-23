@@ -82,6 +82,43 @@ def test_year_picker_includes_supported_years():
 # ---------------------------------------------------------------------------
 
 
+def test_consent_checkbox_does_not_crash():
+    """Checking the Groq consent box on Step 5 must not raise StreamlitAPIException.
+
+    The consent checkbox is bound to ``key="llm_consent_given"``; the prior code
+    re-assigned that same widget-bound session_state key after the widget was
+    instantiated, which Streamlit forbids. After the fix, checking consent must
+    (a) not raise, and (b) still persist — enabling the "Generate draft return"
+    button.
+    """
+    from wealthtax_agent.intake.wizard import WizardState
+
+    at = _render("self_hosted")
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Seed the wizard directly to the consent/review step (step index 4).
+    # Advancing through earlier steps trips AppTest widget-registration errors,
+    # so we jump straight to the consent screen with the minimal data it reads.
+    at.session_state["wizard"] = WizardState(
+        step=4,
+        data={
+            "filing_year": 2024,
+            "jurisdictions": ["CA"],
+            "days_ca": 365,
+        },
+    )
+    at.run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Now check the consent box — this is the action that crashed before the fix.
+    at.checkbox(key="llm_consent_given").set_value(True).run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Consent must persist → the "Generate draft return" button is enabled.
+    gen = at.button(key="wiz_generate")
+    assert gen.disabled is False, "Generate button should be enabled once consent is given"
+
+
 class TestReviewReportCache:
     @staticmethod
     def _sample_draft():
