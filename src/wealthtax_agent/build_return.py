@@ -252,7 +252,7 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
 
 
 def _amendment_artifacts(state: GraphState) -> Dict[str, FilingArtifact]:
-    """Emit 1040-X (US) or T1-ADJ (CA) draft when ``state.is_amendment`` is set."""
+    """Emit 1040-X (US), T1-ADJ (CA), or ITR-Revised (IN, §139(5)) draft when ``state.is_amendment`` is set."""
     if not state.is_amendment:
         return {}
     year = state.filing_year or 2024
@@ -260,7 +260,7 @@ def _amendment_artifacts(state: GraphState) -> Dict[str, FilingArtifact]:
     for jurisdiction, draft in state.draft_returns.items():
         prior = state.prior_filed_totals.get(jurisdiction, {})
         lines: List[str] = []
-        form_code = "1040-X" if jurisdiction == "US" else "T1-ADJ"
+        form_code = {"US": "1040-X", "CA": "T1-ADJ", "IN": "ITR-Revised"}.get(jurisdiction, "T1-ADJ")
         lines.append(f"{form_code} Amendment Worksheet ({jurisdiction} {year})")
         lines.append("=" * 60)
         lines.append(f"{'Item':<24}{'Originally Filed':>18}{'Amended':>14}{'Difference':>14}")
