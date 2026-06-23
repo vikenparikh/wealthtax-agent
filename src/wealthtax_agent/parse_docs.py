@@ -63,7 +63,14 @@ def _normalize_ocr_text(text: str) -> str:
             normalized_lines.append(line)
 
     compact = "\n".join(normalized_lines)
-    compact = re.sub(r"([0-9]),([0-9]{3}(?:\.[0-9]{2})?)", r"\1\2", compact)
+    # Iterate to a fixpoint: a single non-overlapping pass leaves an embedded
+    # comma in numbers with >=2 thousands groups (e.g. 1,234,567), since the
+    # match consumes digits on both sides of each comma. Each pass removes >=1
+    # comma or is a no-op, so this terminates.
+    prev = None
+    while prev != compact:
+        prev = compact
+        compact = re.sub(r"([0-9]),([0-9]{3}(?:\.[0-9]{2})?)", r"\1\2", compact)
     return compact.strip()
 
 
