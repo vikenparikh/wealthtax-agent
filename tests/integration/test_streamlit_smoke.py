@@ -180,6 +180,88 @@ def test_consent_checkbox_does_not_crash():
     assert gen.disabled is False, "Generate button should be enabled once consent is given"
 
 
+def test_generate_draft_return_journey_renders_draft_and_transmissible_stamp(monkeypatch):
+    """E2E: drive the full GENERATE → DRAFT-RENDERS journey via AppTest.
+
+    Seeds straight to the consent/review step (step index 4, same trick as the
+    other wizard tests to dodge the Step-2 column-nested widget KeyError), gives
+    consent, clicks "Generate draft return", and asserts only the *structural*
+    rendered surface — the draft expander, the transmissible stamp, the revision
+    success toast — plus that every emitted filing artifact is stamped
+    ``transmissible is False``. No computed tax-dollar figure is pinned.
+
+    Hermetic: both LLM call sites in explain_return (``explain_return_node`` and
+    ``generate_dual_outputs``) reference ``explain_return.call_with_retry``; we
+    monkeypatch that to raise, forcing each into its deterministic local-fallback
+    branch so the journey runs fully offline with zero network attempted.
+    """
+    import wealthtax_agent.explain_return as er
+    from wealthtax_agent.intake.wizard import WizardState
+    from wealthtax_agent.state import FormExtract
+
+    def _offline_stub(*_a, **_k):
+        raise RuntimeError("offline-stub")
+
+    monkeypatch.setattr(er, "call_with_retry", _offline_stub)
+
+    at = _render("self_hosted")
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Seed to the consent/review step with the minimal data the generate handler
+    # reads. step index 4 == WIZARD_STEPS[4] (consent/review).
+    at.session_state["wizard"] = WizardState(
+        step=4,
+        data={"filing_year": 2024, "jurisdictions": ["CA"], "days_ca": 365},
+    )
+    at.session_state["manual_extracts"] = [
+        FormExtract(
+            form_code="T4",
+            jurisdiction="CA",
+            fields={"employment_income": 85000.0, "income_tax_deducted": 14000.0},
+        )
+    ]
+    # Real session_state key the generate handler reads is "answers"
+    # (main.py: base.user_answers.update(st.session_state.answers or {})).
+    at.session_state["answers"] = {
+        "filing_status": "single",
+        "province_of_residence": "ON",
+        "state_of_residence": "CA",
+    }
+    at.run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Give consent → enables the Generate button → click it.
+    at.checkbox(key="llm_consent_given").set_value(True).run()
+    assert not list(at.exception), [e.value for e in at.exception]
+    assert at.button(key="wiz_generate").disabled is False
+    at.button(key="wiz_generate").click().run()
+
+    # --- Structural / non-money assertions only ---
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    state = at.session_state["last_state"]
+    assert state is not None
+    # The CA engine produced a draft (not awaiting_clarification).
+    assert not state.awaiting_clarification, getattr(state, "warnings", None)
+    assert "CA" in state.draft_returns, list(state.draft_returns.keys())
+
+    # Every filing artifact is stamped transmissible=False.
+    arts = state.filing_artifacts
+    assert arts, "expected at least one filing artifact"
+    assert all(a.transmissible is False for a in arts.values())
+
+    # Rendered draft expander + transmissible stamp + revision success toast.
+    assert any("CA draft return" in str(e.label) for e in at.expander), [
+        str(e.label) for e in at.expander
+    ]
+    assert any(
+        "transmissible=false" in (c.value or "") for c in at.caption
+    ), [c.value for c in at.caption]
+    assert any(
+        "Draft saved as revision" in s.value for s in at.success
+    ), [s.value for s in at.success]
+
+
 class TestReviewReportCache:
     @staticmethod
     def _sample_draft():
