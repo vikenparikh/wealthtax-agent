@@ -29,6 +29,7 @@ def _fresh_db_per_test(monkeypatch):
     reset_engine_cache()
     create_all_for_tests()
     yield
+    monkeypatch.delenv("WEALTHTAX_MODE", raising=False)
     reset_engine_cache()
     reset_settings_cache()
     try:
