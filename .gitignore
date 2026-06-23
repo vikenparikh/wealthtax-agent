@@ -49,3 +49,11 @@ target/
 
 # Format-output debug dump (must never be tracked; PII-at-rest)
 format_llm_response_debug.txt
+
+# Local SQLite databases — the default DATABASE_URL is sqlite:///./wealthtax.db,
+# so running the app/CLI from the repo root creates a PII-at-rest DB in cwd.
+# These must never be committed.
+wealthtax.db
+*.db
+*.sqlite
+*.sqlite3
