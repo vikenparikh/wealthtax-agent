@@ -317,6 +317,146 @@ def test_generate_draft_return_journey_renders_draft_and_transmissible_stamp(mon
     ), [s.value for s in at.success]
 
 
+def test_generate_draft_return_journey_us_renders_draft_and_transmissible_stamp(monkeypatch):
+    """E2E (US): same GENERATE → DRAFT-RENDERS journey as the CA test, but for the
+    US jurisdiction. Seeds a single W-2, drives consent + generate, and asserts the
+    structural rendered surface plus that every filing artifact is stamped
+    ``transmissible is False``. No computed tax-dollar figure is pinned.
+
+    Hermetic: ``explain_return.call_with_retry`` is monkeypatched to raise so both
+    LLM call sites fall back to their deterministic local branch (fully offline).
+    """
+    import wealthtax_agent.explain_return as er
+    from wealthtax_agent.intake.wizard import WizardState
+    from wealthtax_agent.state import FormExtract
+
+    def _offline_stub(*_a, **_k):
+        raise RuntimeError("offline-stub")
+
+    monkeypatch.setattr(er, "call_with_retry", _offline_stub)
+
+    at = _render("self_hosted")
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    at.session_state["wizard"] = WizardState(
+        step=4,
+        data={"filing_year": 2024, "jurisdictions": ["US"], "days_us": 365},
+    )
+    at.session_state["manual_extracts"] = [
+        FormExtract(
+            form_code="W-2",
+            jurisdiction="US",
+            fields={"wages": 90000.0, "federal_income_tax_withheld": 12000.0},
+        )
+    ]
+    at.session_state["answers"] = {
+        "filing_status": "single",
+        "state_of_residence": "CA",
+    }
+    at.run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    at.checkbox(key="llm_consent_given").set_value(True).run()
+    assert not list(at.exception), [e.value for e in at.exception]
+    assert at.button(key="wiz_generate").disabled is False
+    at.button(key="wiz_generate").click().run()
+
+    # --- Structural / non-money assertions only ---
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    state = at.session_state["last_state"]
+    assert state is not None
+    assert not state.awaiting_clarification, getattr(state, "warnings", None)
+    assert "US" in state.draft_returns, list(state.draft_returns.keys())
+
+    arts = state.filing_artifacts
+    assert arts, "expected at least one filing artifact"
+    assert all(a.transmissible is False for a in arts.values())
+
+    assert any("US draft return" in str(e.label) for e in at.expander), [
+        str(e.label) for e in at.expander
+    ]
+    assert any(
+        "transmissible=false" in (c.value or "") for c in at.caption
+    ), [c.value for c in at.caption]
+    assert any(
+        "Draft saved as revision" in s.value for s in at.success
+    ), [s.value for s in at.success]
+
+
+def test_generate_draft_return_journey_in_renders_draft_and_transmissible_stamp(monkeypatch):
+    """E2E (IN): same GENERATE → DRAFT-RENDERS journey as the CA test, but for the
+    India jurisdiction (new regime). Seeds a single Form 16, drives consent +
+    generate, and asserts the structural rendered surface plus that every filing
+    artifact is stamped ``transmissible is False``. No computed tax-dollar figure
+    is pinned.
+
+    Hermetic: ``explain_return.call_with_retry`` is monkeypatched to raise so both
+    LLM call sites fall back to their deterministic local branch (fully offline).
+    """
+    import wealthtax_agent.explain_return as er
+    from wealthtax_agent.intake.wizard import WizardState
+    from wealthtax_agent.state import FormExtract
+
+    def _offline_stub(*_a, **_k):
+        raise RuntimeError("offline-stub")
+
+    monkeypatch.setattr(er, "call_with_retry", _offline_stub)
+
+    at = _render("self_hosted")
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    at.session_state["wizard"] = WizardState(
+        step=4,
+        data={
+            "filing_year": 2024,
+            "jurisdictions": ["IN"],
+            "days_in": 300,
+            "india_regime": "new",
+        },
+    )
+    at.session_state["manual_extracts"] = [
+        FormExtract(
+            form_code="FORM-16",
+            jurisdiction="IN",
+            fields={"gross_salary": 1200000.0, "tds_deducted": 100000.0},
+        )
+    ]
+    at.session_state["answers"] = {
+        "is_indian_citizen": "yes",
+        "age": "35",
+    }
+    at.run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    at.checkbox(key="llm_consent_given").set_value(True).run()
+    assert not list(at.exception), [e.value for e in at.exception]
+    assert at.button(key="wiz_generate").disabled is False
+    at.button(key="wiz_generate").click().run()
+
+    # --- Structural / non-money assertions only ---
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    state = at.session_state["last_state"]
+    assert state is not None
+    assert not state.awaiting_clarification, getattr(state, "warnings", None)
+    assert "IN" in state.draft_returns, list(state.draft_returns.keys())
+
+    arts = state.filing_artifacts
+    assert arts, "expected at least one filing artifact"
+    assert all(a.transmissible is False for a in arts.values())
+
+    assert any("IN draft return" in str(e.label) for e in at.expander), [
+        str(e.label) for e in at.expander
+    ]
+    assert any(
+        "transmissible=false" in (c.value or "") for c in at.caption
+    ), [c.value for c in at.caption]
+    assert any(
+        "Draft saved as revision" in s.value for s in at.success
+    ), [s.value for s in at.success]
+
+
 class TestReviewReportCache:
     @staticmethod
     def _sample_draft():
