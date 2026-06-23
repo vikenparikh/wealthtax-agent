@@ -307,3 +307,252 @@ class TestSystemUserSentinel:
         assert len("trad-platform-event") <= max_len
         # and the sentinel email fits its column too
         assert len(ec.SYSTEM_USER_EMAIL) <= 320
+
+
+# ---------------------------------------------------------------------------
+# Error / schema / reconnect branch coverage (lines 116-117, 125, 156-172,
+# 194, 196-197). The entrypoint (215-216) is intentionally not covered.
+#
+# Local-import monkeypatch gotchas (confirmed against the source):
+#   - handle_trade_filled does `from wealthtax_agent.db import get_session`
+#     INSIDE the function → patch wealthtax_agent.db.get_session.
+#   - _ensure_schema does `import subprocess` + `from wealthtax_agent.config
+#     import get_settings` locally → patch subprocess.run and
+#     wealthtax_agent.config.get_settings.
+#   - run() does `from wealthtax_agent.events.bus import subscribe` locally →
+#     patch _bus.subscribe.
+# ---------------------------------------------------------------------------
+
+
+class TestHandleTradeFilledErrorPath:
+    """handle_trade_filled swallows DB-write failures (lines 116-117)."""
+
+    @pytest.mark.asyncio
+    async def test_db_write_failure_is_swallowed(
+        self, monkeypatch: pytest.MonkeyPatch, caplog
+    ) -> None:
+        """A DB error in get_session() is caught, logged, and not re-raised."""
+        import logging
+
+        import wealthtax_agent.db as _db
+        from wealthtax_agent.workers.event_consumer import handle_trade_filled
+
+        def _boom_get_session():
+            raise RuntimeError("db exploded")
+
+        # get_session is used as a context manager; raising on call is enough
+        # to trip the `with get_session() as session:` line.
+        monkeypatch.setattr(_db, "get_session", _boom_get_session)
+
+        event = _make_event(event_id="evt-dbfail-1")
+        with caplog.at_level(logging.ERROR, logger="wealthtax_agent.workers.event_consumer"):
+            # Must NOT raise.
+            result = await handle_trade_filled(event)
+
+        assert result is None
+        assert any(
+            "DB write failed" in rec.getMessage() for rec in caplog.records
+        ), f"expected a 'DB write failed' error log, got {[r.getMessage() for r in caplog.records]}"
+
+    @pytest.mark.asyncio
+    async def test_db_write_failure_persists_no_lot(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """After a swallowed write failure, no Lot row exists."""
+        import wealthtax_agent.db as _db
+        from wealthtax_agent.db import get_session
+        from wealthtax_agent.db.models import Lot
+        from wealthtax_agent.workers.event_consumer import handle_trade_filled
+
+        def _boom_get_session():
+            raise RuntimeError("db exploded")
+
+        monkeypatch.setattr(_db, "get_session", _boom_get_session)
+
+        await handle_trade_filled(_make_event(event_id="evt-dbfail-2"))
+
+        # Restore is automatic (monkeypatch teardown); query with the real one.
+        monkeypatch.undo()
+        with get_session() as session:
+            count = session.query(Lot).count()
+        assert count == 0
+
+
+class TestHandleReceiptCaptured:
+    """handle_receipt_captured is a logging stub (line 125)."""
+
+    @pytest.mark.asyncio
+    async def test_stub_logs_and_writes_nothing(self, caplog) -> None:
+        """Returns None, writes no row, logs the not-yet-implemented line."""
+        import logging
+
+        from wealthtax_agent.db import get_session
+        from wealthtax_agent.db.models import Lot
+        from wealthtax_agent.workers.event_consumer import handle_receipt_captured
+
+        event = _make_event(event_id="evt-receipt-1")
+        with caplog.at_level(logging.INFO, logger="wealthtax_agent.workers.event_consumer"):
+            result = await handle_receipt_captured(event)
+
+        assert result is None
+        assert any(
+            "receipt.captured received" in rec.getMessage()
+            and "not yet implemented" in rec.getMessage()
+            for rec in caplog.records
+        )
+        # No Lot rows are written by the receipt stub.
+        with get_session() as session:
+            assert session.query(Lot).count() == 0
+
+    @pytest.mark.asyncio
+    async def test_stub_tolerates_non_event_object(self, caplog) -> None:
+        """The getattr(event, 'id', repr(event)) fallback handles a bare object."""
+        import logging
+
+        from wealthtax_agent.workers.event_consumer import handle_receipt_captured
+
+        with caplog.at_level(logging.INFO, logger="wealthtax_agent.workers.event_consumer"):
+            result = await handle_receipt_captured(object())  # no .id attribute
+
+        assert result is None
+        assert any(
+            "receipt.captured received" in rec.getMessage() for rec in caplog.records
+        )
+
+
+class TestEnsureSchemaPostgresBranch:
+    """_ensure_schema() non-sqlite path runs alembic via subprocess (156-172)."""
+
+    def _patch_settings(self, monkeypatch, db_url: str):
+        import wealthtax_agent.config as _cfg
+
+        class _FakeSettings:
+            database_url = db_url
+
+        monkeypatch.setattr(_cfg, "get_settings", lambda: _FakeSettings())
+
+    def test_alembic_success(self, monkeypatch: pytest.MonkeyPatch, caplog) -> None:
+        """rc==0 → success log, no raise."""
+        import logging
+        import subprocess
+
+        from wealthtax_agent.workers.event_consumer import _ensure_schema
+
+        self._patch_settings(monkeypatch, "postgresql+psycopg://x/y")
+
+        class _Result:
+            returncode = 0
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Result())
+
+        with caplog.at_level(logging.INFO, logger="wealthtax_agent.workers.event_consumer"):
+            _ensure_schema()  # must not raise
+
+        assert any(
+            "alembic upgrade head OK" in rec.getMessage() for rec in caplog.records
+        )
+
+    def test_alembic_nonzero_returncode_logs_error(
+        self, monkeypatch: pytest.MonkeyPatch, caplog
+    ) -> None:
+        """rc!=0 → error log with rc + stderr; returns (does not raise)."""
+        import logging
+        import subprocess
+
+        from wealthtax_agent.workers.event_consumer import _ensure_schema
+
+        self._patch_settings(monkeypatch, "postgresql+psycopg://x/y")
+
+        class _Result:
+            returncode = 1
+            stderr = "boom"
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Result())
+
+        with caplog.at_level(logging.ERROR, logger="wealthtax_agent.workers.event_consumer"):
+            _ensure_schema()  # must not raise
+
+        msgs = [rec.getMessage() for rec in caplog.records]
+        assert any("alembic upgrade head failed" in m for m in msgs)
+        assert any("boom" in m for m in msgs), f"stderr not logged: {msgs}"
+
+    def test_alembic_subprocess_raises_is_swallowed(
+        self, monkeypatch: pytest.MonkeyPatch, caplog
+    ) -> None:
+        """subprocess.run raising (e.g. OSError) is caught + logged, not propagated."""
+        import logging
+        import subprocess
+
+        from wealthtax_agent.workers.event_consumer import _ensure_schema
+
+        self._patch_settings(monkeypatch, "postgresql+psycopg://x/y")
+
+        def _raise(*a, **k):
+            raise OSError("alembic binary missing")
+
+        monkeypatch.setattr(subprocess, "run", _raise)
+
+        with caplog.at_level(logging.ERROR, logger="wealthtax_agent.workers.event_consumer"):
+            _ensure_schema()  # must not raise
+
+        assert any(
+            "alembic upgrade head raised an exception" in rec.getMessage()
+            for rec in caplog.records
+        )
+
+
+class TestRunHappyAndCancel:
+    """run() normal return (194) and CancelledError return without retry (196-197)."""
+
+    @pytest.mark.asyncio
+    async def test_run_returns_when_subscribe_completes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both channels subscribed; run() returns None when subscribe() resolves."""
+        from wealthtax_agent.events import bus as _bus
+        from wealthtax_agent.events.schemas import TradeFilledEvent
+        from wealthtax_agent.workers import event_consumer as ec
+
+        channels: list[str] = []
+
+        async def _recording_subscribe(channel, _handler, *a, **k):
+            channels.append(channel)
+
+        # _ensure_schema is called unconditionally at the top of run(); no-op it.
+        monkeypatch.setattr(ec, "_ensure_schema", lambda: None)
+        monkeypatch.setattr(_bus, "subscribe", _recording_subscribe)
+
+        result = await ec.run()
+
+        assert result is None
+        assert TradeFilledEvent.channel() in channels
+        assert "paa.receipt.captured" in channels
+
+    @pytest.mark.asyncio
+    async def test_run_returns_on_cancelled_without_retry(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """asyncio.CancelledError → return None, NO reconnect sleep (not retried)."""
+        from wealthtax_agent.events import bus as _bus
+        from wealthtax_agent.workers import event_consumer as ec
+
+        sleep_calls: list = []
+
+        async def _recording_sleep(seconds):
+            sleep_calls.append(seconds)
+
+        async def _cancelled_subscribe(*a, **k):
+            raise asyncio.CancelledError()
+
+        monkeypatch.setattr(ec, "_ensure_schema", lambda: None)
+        monkeypatch.setattr(asyncio, "sleep", _recording_sleep)
+        monkeypatch.setattr(_bus, "subscribe", _cancelled_subscribe)
+
+        result = await ec.run()
+
+        assert result is None
+        assert sleep_calls == [], (
+            "CancelledError must not be treated as a reconnectable error "
+            f"(asyncio.sleep was called {len(sleep_calls)} times)"
+        )
