@@ -9,7 +9,7 @@ from typing import Callable, Optional, TypeVar
 
 from openai import OpenAI
 
-from wealthtax_agent.logging_utils import get_logger
+from wealthtax_agent.logging_utils import get_logger, scrub_pii
 
 _log = get_logger("wealthtax_agent.llm")
 
@@ -98,7 +98,10 @@ def sanitize_runtime_error(message: str) -> str:
 
     sanitized = re.sub(r"gsk_[A-Za-z0-9_\-]+", "[REDACTED_TOKEN]", message)
     sanitized = re.sub(r"sk-[A-Za-z0-9_\-]+", "[REDACTED_TOKEN]", sanitized)
-    return sanitized
+    # Final transform: redact SSN/SIN/PAN shapes from any raw exception text
+    # that survives the token regexes. This is the sole scrub on user-visible
+    # warning paths that interpolate raw str(exc) into state.warnings.
+    return scrub_pii(sanitized)
 
 
 def _detect_provider() -> str:
