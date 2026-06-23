@@ -75,6 +75,67 @@ def test_year_picker_includes_supported_years():
     assert any(int(y) >= 2024 for y in year_options), year_options
 
 
+def test_manual_intake_through_wizard_captures_extract():
+    """E2E: drive the manual-intake journey to Step 3 and add a 1098-E by hand.
+
+    Seeds past the Step-2 column-nested residency widgets (advancing the wizard
+    normally trips an AppTest widget-registration KeyError on the column-nested
+    number_inputs), then exercises the manual-intake form end-to-end and asserts
+    only the structural / rendered surface — never a computed tax figure. The
+    manual path does NOT invoke the LLM or the graph (generation is Step 5).
+    """
+    from wealthtax_agent.intake.wizard import WizardState
+
+    at = _render("self_hosted")
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Land directly on Step 3 (income sources / manual intake). step=2 is the
+    # zero-based index of WIZARD_STEPS[2] == "income_sources".
+    at.session_state["wizard"] = WizardState(
+        step=2,
+        data={
+            "filing_year": 2024,
+            "jurisdictions": ["CA"],
+            "days_ca": 300,
+            "days_us": 0,
+            "days_in": 0,
+        },
+    )
+    at.run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # The "Which form?" selectbox is rendered and defaults to the
+    # alphabetically-first SUPPORTED_INTAKE_FORMS entry (1098-E).
+    form_picker = [s for s in at.selectbox if s.label == "Which form?"]
+    assert form_picker, "expected the manual-intake 'Which form?' selectbox"
+    assert form_picker[0].value == "1098-E", form_picker[0].value
+
+    # Fill the student-loan-interest field and submit.
+    field = at.text_input(key="mi_1098-E_student_loan_interest")
+    field.set_value("2400").run()
+
+    add_buttons = [b for b in at.button if (b.label or "").startswith("Add this")]
+    assert add_buttons, "expected an 'Add this ...' form-submit button"
+    add_buttons[0].click().run()
+
+    # --- Structural / non-money assertions only ---
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    extracts = at.session_state["manual_extracts"]
+    assert len(extracts) == 1, extracts
+    captured = extracts[0]
+    assert captured.form_code == "1098-E"
+    assert captured.jurisdiction == "US"
+    assert "student_loan_interest" in captured.fields
+
+    assert any("Added 1098-E" in s.value for s in at.success), [
+        s.value for s in at.success
+    ]
+    assert any(
+        "Pending manual entries" in (c.value or "") for c in at.caption
+    ), [c.value for c in at.caption]
+
+
 # ---------------------------------------------------------------------------
 # P2-AC10 — review-report rendering must be cached by DraftReturn fingerprint.
 # Reviewer UI can re-render the report many times per Streamlit rerun; the
