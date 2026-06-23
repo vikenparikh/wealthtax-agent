@@ -7,10 +7,40 @@ YAML loader, and the reportlab-absent text-stub fallback.
 """
 
 import sys
+from io import BytesIO
 from pathlib import Path
 
+import pypdf
 import wealthtax_agent.filing.pdf_fill as pdf_fill
-from wealthtax_agent.filing.pdf_fill import _load_yaml, _synthetic_pdf, _template_paths, fill_form
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from wealthtax_agent.filing.pdf_fill import (
+    _acroform_fill,
+    _load_yaml,
+    _synthetic_pdf,
+    _template_paths,
+    _text_overlay_fill,
+    fill_form,
+)
+
+
+def _write_acroform_pdf(path: Path, field_name: str = "f1_01") -> None:
+    """Build a minimal fillable AcroForm PDF with a single text field.
+
+    NOTE: c.showPage() MUST be called before c.save() or reportlab raises
+    KeyError 'Page1' when emitting the AcroForm.
+    """
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.acroForm.textfield(name=field_name, x=72, y=700, width=200, height=20)
+    c.showPage()
+    c.save()
+
+
+def _write_plain_pdf(path: Path) -> None:
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.drawString(72, 700, "plain template")
+    c.showPage()
+    c.save()
 
 
 def test_template_paths_sanitizes_form_code_and_structure():
@@ -62,3 +92,87 @@ def test_fill_form_falls_back_to_synthetic_when_template_unfillable(tmp_path, mo
     (base / "T4.fieldmap.yaml").write_text("employment_income: f1_01\n", encoding="utf-8")
     data = fill_form("CA", 2025, "T4", {"employment_income": 84500})
     assert data[:4] == b"%PDF"
+
+
+# --- _acroform_fill (covers 45-46, 49-60) ---------------------------------
+
+
+def test_acroform_fill_writes_field_value(tmp_path):
+    pdf = tmp_path / "T1.pdf"
+    _write_acroform_pdf(pdf)
+    out = _acroform_fill(pdf, {"employment_income": "f1_01"}, {"employment_income": 84500})
+    assert out is not None
+    assert out.startswith(b"%PDF")
+    fields = pypdf.PdfReader(BytesIO(out)).get_fields()
+    assert fields["f1_01"]["/V"] == "84500"
+
+
+def test_acroform_fill_empty_mapping_returns_none(tmp_path):
+    # The fieldmap key is absent from the values dict -> nothing mapped -> None.
+    pdf = tmp_path / "T1.pdf"
+    _write_acroform_pdf(pdf)
+    assert _acroform_fill(pdf, {"employment_income": "f1_01"}, {"other": 1}) is None
+
+
+def test_acroform_fill_import_error_returns_none(tmp_path, monkeypatch):
+    pdf = tmp_path / "T1.pdf"
+    _write_acroform_pdf(pdf)
+    monkeypatch.setitem(sys.modules, "pypdf", None)
+    assert _acroform_fill(pdf, {"employment_income": "f1_01"}, {"employment_income": 84500}) is None
+
+
+# --- _text_overlay_fill (covers 66-96) ------------------------------------
+
+
+def test_text_overlay_fill_merges_overlay(tmp_path):
+    pdf = tmp_path / "T1.pdf"
+    _write_plain_pdf(pdf)
+    out = _text_overlay_fill(pdf, {"wages": {"x": 100, "y": 700}}, {"wages": 84000})
+    assert out is not None
+    assert out.startswith(b"%PDF")
+
+
+def test_text_overlay_fill_import_error_returns_none(tmp_path, monkeypatch):
+    pdf = tmp_path / "T1.pdf"
+    _write_plain_pdf(pdf)
+    monkeypatch.setitem(sys.modules, "reportlab.pdfgen", None)
+    assert _text_overlay_fill(pdf, {"wages": {"x": 100, "y": 700}}, {"wages": 84000}) is None
+
+
+# --- fill_form template dispatch (covers 141-144, 146-149) -----------------
+
+
+def test_fill_form_uses_acroform_when_template_present(tmp_path, monkeypatch):
+    monkeypatch.setattr(pdf_fill, "TEMPLATES_ROOT", tmp_path)
+    base = tmp_path / "ca" / "2025"
+    base.mkdir(parents=True)
+    _write_acroform_pdf(base / "T1.pdf")
+    (base / "T1.fieldmap.yaml").write_text("employment_income: f1_01\n", encoding="utf-8")
+    data = fill_form("CA", 2025, "T1", {"employment_income": 84500})
+    assert data.startswith(b"%PDF")
+    fields = pypdf.PdfReader(BytesIO(data)).get_fields()
+    assert fields["f1_01"]["/V"] == "84500"
+
+
+def test_fill_form_uses_overlay_when_only_coordmap(tmp_path, monkeypatch):
+    monkeypatch.setattr(pdf_fill, "TEMPLATES_ROOT", tmp_path)
+    base = tmp_path / "ca" / "2025"
+    base.mkdir(parents=True)
+    _write_plain_pdf(base / "T1.pdf")
+    # No fieldmap -> acroform branch skipped; coordmap drives the overlay path.
+    (base / "T1.coordmap.yaml").write_text("wages:\n  x: 100\n  y: 700\n", encoding="utf-8")
+    data = fill_form("CA", 2025, "T1", {"wages": 84000})
+    assert data.startswith(b"%PDF")
+
+
+# --- _synthetic_pdf pagination (covers 127-128) ----------------------------
+
+
+def test_synthetic_pdf_paginates_long_value_dict():
+    # y starts at 650, decrements 16 per item; showPage() fires once y < 72.
+    # (650 - 72) / 16 ~= 36.1, so ~37 items are needed; pass 60 to be safe.
+    values = {f"key_{i}": i for i in range(60)}
+    data = _synthetic_pdf("CA", 2025, "T1", values)
+    assert data.startswith(b"%PDF")
+    # A multi-page PDF: confirm pagination actually produced >1 page.
+    assert len(pypdf.PdfReader(BytesIO(data)).pages) >= 2
