@@ -12,6 +12,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from wealthtax_agent.db import create_all_for_tests, reset_engine_cache
+from wealthtax_agent.config import reset_settings_cache
 
 
 APP_FILE = "src/wealthtax_agent/main.py"
@@ -24,10 +25,12 @@ def _fresh_db_per_test(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
     monkeypatch.setenv("WEALTHTAX_FERNET_KEY", FERNET_KEY)
     monkeypatch.setenv("GROQ_API_KEY", "gsk-test-key")
+    reset_settings_cache()
     reset_engine_cache()
     create_all_for_tests()
     yield
     reset_engine_cache()
+    reset_settings_cache()
     try:
         os.unlink(db_path)
     except OSError:
@@ -36,6 +39,7 @@ def _fresh_db_per_test(monkeypatch):
 
 def _render(mode: str) -> AppTest:
     os.environ["WEALTHTAX_MODE"] = mode
+    reset_settings_cache()
     at = AppTest.from_file(APP_FILE, default_timeout=30)
     at.run()
     return at
