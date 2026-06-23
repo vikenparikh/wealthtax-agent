@@ -23,6 +23,10 @@ from wealthtax_agent.state import DraftReturn, FilingArtifact, FormExtract, Grap
 _log = get_logger("wealthtax_agent.build_return")
 
 
+def _currency_symbol(jurisdiction: str) -> str:
+    return "₹" if jurisdiction == "IN" else "$"
+
+
 def _b64(data: bytes | str) -> str:
     if isinstance(data, str):
         data = data.encode("utf-8")
@@ -208,10 +212,11 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
     for jurisdiction, draft in state.draft_returns.items():
         lines.append("")
         lines.append(f"[{jurisdiction}] Filed-year totals")
-        lines.append(f"  Total income:     ${draft.totals.get('total_income', 0):,.2f}")
-        lines.append(f"  Taxable income:   ${draft.totals.get('taxable_income', 0):,.2f}")
-        lines.append(f"  Estimated tax:    ${draft.totals.get('total_tax', 0):,.2f}")
-        lines.append(f"  Refund / Owing:   ${draft.totals.get('refund', 0):,.2f} / ${draft.totals.get('balance_owing', 0):,.2f}")
+        sym = _currency_symbol(jurisdiction)
+        lines.append(f"  Total income:     {sym}{draft.totals.get('total_income', 0):,.2f}")
+        lines.append(f"  Taxable income:   {sym}{draft.totals.get('taxable_income', 0):,.2f}")
+        lines.append(f"  Estimated tax:    {sym}{draft.totals.get('total_tax', 0):,.2f}")
+        lines.append(f"  Refund / Owing:   {sym}{draft.totals.get('refund', 0):,.2f} / {sym}{draft.totals.get('balance_owing', 0):,.2f}")
 
     lines.append("")
     lines.append("5-Year Projection (3% annual income growth)")
@@ -220,12 +225,13 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
         projection = project_future_years(state, growth=0.03, horizon=5)
         for jurisdiction, rows in projection.items():
             lines.append(f"\n[{jurisdiction}]")
+            sym = _currency_symbol(jurisdiction)
             lines.append(f"  {'Year':<6}{'Income':>14}{'Taxable':>14}{'Total Tax':>14}{'Refund/Owing':>16}")
             for row in rows:
-                ref_owe = f"${row['refund']:,.0f} / ${row['balance_owing']:,.0f}"
+                ref_owe = f"{sym}{row['refund']:,.0f} / {sym}{row['balance_owing']:,.0f}"
                 lines.append(
-                    f"  {row['year']:<6}${row['total_income']:>12,.0f} ${row['taxable_income']:>12,.0f} "
-                    f"${row['total_tax']:>12,.0f}  {ref_owe:>14}"
+                    f"  {row['year']:<6}{sym}{row['total_income']:>12,.0f} {sym}{row['taxable_income']:>12,.0f} "
+                    f"{sym}{row['total_tax']:>12,.0f}  {ref_owe:>14}"
                 )
     except Exception as exc:
         lines.append(f"  (projection unavailable: {sanitize_runtime_error(str(exc))})")
@@ -235,7 +241,7 @@ def _planning_artifact(state: GraphState) -> FilingArtifact:
         lines.append("Plan-ahead actions for next year:")
         for s in state.optimization_suggestions:
             badge = "NOW" if s.horizon == "now" else "FUTURE"
-            lines.append(f"  [{badge:6s}] [{s.jurisdiction}] {s.title}  (~${s.est_savings:,.0f} estimated savings)")
+            lines.append(f"  [{badge:6s}] [{s.jurisdiction}] {s.title}  (~{_currency_symbol(s.jurisdiction)}{s.est_savings:,.0f} estimated savings)")
             for step in s.action_steps:
                 lines.append(f"      • {step}")
     else:
@@ -264,11 +270,12 @@ def _amendment_artifacts(state: GraphState) -> Dict[str, FilingArtifact]:
         lines.append(f"{form_code} Amendment Worksheet ({jurisdiction} {year})")
         lines.append("=" * 60)
         lines.append(f"{'Item':<24}{'Originally Filed':>18}{'Amended':>14}{'Difference':>14}")
+        sym = _currency_symbol(jurisdiction)
         for key in ("total_income", "taxable_income", "total_tax", "refund", "balance_owing"):
             original = float(prior.get(key, 0.0))
             amended = float(draft.totals.get(key, 0.0))
             diff = amended - original
-            lines.append(f"{key:<24}${original:>16,.2f}  ${amended:>12,.2f}  ${diff:>+12,.2f}")
+            lines.append(f"{key:<24}{sym}{original:>16,.2f}  {sym}{amended:>12,.2f}  {sym}{diff:>+12,.2f}")
         lines.append("")
         lines.append(
             f"This is a draft of the {form_code} worksheet. Transcribe the "
