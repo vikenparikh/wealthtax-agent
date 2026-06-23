@@ -1,8 +1,25 @@
 import json
 import re
 
+from openai import OpenAIError
+
 from wealthtax_agent.llm import call_with_retry, get_client, load_runtime_config, sanitize_runtime_error
+from wealthtax_agent.logging_utils import get_logger
 from wealthtax_agent.state import Explanation, GraphState
+
+
+_log = get_logger("wealthtax_agent.explain_return")
+
+# EXPECTED failure shapes raised on the LLM path (transport, auth, payload).
+# These keep the existing quiet warning + canned fallback. Everything ELSE
+# (AttributeError, KeyError, TypeError, NameError, ...) is an UNEXPECTED
+# programming error: still degrade gracefully, but LOG LOUDLY at ERROR with a
+# stack trace so the bug is observable instead of buried in a one-line warning.
+_EXPECTED_LLM_ERRORS = (OpenAIError, ConnectionError, TimeoutError, ValueError)
+
+
+def _is_expected_llm_error(exc: BaseException) -> bool:
+    return isinstance(exc, _EXPECTED_LLM_ERRORS)
 
 
 client = None
@@ -198,6 +215,12 @@ def generate_dual_outputs(state: GraphState) -> GraphState:
 				state.draft_pseudo_xml = ""
 				state.warnings.append(f"Output formatting fallback used: Missing xml code block.")
 		except Exception as exc:
+			if not _is_expected_llm_error(exc):
+				# UNEXPECTED programming error: degrade gracefully (below) but
+				# log loudly with a stack trace so the bug is observable. The
+				# exception type + traceback are code-location info, not user
+				# tax data; PII scrubbing in the JSON formatter still applies.
+				_log.error("dual_output_unexpected_error", exc_info=exc)
 			state.warnings.append(f"Output formatting fallback used: {_sanitize_error_message(str(exc))}.")
 			summary_text, pseudo_xml = _build_dual_output_fallback(state)
 			state.draft_summary_text = summary_text
@@ -236,6 +259,13 @@ def explain_return_node(state: GraphState) -> GraphState:
 		state.explanation = Explanation(lines=lines)
 	except Exception as exc:
 		draft = state.draft_return
+		if not _is_expected_llm_error(exc):
+			# UNEXPECTED programming error: still degrade to the canned
+			# explanation (below), but log loudly with a stack trace so the bug
+			# is observable instead of buried in the sanitized one-line warning.
+			# The exception type + traceback are code-location info, not user
+			# tax data; the JSON formatter's PII scrubbing still applies.
+			_log.error("explain_unexpected_error", exc_info=exc)
 		error_text = _sanitize_error_message(str(exc))
 		if "Invalid explanation payload" not in str(exc):
 			state.warnings.append(f"Explanation fallback used: {error_text}")
