@@ -146,6 +146,130 @@ class TestParse1099B:
 
 
 # ---------------------------------------------------------------------------
+# 1099-B LLM-fallback tests
+# ---------------------------------------------------------------------------
+
+# Low-confidence text: no proceeds / cost / wash-sale / long|short-term tokens,
+# so the rule pass produces fields == {} and confidence == "low", which is the
+# gate that triggers _llm_fallback when use_llm_fallback=True.
+_1099B_LOW_TEXT = "Brokerage statement for 2023. Account summary unavailable."
+
+# Same but with NO year token at all (rule tax_year is None).
+_1099B_LOW_NOYEAR_TEXT = "Brokerage statement. Account summary unavailable."
+
+
+class _FakeLLM:
+    """Stub matching the real ClaudeCLILLM.complete_json(prompt, schema_hint) interface.
+
+    ``_llm_fallback`` calls ``llm.complete_json(prompt, schema)`` positionally,
+    so this stub accepts the same two positional args.
+    """
+
+    def __init__(self, payload, raise_exc=False):
+        self._payload = payload
+        self._raise = raise_exc
+        self.calls = []
+
+    def complete_json(self, prompt, schema_hint, default=None):
+        self.calls.append((prompt, schema_hint))
+        if self._raise:
+            raise RuntimeError("boom")
+        return self._payload
+
+
+def _patch_llm(monkeypatch, payload=None, raise_exc=False):
+    fake = _FakeLLM(payload or {}, raise_exc=raise_exc)
+    monkeypatch.setattr(
+        "wealthtax_agent.services.claude_llm.get_tax_llm",
+        lambda: fake,
+    )
+    return fake
+
+
+class TestForm1099BLLMFallback:
+    def test_low_confidence_triggers_llm_and_marks_extractor_llm(self, monkeypatch):
+        # Covers the gate (78-80) + the LLM success path building a ParsedSlip.
+        _patch_llm(
+            monkeypatch,
+            {
+                "proceeds": "1000",
+                "cost_basis": "750",
+                "gain_loss": "250",
+                "tax_year": 2022,
+                "description": "ACME stock",
+            },
+        )
+        slip = parse_1099b(_1099B_LOW_TEXT, use_llm_fallback=True)
+        assert slip.extractor == "llm"
+        assert slip.confidence == "medium"
+        assert slip.jurisdiction == "US"
+        assert slip.form_type == "1099-B"
+
+    def test_numeric_fields_coerced_to_float_meta_excluded(self, monkeypatch):
+        # Field-build loop: numeric keys -> float; tax_year/description excluded
+        # from fields; tax_year lands on slip.tax_year; description -> text_fields.
+        _patch_llm(
+            monkeypatch,
+            {
+                "proceeds": "1000",
+                "cost_basis": 750.5,
+                "tax_year": 2021,
+                "description": "ACME 100sh",
+            },
+        )
+        slip = parse_1099b(_1099B_LOW_TEXT, use_llm_fallback=True)
+        assert slip.fields["proceeds"] == pytest.approx(1000.0)
+        assert isinstance(slip.fields["proceeds"], float)
+        assert slip.fields["cost_basis"] == pytest.approx(750.5)
+        assert "tax_year" not in slip.fields
+        assert "description" not in slip.fields
+        assert slip.tax_year == 2021
+        assert slip.text_fields["description"] == "ACME 100sh"
+
+    def test_none_valued_field_excluded_from_fields(self, monkeypatch):
+        # v is None -> key dropped by the comprehension's `v is not None` guard.
+        _patch_llm(
+            monkeypatch,
+            {
+                "proceeds": 500.0,
+                "wash_sale_loss_disallowed": None,
+                "tax_year": 2022,
+                "description": "X",
+            },
+        )
+        slip = parse_1099b(_1099B_LOW_TEXT, use_llm_fallback=True)
+        assert slip.fields["proceeds"] == pytest.approx(500.0)
+        assert "wash_sale_loss_disallowed" not in slip.fields
+
+    def test_tax_year_none_falls_back_to_rule_year(self, monkeypatch):
+        # LLM tax_year None -> `result.get("tax_year") or tax_year` uses rule year.
+        _patch_llm(
+            monkeypatch,
+            {"proceeds": 100.0, "tax_year": None, "description": ""},
+        )
+        slip = parse_1099b(_1099B_LOW_TEXT, use_llm_fallback=True)
+        # _1099B_LOW_TEXT contains "2023" which the rule pass parses.
+        assert slip.tax_year == 2023
+        assert slip.extractor == "llm"
+
+    def test_llm_raises_falls_through_to_rule(self, monkeypatch):
+        # except path (131-133) returns None -> parse_1099b returns rule slip.
+        _patch_llm(monkeypatch, raise_exc=True)
+        slip = parse_1099b(_1099B_LOW_TEXT, use_llm_fallback=True)
+        assert slip.extractor == "rule"
+        assert slip.confidence == "low"
+        assert slip.fields == {}
+
+    def test_fallback_disabled_stays_rule(self, monkeypatch):
+        # Gate pinned: use_llm_fallback=False -> LLM never consulted.
+        fake = _patch_llm(monkeypatch, {"proceeds": 1.0})
+        slip = parse_1099b(_1099B_LOW_TEXT, use_llm_fallback=False)
+        assert slip.extractor == "rule"
+        assert slip.confidence == "low"
+        assert fake.calls == []
+
+
+# ---------------------------------------------------------------------------
 # 1099-DIV tests
 # ---------------------------------------------------------------------------
 
