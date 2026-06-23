@@ -27,6 +27,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from wealthtax_agent.llm import sanitize_runtime_error
+
 log = logging.getLogger(__name__)
 
 _DISCLAIMER = (
@@ -160,12 +162,13 @@ def ask(
         raw = resp.text
     except Exception as exc:
         log.error("CPA chat LLM call failed: %s", exc)
+        safe = sanitize_runtime_error(str(exc))
         return Answer(
             question=question,
-            answer_text=f"Unable to process your question due to an error: {exc}",
+            answer_text=f"Unable to process your question due to an error: {safe}",
             disclaimer=_DISCLAIMER,
             confidence="low",
-            raw_response=str(exc),
+            raw_response=safe,
         )
 
     citations = _parse_citations(raw)

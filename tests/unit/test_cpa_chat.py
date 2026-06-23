@@ -139,3 +139,23 @@ class TestGracefulDegradation:
         question = "What is the RRSP contribution limit?"
         ans = ask(question, _ctx(jurisdictions=["CA"]), llm=stub)
         assert ans.question == question
+
+    def test_llm_error_message_pii_is_scrubbed(self):
+        """rung-3 security: when the LLM raises, the exception message can echo
+        the user's question (which may carry PII). Neither ``answer_text`` nor
+        ``raw_response`` may surface a raw SSN/SIN/PAN shape; both must redact to
+        ``[REDACTED]`` while keeping the friendly 'Unable to process' prefix.
+        """
+        class _PIIErrorStub(StubLLM):
+            def complete(self, prompt, *, schema_hint=None):
+                raise RuntimeError("failed on input 123-45-6789 from user")
+
+        ans = ask("my SSN is 123-45-6789", _ctx(), llm=_PIIErrorStub())
+        assert isinstance(ans, Answer)
+        assert ans.confidence == "low"
+        assert "123-45-6789" not in ans.answer_text, ans.answer_text
+        assert "123-45-6789" not in (ans.raw_response or ""), ans.raw_response
+        assert "[REDACTED]" in ans.answer_text, ans.answer_text
+        assert "[REDACTED]" in (ans.raw_response or ""), ans.raw_response
+        # Friendly prefix preserved.
+        assert "Unable to process your question" in ans.answer_text

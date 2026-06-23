@@ -374,7 +374,7 @@ def _render_manual_intake() -> None:
                     st.session_state.manual_extracts.append(extract)
                     st.success(f"Added {chosen} with {len(extract.fields)} field(s).")
             except ValueError as exc:
-                st.error(str(exc))
+                st.error(sanitize_runtime_error(str(exc)))
 
     if st.session_state.manual_extracts:
         st.caption(f"Pending manual entries: {len(st.session_state.manual_extracts)}")

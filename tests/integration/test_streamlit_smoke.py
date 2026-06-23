@@ -136,6 +136,61 @@ def test_manual_intake_through_wizard_captures_extract():
     ), [c.value for c in at.caption]
 
 
+def test_manual_intake_error_is_pii_scrubbed_in_ui(monkeypatch):
+    """rung-3 security: when ``manual_extract`` raises a ValueError whose message
+    embeds a PII-shaped value, the UI must NOT render the raw PII via ``st.error``.
+
+    Drives the real manual-intake form through AppTest (same Step-3 seed trick as
+    ``test_manual_intake_through_wizard_captures_extract``), but monkeypatches
+    ``manual_extract`` to raise a ValueError carrying an SSN-shaped string —
+    standing in for any PII that could leak into that exception message. After the
+    fix (``st.error(sanitize_runtime_error(str(exc)))``) the raw SSN must be
+    redacted to ``[REDACTED]`` in every rendered error element.
+    """
+    import wealthtax_agent.intake as intake_pkg
+    from wealthtax_agent.intake.wizard import WizardState
+
+    def _raise_with_pii(*_a, **_k):
+        raise ValueError("bad input near 123-45-6789 while parsing")
+
+    # main.py does ``from wealthtax_agent.intake import manual_extract``; AppTest
+    # re-executes the script under a synthetic module name, resolving that name
+    # against the package ``__init__`` at run time — so patch it there.
+    monkeypatch.setattr(intake_pkg, "manual_extract", _raise_with_pii)
+
+    at = _render("self_hosted")
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    at.session_state["wizard"] = WizardState(
+        step=2,
+        data={
+            "filing_year": 2024,
+            "jurisdictions": ["CA"],
+            "days_ca": 300,
+            "days_us": 0,
+            "days_in": 0,
+        },
+    )
+    at.run()
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    # Fill a field and submit so the (patched) manual_extract is invoked.
+    field = at.text_input(key="mi_1098-E_student_loan_interest")
+    field.set_value("2400").run()
+    add_buttons = [b for b in at.button if (b.label or "").startswith("Add this")]
+    assert add_buttons, "expected an 'Add this ...' form-submit button"
+    add_buttons[0].click().run()
+
+    assert not list(at.exception), [e.value for e in at.exception]
+
+    error_values = [e.value for e in at.error]
+    assert error_values, "expected an st.error element from the failing manual_extract"
+    for val in error_values:
+        assert "123-45-6789" not in val, f"raw SSN leaked into UI error: {val!r}"
+    # The friendly error text otherwise survives (redaction is surgical).
+    assert any("[REDACTED]" in val for val in error_values), error_values
+
+
 # ---------------------------------------------------------------------------
 # P2-AC10 — review-report rendering must be cached by DraftReturn fingerprint.
 # Reviewer UI can re-render the report many times per Streamlit rerun; the
