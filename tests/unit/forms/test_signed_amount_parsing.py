@@ -128,3 +128,52 @@ def test_sch_d_extract_preserves_loss_sign():
     text = "Schedule D\nNet short-term capital gain -2,000.00\n"
     extract = ScheduleDExtractor().extract(text)
     assert extract.fields["net_short_term_capital_gain"] == -2000.0
+
+
+# --- LABEL-SEPARATOR REGRESSIONS (Fable-5 audit, PR #185 refinement) ---------
+# The original `_gap` excluded "-" and "(" wholesale, so a dash used as a
+# label separator or a parenthetical annotation between the box marker and its
+# amount silently KILLED the field (returned None → income vanished with
+# confidence="high"). The refined `_gap` treats a "-"/"(" that does NOT
+# introduce a number as a gap character, so the amount is still captured.
+
+def test_dash_label_separator_not_swallowed():
+    # "Box N - Label amount" is a common broker/CRA rendering. The dash before
+    # a WORD is a separator, not a sign — the amount must survive.
+    assert find_box_amount("Box 14 - Employment income 84,500.00", "14") == 84500.0
+
+
+def test_parenthetical_annotation_not_swallowed():
+    # "(see note)" between label and amount is an annotation, not an accounting
+    # negative — the trailing amount must survive.
+    assert find_box_amount("Box 22 (see note) 19,250.00", "22") == 19250.0
+
+
+def test_dash_separator_before_signed_amount_still_reads_sign():
+    # A dash separator followed by a genuinely negative amount must still parse
+    # negative (the "-" that DOES introduce the number is the sign).
+    assert find_box_amount("Box 14 - Adjustment -1,000.00", "14") == -1000.0
+    # And a parenthetical annotation before a genuine accounting-negative:
+    assert find_box_amount("Box 3 (adj) (2,500.00)", "3") == -2500.0
+
+
+def test_dash_before_bare_number_is_documented_negative():
+    # DOCUMENTED IRREDUCIBLE CHOICE: "Box 1 - 5,000.00" (dash directly before a
+    # bare number, no intervening word) is indistinguishable from a real minus
+    # sign without layout information, so it parses as -5000.0. Pinned so any
+    # future change to this behaviour is a deliberate, reviewed decision.
+    assert find_box_amount("Box 1 - 5,000.00", "1") == -5000.0
+
+
+def test_midline_trailing_minus_last_match_is_documented():
+    # DOCUMENTED IRREDUCIBLE CHOICE: extract_amount_from_matching_line uses
+    # last-match (`matches[-1]`) semantics, so a mid-line "- N" subtraction such
+    # as "Adjustment: 500 - 200 fee" reads the LAST number (" - 200") and its
+    # leading minus → -200.0. There is no clean regex fix (the sign-aware number
+    # regex legitimately captures the "-"), so the minimum bar per the audit is
+    # to PIN the behaviour, not silently ship a surprise. find_box_amount (which
+    # anchors on a box label) is unaffected by this line-level heuristic.
+    assert (
+        extract_amount_from_matching_line("Adjustment: 500 - 200 fee", r"adjustment")
+        == -200.0
+    )

@@ -80,9 +80,20 @@ def find_box_amount(text: str, box_label: str) -> Optional[float]:
     # digit-runs that are part of a WORD (e.g. the "199" in a "Section 199A
     # dividends" label) — otherwise the amount capture stops on those label
     # digits and returns a stub (199) instead of the real money figure.
-    # The gap must NOT swallow a sign/currency marker that belongs to the amount,
-    # so "(", "-" and "$" are excluded from the non-digit class.
-    _gap = r"(?:[^0-9(\-$]|[0-9]+[A-Za-z])*"
+    #
+    # The gap must NOT swallow a sign/currency marker that BELONGS TO the amount,
+    # so "(", "-" and "$" are excluded from the plain non-digit class. But a bare
+    # "-" or "(" that does NOT introduce a number is a label/annotation
+    # SEPARATOR, not a sign — e.g. "Box 14 - Employment income 84,500.00" (dash
+    # separator) or "Box 22 (see note) 19,250.00" (parenthetical annotation).
+    # Excluding those from the gap silently killed the field (returned None).
+    # So we additionally treat as gap characters:
+    #   * a "-" not immediately followed (through optional $/space) by a digit,
+    #   * a "(" not opening a signed/currency number.
+    # Residual irreducible ambiguity: "Box 1 - 5,000.00" (dash directly before a
+    # bare number) still parses as -5000 — indistinguishable from a real minus
+    # without layout info; pinned as the documented choice in the tests.
+    _gap = r"(?:[^0-9(\-$]|-(?!\s*\$?\s*[0-9])|\((?!\s*\$?\s*-?\s*\$?\s*[0-9])|[0-9]+[A-Za-z])*"
     patterns = [
         rf"box\s*{re.escape(box_label)}\b{_gap}({_NUMBER_SIGNED_RE})",
         rf"\b{re.escape(box_label)}\b{_gap}({_NUMBER_SIGNED_RE})",
