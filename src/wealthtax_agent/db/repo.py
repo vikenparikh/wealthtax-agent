@@ -45,6 +45,51 @@ def touch_last_login(session: Session, user: User) -> None:
     user.last_login = datetime.utcnow()
 
 
+# ---------- Login-failure backoff (delay-NOT-lockout) ----------
+#
+# These helpers back the email-scoped brute-force backoff in ``auth.login``.
+# The design is deliberately fail-open: the counter only ever *delays* the
+# failed-login response — it can never block a login that presents the correct
+# password (``reset_failed_logins`` runs on every success). ``window_minutes``
+# lets stale failures decay so a legit user who typo'd hours ago is not stuck
+# in a throttled state.
+
+def record_failed_login(session: Session, user: User, *, window_minutes: int) -> int:
+    """Increment the per-user failed-login counter, decaying stale failures.
+
+    If the last failure is older than ``window_minutes`` the counter restarts
+    at 1 (the old failures are considered expired). Returns the new count.
+    """
+    now = datetime.utcnow()
+    last = user.last_failed_login_at
+    if last is not None and (now - last) <= timedelta(minutes=window_minutes):
+        user.failed_login_count = (user.failed_login_count or 0) + 1
+    else:
+        user.failed_login_count = 1
+    user.last_failed_login_at = now
+    return user.failed_login_count
+
+
+def reset_failed_logins(session: Session, user: User) -> None:
+    """Clear the failed-login counter. Called on every SUCCESSFUL login."""
+    user.failed_login_count = 0
+    user.last_failed_login_at = None
+
+
+def recent_failed_login_count(session: Session, user: User, *, window_minutes: int) -> int:
+    """Return the failed-login count if still within the window, else 0.
+
+    Read-only: does not mutate the user. Used to decide whether the *current*
+    failed attempt should be throttled, honouring the same decay window.
+    """
+    last = user.last_failed_login_at
+    if last is None:
+        return 0
+    if (datetime.utcnow() - last) > timedelta(minutes=window_minutes):
+        return 0
+    return user.failed_login_count or 0
+
+
 # ---------- Sessions ----------
 
 def create_session(session: Session, *, user_id: str, ttl_minutes: Optional[int] = None) -> UserSession:
