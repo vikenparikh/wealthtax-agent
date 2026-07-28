@@ -201,19 +201,6 @@ def _additional_std_boxes(user_answers: Dict[str, str], status: str) -> int:
     return boxes
 
 
-def _marginal_rate(taxable: float, brackets: List[Dict[str, Any]]) -> float:
-    """Ordinary marginal rate on the top dollar of `taxable` — the rate of the
-    first bracket whose ceiling is at or above it (the top, null-ceiling bracket
-    otherwise). Used to cap special-rate gains at the ordinary rate."""
-    rate = 0.0
-    for b in brackets:
-        rate = float(b.get("rate", 0.0))
-        up_to = b.get("up_to")
-        if up_to is not None and taxable <= float(up_to):
-            return rate
-    return rate
-
-
 def _qualified_dividend_tax(qualified_dividends: float, long_term_gain: float, ordinary_taxable_income: float,
                             status: str, fed_tables: Dict[str, Any]) -> float:
     """Tax preferential income (qualified divs + LTCG) using LTCG brackets,
@@ -913,17 +900,35 @@ def compute_us_return(
         _t = min(long_gain_regular_taxed, _pref_excess); long_gain_regular_taxed -= _t; _pref_excess -= _t
         qd_taxed = max(0.0, qd_taxed - _pref_excess)
 
-    _ord_marginal = _marginal_rate(ordinary_taxable, brackets)
-    special_rate_tax = round(
-        sec1250_taxed * min(0.25, _ord_marginal) + collectibles_taxed * min(0.28, _ord_marginal), 2)
+    # Schedule D Tax Worksheet: unrecaptured §1250 gain is taxed at a FLAT 25%
+    # and 28%-rate (collectibles) gain at a FLAT 28%. These are statutory MAXIMUM
+    # rates, not marginal — the worksheet does NOT re-derive them from each
+    # slice's ordinary bracket. The only relief is a single GLOBAL ceiling
+    # applied below: the whole computation is capped at the regular tax on all
+    # taxable income (worksheet final step), so a low/mid-income filer whose
+    # all-ordinary tax is below the flat-rate result pays the lower amount. The
+    # prior code read a single marginal rate at the BOTTOM of the stack, which
+    # under-taxed when a deduction zeroed ordinary income. (Post-#232-trim
+    # amounts are used, so deduction-absorbed preferential income isn't taxed.)
+    special_rate_tax_flat = round(0.25 * sec1250_taxed + 0.28 * collectibles_taxed, 2)
 
     preferential_tax = _qualified_dividend_tax(qd_taxed, long_gain_regular_taxed, ordinary_taxable, status, fed_tables)
-    federal_tax_before_credits = ordinary_tax + preferential_tax + special_rate_tax
-    if special_rate_tax > 0:
+    # Global Schedule D ceiling: the sum of the ordinary, 0/15/20%, and flat
+    # 25%/28% pieces may never exceed the regular tax on the ENTIRE taxable
+    # income. This is what makes the 25%/28% caps a ceiling rather than a floor.
+    _worksheet_sum = ordinary_tax + preferential_tax + special_rate_tax_flat
+    _regular_tax_all = compute_progressive_tax(taxable_income, brackets)
+    federal_tax_before_credits = min(_worksheet_sum, _regular_tax_all)
+    # Report the special-rate tax ACTUALLY paid after the ceiling. The ordinary
+    # and 0/15/20% pieces never overshoot the all-ordinary tax, so any ceiling
+    # reduction is entirely attributable to the flat 25%/28% piece.
+    special_rate_tax = round(max(0.0, federal_tax_before_credits - ordinary_tax - preferential_tax), 2)
+    if special_rate_tax_flat > 0:
+        _ceiling_binds = _regular_tax_all < _worksheet_sum
         notes.append(
-            f"Special-rate long-term gains taxed above the 0/15/20% rates: §1250 unrecaptured "
-            f"${sec1250_taxed:,.0f} (max 25%) + collectibles ${collectibles_taxed:,.0f} (max 28%) "
-            f"= ${special_rate_tax:,.2f}."
+            f"Special-rate long-term gains: §1250 unrecaptured ${sec1250_taxed:,.0f} at 25% "
+            f"+ collectibles ${collectibles_taxed:,.0f} at 28% = ${special_rate_tax_flat:,.2f}"
+            + (f" (reduced to ${special_rate_tax:,.2f} by the Schedule D regular-tax ceiling)." if _ceiling_binds else ".")
         )
 
     # Split dependents: children under 17 get the CTC, the rest get the ODC.
