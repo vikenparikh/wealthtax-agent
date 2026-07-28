@@ -316,7 +316,12 @@ def compute_ca_return(
                 bpa = bpa_min
             elif net_income > phase_start:
                 bpa -= (bpa - bpa_min) * (net_income - phase_start) / (phase_end - phase_start)
-    employment_amount = float(fed_tables.get("canada_employment_amount", 0)) if employment_income > 0 else 0.0
+    # Canada Employment Amount (ITA s.118(10), T1 line 31260) = the LESSER of the
+    # indexed maximum and the year's employment income — cap it, don't apply the
+    # full max to a small T4 (a part-year/gig/student filer with employment income
+    # below the max would otherwise be over-credited → tax under-collected). Caps
+    # at GROSS employment income (before T2200 expenses), per the line-31260 rule.
+    employment_amount = min(employment_income, float(fed_tables.get("canada_employment_amount", 0))) if employment_income > 0 else 0.0
     lowest_rate = (fed_tables.get("brackets") or [{"rate": 0.15}])[0].get("rate", 0.15)
 
     # Donations + medical expense credits (federal)
