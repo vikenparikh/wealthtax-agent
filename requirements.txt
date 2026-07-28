@@ -6,6 +6,7 @@ openai>=1.0
 pymupdf>=1.24.0
 pytesseract>=0.3.10
 pillow>=12.3.0  # security floor: HIGH CVEs fixed in 12.3.0 (transitive via pymupdf/pytesseract, runtime-reachable in parse_docs)
+gitpython>=3.1.51  # security floor: CRITICAL GHSA-2f96-g7mh-g2hx (also GHSA-v396-v7q4-x2qj, GHSA-956x-8gvw-wg5v) fixed in 3.1.51 (transitive via streamlit, low reachability — defense in depth)
 pyyaml>=6.0
 pypdf>=6.13.3  # security floor: GHSA-jm82-fx9c-mx94
 reportlab>=4.0
