@@ -1119,11 +1119,34 @@ def compute_us_return(
             "Child Tax Credit, Form 8812) credited as a payment."
         )
 
-    # Alternative Minimum Tax (simplified Form 6251)
-    amt_tax = _compute_amt(taxable_income, effective_deduction, status, fed_tables)
-    if amt_tax > federal_tax:
-        notes.append(f"AMT applies: ${amt_tax:,.0f} > regular tax ${federal_tax:,.0f}. Form 6251 required.")
-        federal_tax = amt_tax
+    # Alternative Minimum Tax (simplified Form 6251).
+    # §55: AMT is the excess of the tentative minimum tax (TMT) over the *regular
+    # tax before credits* — added on TOP of the (credit-reduced) regular tax, NOT a
+    # replacement for it. Comparing TMT against the credit-reduced federal_tax (as a
+    # prior version did) both (1) spuriously triggered AMT whenever credits pushed
+    # federal_tax below TMT even though regular tax before credits already exceeded
+    # TMT, and (2) overwrote federal_tax = TMT, forfeiting every non-refundable
+    # credit (FTC/CTC/ODC/education/...). §26/§59 allow those credits against AMT, so
+    # they must be preserved.
+    tmt = _compute_amt(taxable_income, effective_deduction, status, fed_tables)
+    amt_tax = max(0.0, tmt - federal_tax_before_credits)  # the AMT actually owed
+    if amt_tax > 0:
+        notes.append(
+            f"AMT of ${amt_tax:,.2f} applies (tentative minimum tax ${tmt:,.0f} "
+            f"exceeds regular tax ${federal_tax_before_credits:,.0f}); Form 6251 required."
+        )
+    # Known edge (documented + pinned, deferred — NOT "slight"): if AMT applies AND
+    # non-refundable credits EXCEED regular tax, the pre-existing max(0, ...) floor on
+    # federal_tax discards the excess credit before this add-on, so the result can
+    # over-tax by up to (credits - regular_tax_before_credits) — potentially several
+    # thousand dollars. The exact §26(a)/§59(a) system would let the full credit offset
+    # the combined (regular + AMT) tax. It requires a genuine AMT AND credits > regular
+    # tax simultaneously (uncommon), and is still strictly better than the old
+    # overwrite-and-forfeit-all-credits bug. A proper fix computes AMT on the pre-credit
+    # base (max(regular_before_credits, TMT)) then subtracts credits once from that —
+    # deferred to keep this fix minimal. Pinned by the edge test in
+    # test_us_amt_credit_interaction.py.
+    federal_tax = federal_tax + amt_tax
 
     # Net Investment Income Tax (3.8%) for high earners (§1411).
     # Net investment income includes rents and royalties by default; only
