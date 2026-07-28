@@ -18,6 +18,16 @@ from wealthtax_agent.config import reset_settings_cache
 APP_FILE = "src/wealthtax_agent/main.py"
 FERNET_KEY = "8ZK4uF_jiBu3VqDOq6Mhs1aHCk7d8oxIvO34v9dW6X8="
 
+# The "generate" button synchronously runs the entire LangGraph pipeline
+# (parse → classify → extract → residency → reason → optimize → explain → build →
+# format) inside the AppTest script thread. On a loaded CI/fleet box that work
+# can exceed AppTest's 30s default and raise a spurious "script run timed out"
+# even though the pipeline is still progressing (not hung). The light widget
+# interactions keep the fast 30s default so genuine hangs still fail quickly;
+# only this known-heavy step gets a wider budget. Observed: a real red under
+# parallel CPU contention that passed cleanly on a quiet re-run.
+_GENERATE_TIMEOUT = 90
+
 
 @pytest.fixture(autouse=True)
 def _fresh_db_per_test(monkeypatch):
@@ -293,7 +303,7 @@ def test_generate_draft_return_journey_renders_draft_and_transmissible_stamp(mon
     at.checkbox(key="llm_consent_given").set_value(True).run()
     assert not list(at.exception), [e.value for e in at.exception]
     assert at.button(key="wiz_generate").disabled is False
-    at.button(key="wiz_generate").click().run()
+    at.button(key="wiz_generate").click().run(timeout=_GENERATE_TIMEOUT)
 
     # --- Structural / non-money assertions only ---
     assert not list(at.exception), [e.value for e in at.exception]
@@ -363,7 +373,7 @@ def test_generate_draft_return_journey_us_renders_draft_and_transmissible_stamp(
     at.checkbox(key="llm_consent_given").set_value(True).run()
     assert not list(at.exception), [e.value for e in at.exception]
     assert at.button(key="wiz_generate").disabled is False
-    at.button(key="wiz_generate").click().run()
+    at.button(key="wiz_generate").click().run(timeout=_GENERATE_TIMEOUT)
 
     # --- Structural / non-money assertions only ---
     assert not list(at.exception), [e.value for e in at.exception]
@@ -436,7 +446,7 @@ def test_generate_draft_return_journey_in_renders_draft_and_transmissible_stamp(
     at.checkbox(key="llm_consent_given").set_value(True).run()
     assert not list(at.exception), [e.value for e in at.exception]
     assert at.button(key="wiz_generate").disabled is False
-    at.button(key="wiz_generate").click().run()
+    at.button(key="wiz_generate").click().run(timeout=_GENERATE_TIMEOUT)
 
     # --- Structural / non-money assertions only ---
     assert not list(at.exception), [e.value for e in at.exception]
