@@ -308,8 +308,13 @@ def test_wizard_app_boots_without_exception_in_self_hosted_mode(monkeypatch):
     reset_engine_cache()
     create_all_for_tests()
     try:
+        # Booting main.py renders the full Streamlit app in-thread; under
+        # CI/fleet CPU contention that can exceed AppTest's 30s default and
+        # spuriously fail the render assertion below (observed once this
+        # session, passed clean in isolation). 60s gives boot headroom while
+        # still bounding a genuine hang. Mirrors the #221 rationale.
         at = AppTest.from_file(
-            "src/wealthtax_agent/main.py", default_timeout=30
+            "src/wealthtax_agent/main.py", default_timeout=60
         )
         at.run()
         assert not list(at.exception), [e.value for e in at.exception]
