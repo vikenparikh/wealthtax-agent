@@ -5,6 +5,7 @@ pydantic>=2.0
 openai>=1.0
 pymupdf>=1.24.0
 pytesseract>=0.3.10
+pillow>=12.3.0  # security floor: HIGH CVEs fixed in 12.3.0 (transitive via pymupdf/pytesseract, runtime-reachable in parse_docs)
 pyyaml>=6.0
 pypdf>=6.13.3  # security floor: GHSA-jm82-fx9c-mx94
 reportlab>=4.0
