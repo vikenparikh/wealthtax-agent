@@ -110,26 +110,46 @@ def _surcharge(
 
     Returns ``(surcharge, relief)`` — relief>0 only inside a threshold's cliff zone.
     """
-    tiers = tables.get("surcharge", [])
+    # Sort ascending by threshold: the prev_rate/rate/threshold capture below walks
+    # tiers in increasing-income order (the last-qualifying tier wins). A mis-ordered
+    # YAML would otherwise silently miscompute the surcharge — defend the money path.
+    tiers = sorted(tables.get("surcharge", []), key=lambda t: float(t["income_above"]))
     rate = 0.0
     threshold = 0.0
+    prev_rate = 0.0  # surcharge rate applicable at income EXACTLY == threshold
     for tier in tiers:
         if total_income > float(tier["income_above"]):
+            prev_rate = rate  # the outgoing (lower) tier's rate applies AT the threshold
             rate = float(tier["rate"])
             threshold = float(tier["income_above"])
     if regime == "new":
-        rate = min(rate, float(tables.get("surcharge_new_regime_cap", 0.25)))
-    cg_rate = min(rate, float(tables.get("surcharge_capital_gains_cap", 0.15)))
+        cap = float(tables.get("surcharge_new_regime_cap", 0.25))
+        rate = min(rate, cap)
+        prev_rate = min(prev_rate, cap)
+    cg_cap = float(tables.get("surcharge_capital_gains_cap", 0.15))
+    cg_rate = min(rate, cg_cap)
     surcharge = round(slab_tax_after_rebate * rate + cg_tax * cg_rate, 2)
 
     relief = 0.0
     if surcharge > 0 and threshold > 0:
-        # Slab tax on income exactly at the binding threshold T (CG tax cancels).
+        # Baseline = income-tax-plus-surcharge at income EXACTLY the binding
+        # threshold T. At exactly T the income is NOT above T, so the LOWER tier's
+        # surcharge (prev_rate) still applies — for every tier above ₹50L that
+        # surcharge is already levied at T and MUST be in the baseline. Omitting it
+        # (the old `slab_tax_at_threshold` alone) over-relieves: a >₹1cr filer gets
+        # almost the whole surcharge waived → an impossible negative marginal rate.
+        # The special-rate CG *tax* is unchanged across T and cancels, but its
+        # surcharge also steps prev_rate->rate, so the CG surcharge at prev_rate is
+        # part of the baseline too. (prev_rate==0 at the ₹50L tier → unchanged there.)
+        cg_prev_rate = min(prev_rate, cg_cap)
         slab_tax_at_threshold = compute_progressive_tax(threshold, brackets)
+        surcharge_at_threshold = slab_tax_at_threshold * prev_rate + cg_tax * cg_prev_rate
         excess_over_threshold = total_income - threshold
         relief = max(
             0.0,
-            (slab_tax_after_rebate + surcharge) - slab_tax_at_threshold - excess_over_threshold,
+            (slab_tax_after_rebate + surcharge)
+            - (slab_tax_at_threshold + surcharge_at_threshold)
+            - excess_over_threshold,
         )
         relief = round(relief, 2)
         surcharge = round(surcharge - relief, 2)
