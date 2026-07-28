@@ -19,6 +19,9 @@ from wealthtax_agent.db.repo import (
     delete_session,
     get_active_session,
     get_user_by_email,
+    record_failed_login,
+    recent_failed_login_count,
+    reset_failed_logins,
     touch_last_login,
     write_audit,
 )
@@ -26,6 +29,33 @@ from wealthtax_agent.db.models import User
 
 
 _BCRYPT_MAX = 72  # bcrypt errors above 72 bytes; clamp eagerly.
+
+# --- Brute-force backoff (delay-NOT-lockout) --------------------------------
+# On a FINANCIAL app the overriding requirement is fail-open for legit users:
+# the correct password ALWAYS logs in, and a successful login clears the
+# counter. So we never hard-lock an account — an attacker cannot lock a victim
+# out by spamming their email, and a legit user is never permanently blocked.
+# Instead, once recent failures for an email exceed a small threshold, the
+# *failed* response reports a capped, exponentially-growing "try again in Ns"
+# delay. This turns bcrypt's ~100ms/attempt into a much steeper cost curve for
+# an online brute-force without ever standing between a real user and success.
+_BACKOFF_THRESHOLD = 5          # failures within the window before we throttle
+_BACKOFF_WINDOW_MINUTES = 15    # rolling window; older failures decay away
+_BACKOFF_BASE_SECONDS = 2       # first throttled attempt waits ~this long
+_BACKOFF_MAX_SECONDS = 30       # hard cap so we never delay unreasonably
+
+
+def _backoff_seconds(failure_count: int) -> int:
+    """Exponential backoff (seconds) for ``failure_count`` recent failures, capped.
+
+    Returns 0 while at/under the threshold (no throttle yet). Past the
+    threshold it grows 2, 4, 8, ... but is clamped at ``_BACKOFF_MAX_SECONDS``.
+    """
+    if failure_count <= _BACKOFF_THRESHOLD:
+        return 0
+    over = failure_count - _BACKOFF_THRESHOLD
+    delay = _BACKOFF_BASE_SECONDS * (2 ** (over - 1))
+    return min(delay, _BACKOFF_MAX_SECONDS)
 
 
 def _bcrypt_input(password: str) -> bytes:
@@ -85,12 +115,35 @@ def login(email: str, password: str) -> AuthResult:
     email = (email or "").strip().lower()
     with get_session() as session:
         user = get_user_by_email(session, email)
-        if user is None or not verify_password(password, user.hashed_password):
+
+        # Unknown email: cannot (and must not) create attacker-controlled rows,
+        # so no per-email counter exists here — return the generic failure.
+        if user is None:
             return AuthResult(success=False, error="Invalid email or password.")
-        touch_last_login(session, user)
-        sess = create_session(session, user_id=user.id)
-        write_audit(session, user_id=user.id, return_id=None, action="login", payload={})
-        return AuthResult(success=True, user_id=user.id, session_id=sess.id)
+
+        # Correct password ALWAYS wins — checked BEFORE any backoff so a legit
+        # user is never blocked by prior failures. Success clears the counter.
+        if verify_password(password, user.hashed_password):
+            reset_failed_logins(session, user)
+            touch_last_login(session, user)
+            sess = create_session(session, user_id=user.id)
+            write_audit(session, user_id=user.id, return_id=None, action="login", payload={})
+            return AuthResult(success=True, user_id=user.id, session_id=sess.id)
+
+        # Wrong password. Record the failure, then decide whether to throttle
+        # the *failed* response based on the (now-updated) recent count.
+        count = record_failed_login(session, user, window_minutes=_BACKOFF_WINDOW_MINUTES)
+        delay = _backoff_seconds(count)
+        if delay > 0:
+            write_audit(
+                session, user_id=user.id, return_id=None,
+                action="login_throttled", payload={"recent_failures": count, "backoff_s": delay},
+            )
+            return AuthResult(
+                success=False,
+                error=f"Too many attempts — try again in {delay}s.",
+            )
+        return AuthResult(success=False, error="Invalid email or password.")
 
 
 def logout(session_id: str) -> None:

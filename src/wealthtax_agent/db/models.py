@@ -45,6 +45,12 @@ class User(Base):
     address_enc = Column(LargeBinary, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, nullable=True)
+    # Brute-force backoff bookkeeping (delay-NOT-lockout). Reset to 0 on any
+    # successful login. A legit user entering the correct password ALWAYS
+    # succeeds regardless of these values — they only gate the *failed* path
+    # with a capped, exponential too-many-attempts response. See ``auth.login``.
+    failed_login_count = Column(Integer, nullable=False, default=0, server_default="0")
+    last_failed_login_at = Column(DateTime, nullable=True)
 
     returns = relationship("TaxReturn", back_populates="user", cascade="all, delete-orphan")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
