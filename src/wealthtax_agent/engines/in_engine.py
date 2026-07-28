@@ -110,7 +110,10 @@ def _surcharge(
 
     Returns ``(surcharge, relief)`` — relief>0 only inside a threshold's cliff zone.
     """
-    tiers = tables.get("surcharge", [])
+    # Sort ascending by threshold: the prev_rate/rate/threshold capture below walks
+    # tiers in increasing-income order (the last-qualifying tier wins). A mis-ordered
+    # YAML would otherwise silently miscompute the surcharge — defend the money path.
+    tiers = sorted(tables.get("surcharge", []), key=lambda t: float(t["income_above"]))
     rate = 0.0
     threshold = 0.0
     prev_rate = 0.0  # surcharge rate applicable at income EXACTLY == threshold
