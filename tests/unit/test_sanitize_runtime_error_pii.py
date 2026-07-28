@@ -75,6 +75,45 @@ def test_preserves_token_redaction_regex():
     assert out == "a perfectly ordinary parse warning"
 
 
+# --- Missing-key branch (was dead: auth-marker check ran first) --------------
+
+def test_missing_key_required_returns_actionable_hint():
+    # "GROQ_API_KEY is required" is exactly what load_runtime_config raises.
+    # It contains "api_key" (an auth marker), so this used to short-circuit to
+    # the generic auth message; missing-key detection now runs first.
+    out = llm.sanitize_runtime_error("GROQ_API_KEY is required")
+    assert out == "GROQ_API_KEY is missing. Set it in your environment or .env file."
+
+
+def test_missing_key_phrasing_variant_returns_actionable_hint():
+    out = llm.sanitize_runtime_error("Config error: missing GROQ_API_KEY at boot")
+    assert out == "GROQ_API_KEY is missing. Set it in your environment or .env file."
+
+
+def test_missing_key_ordering_does_not_weaken_redaction():
+    # A genuine leaked-token message has no missing-key phrase, so it still
+    # reaches the auth short-circuit and the raw token never survives.
+    out = llm.sanitize_runtime_error("Incorrect API key provided: gsk_LEAK9988")
+    assert "gsk_LEAK9988" not in out
+    assert out == (
+        "Model provider authentication failed. "
+        "Verify GROQ_API_KEY and endpoint settings."
+    )
+
+
+def test_missing_key_branch_drops_co_occurring_secret_and_pii():
+    # The security-critical property: even if a secret / PII co-occurs with the
+    # missing-key phrase in ONE string, the branch returns a non-interpolating
+    # constant, so nothing from the input survives. Pins this against a future
+    # edit that might accidentally interpolate `message` into the hint.
+    out = llm.sanitize_runtime_error(
+        "missing GROQ_API_KEY; leaked gsk_LEAK9988 and SSN 123-45-6789"
+    )
+    assert out == "GROQ_API_KEY is missing. Set it in your environment or .env file."
+    assert "gsk_LEAK9988" not in out
+    assert "123-45-6789" not in out
+
+
 # --- Integration guard: real warning path must not leak (FAIL before) -------
 
 def test_warning_path_does_not_leak_ssn(monkeypatch):
