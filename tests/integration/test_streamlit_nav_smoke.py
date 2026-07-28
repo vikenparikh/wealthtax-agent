@@ -41,7 +41,10 @@ def _fresh_db_per_test(monkeypatch):
 def _render(mode: str) -> AppTest:
     os.environ["WEALTHTAX_MODE"] = mode
     reset_settings_cache()
-    at = AppTest.from_file(APP_FILE, default_timeout=30)
+    # Full-app boot render can exceed AppTest's 30s default under CI/fleet CPU
+    # contention (same boot-render flaky class fixed for the wizard E2E). 60s
+    # gives headroom while still bounding a genuine hang.
+    at = AppTest.from_file(APP_FILE, default_timeout=60)
     at.run()
     return at
 
