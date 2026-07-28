@@ -891,16 +891,38 @@ def compute_us_return(
     sec1250_gain = min(sec1250_gain, special_gain)
     collectibles_gain = min(collectibles_gain, special_gain - sec1250_gain)
     long_gain_regular = max(0.0, long_gain) - sec1250_gain - collectibles_gain
+
+    # Cap the preferential income actually taxed at the room left in taxable
+    # income. When the standard/itemized deduction exceeds ordinary income, the
+    # excess absorbs preferential income too — the IRS Qualified Dividends & Cap
+    # Gain / Schedule D Tax Worksheets never tax more preferential income than
+    # taxable income. `ordinary_taxable` is already floored at 0 above, so without
+    # this the full LTCG/QDI slabs are taxed even though the deduction ate into
+    # them → an over-tax (e.g. $50k of qualified dividends as sole income is $0
+    # tax, not $446). Trim the highest-rate slices first (28% collectibles, then
+    # 25% §1250, then the 0/15/20% pool), mirroring the worksheet stack where
+    # special-rate gains sit on top. Reporting keeps the original gains; only the
+    # taxed slices shrink.
+    pref_room = max(0.0, taxable_income - ordinary_taxable)
+    _pref_excess = max(0.0, (qualified_dividends + max(0.0, long_gain)) - pref_room)
+    sec1250_taxed, collectibles_taxed = sec1250_gain, collectibles_gain
+    long_gain_regular_taxed, qd_taxed = long_gain_regular, qualified_dividends
+    if _pref_excess > 0:
+        _t = min(collectibles_taxed, _pref_excess); collectibles_taxed -= _t; _pref_excess -= _t
+        _t = min(sec1250_taxed, _pref_excess); sec1250_taxed -= _t; _pref_excess -= _t
+        _t = min(long_gain_regular_taxed, _pref_excess); long_gain_regular_taxed -= _t; _pref_excess -= _t
+        qd_taxed = max(0.0, qd_taxed - _pref_excess)
+
     _ord_marginal = _marginal_rate(ordinary_taxable, brackets)
     special_rate_tax = round(
-        sec1250_gain * min(0.25, _ord_marginal) + collectibles_gain * min(0.28, _ord_marginal), 2)
+        sec1250_taxed * min(0.25, _ord_marginal) + collectibles_taxed * min(0.28, _ord_marginal), 2)
 
-    preferential_tax = _qualified_dividend_tax(qualified_dividends, long_gain_regular, ordinary_taxable, status, fed_tables)
+    preferential_tax = _qualified_dividend_tax(qd_taxed, long_gain_regular_taxed, ordinary_taxable, status, fed_tables)
     federal_tax_before_credits = ordinary_tax + preferential_tax + special_rate_tax
     if special_rate_tax > 0:
         notes.append(
             f"Special-rate long-term gains taxed above the 0/15/20% rates: §1250 unrecaptured "
-            f"${sec1250_gain:,.0f} (max 25%) + collectibles ${collectibles_gain:,.0f} (max 28%) "
+            f"${sec1250_taxed:,.0f} (max 25%) + collectibles ${collectibles_taxed:,.0f} (max 28%) "
             f"= ${special_rate_tax:,.2f}."
         )
 
