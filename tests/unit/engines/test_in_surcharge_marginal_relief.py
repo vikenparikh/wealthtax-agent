@@ -76,3 +76,48 @@ def test_relief_self_limiting_no_regression():
     rebate = d.line_items["rebate_87a"]
     # new regime tier rate at >₹50L is 10%, applied to post-rebate slab tax.
     assert d.line_items["surcharge"] == round(max(0.0, slab - rebate) * 0.10, 2)
+
+
+# --- TIGHT cliff bound (regression for the over-relief bug) -------------------
+# Inside a surcharge tier's relief zone, (income_tax + surcharge) rises by EXACTLY
+# the income earned above T (a 100% marginal rate until relief exhausts). The old
+# baseline omitted the surcharge already levied AT T for tiers above ₹50L, so it
+# over-relieved and produced a NEGATIVE marginal rate (earning ₹1,000 more DROPPED
+# tax by lakhs). The existing tests only assert an UPPER bound, so the negative
+# slipped through. These assert the two-sided cliff: delta_tax ≈ delta_income.
+
+def _cliff_delta(total_T, delta_income, regime):
+    base = _run_total(total_T, regime)
+    above = _run_total(total_T + delta_income, regime)
+    return _itax_plus_surcharge(above) - _itax_plus_surcharge(base)
+
+
+def test_cliff_marginal_rate_is_100pct_1cr_old():
+    # ₹1cr edge (10%→15%): +₹1,000 income must raise income_tax+surcharge by ~₹1,000,
+    # NOT fall. Pre-fix this returned ≈ −₹2.8 lakh.
+    d = _cliff_delta(1_00_00_000, 1_000, "old")
+    assert abs(d - 1_000) <= 1, f"cliff delta {d} != 1000 (over-relief bug)"
+
+
+def test_cliff_marginal_rate_is_100pct_1cr_new():
+    d = _cliff_delta(1_00_00_000, 1_000, "new")
+    assert abs(d - 1_000) <= 1, f"cliff delta {d} != 1000 (over-relief bug)"
+
+
+def test_cliff_marginal_rate_is_100pct_2cr_old():
+    # ₹2cr edge (15%→25%): pre-fix ≈ −₹8.7 lakh.
+    d = _cliff_delta(2_00_00_000, 1_000, "old")
+    assert abs(d - 1_000) <= 1, f"cliff delta {d} != 1000 (over-relief bug)"
+
+
+def test_cliff_marginal_rate_is_100pct_5cr_old():
+    # ₹5cr edge (25%→37%): pre-fix ≈ −₹37 lakh. (New regime caps surcharge at 25%,
+    # so the ₹5cr rate does not step up there — old regime carries the cliff.)
+    d = _cliff_delta(5_00_00_000, 1_000, "old")
+    assert abs(d - 1_000) <= 1, f"cliff delta {d} != 1000 (over-relief bug)"
+
+
+def test_cliff_50L_still_correct_new():
+    # Non-regression: the ₹50L tier (prev_rate=0) was already correct and stays so.
+    d = _cliff_delta(50_00_000, 10_000, "new")
+    assert abs(d - 10_000) <= 1
