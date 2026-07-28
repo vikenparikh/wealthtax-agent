@@ -56,6 +56,20 @@ def test_normalize_strips_thousands_separators_in_numbers():
     assert _normalize_ocr_text("Amount 12,000") == "Amount 12000"
 
 
+def test_normalize_strips_multiple_thousands_separators():
+    assert _normalize_ocr_text("Income 1,234,567.89") == "Income 1234567.89"
+    assert _normalize_ocr_text("1,234,567") == "1234567"
+
+
+def test_normalize_strips_three_comma_groups():
+    assert _normalize_ocr_text("12,345,678,901") == "12345678901"
+
+
+def test_normalize_leaves_non_thousands_commas_intact():
+    assert _normalize_ocr_text("12,34") == "12,34"
+    assert _normalize_ocr_text("a,bcd") == "a,bcd"
+
+
 def test_normalize_replaces_non_printable_chars_with_space():
     assert _normalize_ocr_text("a\x00b") == "a b"
 
