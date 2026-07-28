@@ -128,25 +128,21 @@ def test_genuine_amt_added_on_top_and_credits_preserved():
     )
 
 
-# --- (d) KNOWN LIMITATION (pinned, deferred): AMT + credits > regular tax ---
-def test_known_edge_amt_with_credits_exceeding_regular_tax_overtaxes():
-    """PINS A KNOWN-IMPERFECT EDGE so it can't silently drift.
-
-    When a genuine AMT applies AND non-refundable credits EXCEED the regular tax,
-    the pre-existing ``max(0, ...)`` floor on ``federal_tax`` discards the excess
-    credit before the AMT add-on, so the result over-taxes by up to
-    (credits - regular_tax_before_credits).
+# --- (d) AMT + credits > regular tax: credits offset the AMT too (§26(a)/§59(a)) ---
+def test_amt_with_credits_exceeding_regular_tax_credits_offset_amt():
+    """When a genuine AMT applies AND non-refundable credits EXCEED the regular
+    tax, the credits (allowed against AMT) must offset the COMBINED regular+AMT
+    tax — the filer is not over-taxed.
 
     Case: single, $250k wages, $120k mortgage interest (→ regular tax before
     credits $24,242.50, TMT $42,718 so AMT applies), $100k foreign-source income
     with $50k foreign tax (§904-limited FTC $18,648.08) + $100k clean-energy cost
-    (§25D $30,000). Credits $48,648 > regular $24,242.50.
+    (§25D $30,000). Credits $48,648 exceed the combined tax
+    max($24,242.50, $42,718) = $42,718, so the whole liability is absorbed →
+    federal_tax $0.00.
 
-    STATUTORILY CORRECT answer is $0.00 (the full credit offsets the combined
-    regular+AMT tax under §26(a)/§59(a)). This engine currently charges
-    $18,475.50 — the AMT add-on with the excess credit lost to the floor. This
-    assertion locks that CURRENT behavior; when the deferred pre-credit-AMT fix
-    lands, update the expected value to 0.0.
+    (Before the pre-credit-AMT fix this over-taxed by $18,475.50 — the AMT add-on
+    with the excess credit lost to the max(0, ...) floor. This test is that fix.)
     """
     extracts = [
         _w2(250000.0),
@@ -159,5 +155,4 @@ def test_known_edge_amt_with_credits_exceeding_regular_tax_overtaxes():
         "foreign_tax_paid": "50000",
         "residential_clean_energy_cost": "100000",
     })
-    # KNOWN-IMPERFECT current value (correct value is 0.00 — see docstring).
-    assert d.line_items["federal_tax"] == 18475.5
+    assert d.line_items["federal_tax"] == 0.0

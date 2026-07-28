@@ -1091,9 +1091,9 @@ def compute_us_return(
                     "limit and is not credited this year (carryforward not modelled)."
                 )
 
-    federal_tax = max(0.0, federal_tax_before_credits - ftc - ctc - odc - ptc_credit
-                      - education_nonref - dependent_care_credit
-                      - sec_25d - sec_25c - sec_25e) + ptc_repayment
+    _nonrefundable_credits = (ftc + ctc + odc + ptc_credit + education_nonref
+                              + dependent_care_credit + sec_25d + sec_25c + sec_25e)
+    federal_tax = max(0.0, federal_tax_before_credits - _nonrefundable_credits) + ptc_repayment
 
     # Additional Child Tax Credit (refundable portion of the CTC, Form 8812).
     # When a family's tax liability is too low to absorb the full non-refundable
@@ -1135,18 +1135,13 @@ def compute_us_return(
             f"AMT of ${amt_tax:,.2f} applies (tentative minimum tax ${tmt:,.0f} "
             f"exceeds regular tax ${federal_tax_before_credits:,.0f}); Form 6251 required."
         )
-    # Known edge (documented + pinned, deferred — NOT "slight"): if AMT applies AND
-    # non-refundable credits EXCEED regular tax, the pre-existing max(0, ...) floor on
-    # federal_tax discards the excess credit before this add-on, so the result can
-    # over-tax by up to (credits - regular_tax_before_credits) — potentially several
-    # thousand dollars. The exact §26(a)/§59(a) system would let the full credit offset
-    # the combined (regular + AMT) tax. It requires a genuine AMT AND credits > regular
-    # tax simultaneously (uncommon), and is still strictly better than the old
-    # overwrite-and-forfeit-all-credits bug. A proper fix computes AMT on the pre-credit
-    # base (max(regular_before_credits, TMT)) then subtracts credits once from that —
-    # deferred to keep this fix minimal. Pinned by the edge test in
-    # test_us_amt_credit_interaction.py.
-    federal_tax = federal_tax + amt_tax
+    # §55 parallel system: total tax before credits is the GREATER of regular tax or
+    # the tentative minimum tax; the non-refundable credits (allowed against AMT per
+    # §26(a)/§59(a)) then reduce it ONCE from that combined base. Recomputing from the
+    # pre-credit base (rather than adding AMT on top of the already-credit-reduced,
+    # floored regular tax) lets credits in EXCESS of regular tax also offset the AMT —
+    # so a filer with a genuine AMT and credits > regular tax is no longer over-taxed.
+    federal_tax = max(0.0, max(federal_tax_before_credits, tmt) - _nonrefundable_credits) + ptc_repayment
 
     # Net Investment Income Tax (3.8%) for high earners (§1411).
     # Net investment income includes rents and royalties by default; only
