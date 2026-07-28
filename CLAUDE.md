@@ -34,10 +34,14 @@ If this file gets stale (the last "Session log" entry is more than ~10 commits b
 
 | Fact | Value |
 |---|---|
-| `main` HEAD | `0a99869` — `feat(security): enforce FilingArtifact.transmissible=False at the model boundary` |
+| `main` HEAD | `1f72cb0` — `test(e2e): widen app-boot AppTest timeout to 60s (load-induced boot flaky) (#225)` |
 | Latest release tag (local) | `v0.5.0` at `445d3d8` — **not yet pushed** (sandbox Git relay 403s tag refs) |
 | Latest release tag (remote) | none yet |
-| Test count | **627 passing** (+11 from P2-AC7 Groq rate limiter; prior baseline 616), ~18s wall on a fresh Python 3.11 venv |
+| Test count | **1731 passing**, 0 failures, 2 skipped (both are *provably-unreachable* dead branches, documented — `explain_return` L207, `parse_pdf_text` L76-77); overall coverage **93%** |
+| Non-money coverage | Driven to full/high this cycle: `events/bus` 100%, `llm` 100%, `db/repo` 100%, `healthz` 100%, `graph` 100%, `explain_return` 98%, `parsers/base` 95%. Remaining <100% is money-path (engines/filing/parse/classify/corrections) + `main.py` UI. |
+| Convergence | **CONVERGED (non-money)** — reachable/testable non-money work is dry; further progress needs operator sign-off on the money-path queue or a new product requirement. |
+| Health/readiness | `GET /healthz` (liveness) + `GET /readyz` (readiness: DB `SELECT 1` + Fernet-key validity → 200/503) on the sidecar. ⚠️ `/readyz` is **not yet wired** into `docker-compose.prod.yml` (no sidecar service in prod compose) — infra follow-up. |
+| Observability | Per-node pipeline timing (`node_complete`/`node_failed` + `duration_ms`) via `graph._timed`, structured + PII-scrubbed. |
 | Streamlit boot smoke | ✅ green via `./scripts/validate.sh` |
 | AppTest UI smoke | ✅ both `self_hosted` and `saas` modes render without exception |
 | GitHub Actions on `main` | unknown from this sandbox (no MCP tool for `workflow_run`); check the Actions tab in browser |
@@ -331,6 +335,16 @@ This file is alive. Keep it accurate.
 ## Session log
 
 Newest at the top. Format per entry:
+
+### 2026-07-28 — Non-money hardening cycle → CONVERGED (dev-controller loop)
+
+- HEAD on main: `1f72cb0` (was `0a99869` in the last logged entry — the doc had gone badly stale)
+- Tests: **1731 passing**, 0 failures, 2 skipped; overall coverage **93%**
+- Shipped 11 PRs this cycle (all merged): coverage completion — #215 `events/bus` 100%, #216 `llm` 99%, #218 `explain_return` 98%, #219 `parsers/base` 95%, #220 `db/repo` 100%; reliability — #217 residency node, #221 + #225 E2E AppTest timeout hardening (generate step + app-boot, load-induced flakies); production-readiness **builds** — #222 `/readyz` readiness probe (DB + Fernet checks), #223 per-node pipeline timing observability (`graph._timed`); bug fix — #224 revived the dead `sanitize_runtime_error` missing-key branch (auth-marker `"api_key"` was swallowing it → users got a generic error instead of "set GROQ_API_KEY").
+- Process: ran a planner→coder→tester→reviewer subagent pipeline per change; every finding adversarially reviewed before merge. Three dead branches were *found and honestly flagged, not padded* — one was a real bug (#224), two are provably unreachable and left as documented `skip`s (`explain_return` L207, `parse_pdf_text` L76-77).
+- **CONVERGED (non-money):** reachable/testable non-money work is dry. Remaining uncovered lines (474) live in money-path modules (`engines/*`, `filing/*`, `parse_docs`/`forms/*`/`parsers/*` amount extraction, `classify_forms` `.format` routing bug, `corrections`/`intake` amount handling) + `main.py` UI. Those are **operator-gated** (changing computed tax numbers = ESCALATE).
+- Next real vein requires operator sign-off on the money-path queue OR a new product requirement (new tax year/jurisdiction/reported defect). Do NOT mine non-money further — it produces padding.
+- Open infra follow-up: `/readyz` (#222) exists but isn't wired into `docker-compose.prod.yml` (no sidecar service in prod compose) — untestable in-sandbox, deferred.
 
 ### 2026-05-27 — P2-AC8 structured logging (Ralph loop)
 
