@@ -17,6 +17,8 @@ Two compiled graphs are exposed:
         -> format_outputs
 """
 
+import time
+
 from langgraph.graph import END, START, StateGraph
 
 from wealthtax_agent.build_return import build_return_node
@@ -50,14 +52,46 @@ def _clarification_router(state: GraphState) -> str:
     return "pause" if has_outstanding_clarifications(state) else "continue"
 
 
+def _timed(name: str, fn):
+    """Wrap a pipeline node so each run emits a structured timing log.
+
+    Behaviour-preserving: returns ``fn``'s result unchanged and re-raises on
+    error. Emits ``node_complete`` (info) with ``duration_ms`` on success, and
+    ``node_failed`` (warning) with ``duration_ms`` before propagating an
+    exception — so production can see where the pipeline spends time and which
+    node failed without attaching a profiler. The record carries only the node
+    name and elapsed time; no GraphState / PII is logged.
+    """
+
+    def _wrapped(state: GraphState) -> GraphState:
+        start = time.perf_counter()
+        try:
+            result = fn(state)
+        except Exception:
+            elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+            _log.warning("node_failed", extra={"node": name, "duration_ms": elapsed_ms})
+            raise
+        elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+        _log.info("node_complete", extra={"node": name, "duration_ms": elapsed_ms})
+        return result
+
+    _wrapped.__name__ = f"timed_{name}"
+    return _wrapped
+
+
+def _add(workflow, name: str, fn) -> None:
+    """Register ``fn`` as node ``name`` wrapped with timing instrumentation."""
+    workflow.add_node(name, _timed(name, fn))
+
+
 def build_legacy_graph():
     _log.info("graph_build_start", extra={"variant": "legacy"})
     workflow = StateGraph(GraphState)
-    workflow.add_node("parse_docs", parse_docs_node)
-    workflow.add_node("reason_tax", reason_tax_node)
-    workflow.add_node("build_return", build_return_node)
-    workflow.add_node("explain_return", explain_return_node)
-    workflow.add_node("format_outputs", generate_dual_outputs)
+    _add(workflow, "parse_docs", parse_docs_node)
+    _add(workflow, "reason_tax", reason_tax_node)
+    _add(workflow, "build_return", build_return_node)
+    _add(workflow, "explain_return", explain_return_node)
+    _add(workflow, "format_outputs", generate_dual_outputs)
 
     workflow.add_edge(START, "parse_docs")
     workflow.add_edge("parse_docs", "reason_tax")
@@ -73,17 +107,17 @@ def build_graph():
     _log.info("graph_build_start", extra={"variant": "full"})
     workflow = StateGraph(GraphState)
 
-    workflow.add_node("classify_forms", classify_forms_node)
-    workflow.add_node("extract_forms", extract_forms_node)
-    workflow.add_node("dedupe_extracts", dedupe_extracts_node)
-    workflow.add_node("residency_test", residency_test_node)
-    workflow.add_node("apply_corrections", apply_corrections_node)
-    workflow.add_node("ask_clarifications", ask_clarifications_node)
-    workflow.add_node("reason_tax", reason_tax_node)
-    workflow.add_node("optimize", optimize_node)
-    workflow.add_node("explain_return", explain_return_node)
-    workflow.add_node("build_return", build_return_node)
-    workflow.add_node("format_outputs", generate_dual_outputs)
+    _add(workflow, "classify_forms", classify_forms_node)
+    _add(workflow, "extract_forms", extract_forms_node)
+    _add(workflow, "dedupe_extracts", dedupe_extracts_node)
+    _add(workflow, "residency_test", residency_test_node)
+    _add(workflow, "apply_corrections", apply_corrections_node)
+    _add(workflow, "ask_clarifications", ask_clarifications_node)
+    _add(workflow, "reason_tax", reason_tax_node)
+    _add(workflow, "optimize", optimize_node)
+    _add(workflow, "explain_return", explain_return_node)
+    _add(workflow, "build_return", build_return_node)
+    _add(workflow, "format_outputs", generate_dual_outputs)
 
     workflow.add_edge(START, "classify_forms")
     workflow.add_edge("classify_forms", "extract_forms")
