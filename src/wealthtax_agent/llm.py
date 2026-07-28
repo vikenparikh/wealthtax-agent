@@ -73,6 +73,18 @@ def _load_dotenv_if_present() -> None:
 
 def sanitize_runtime_error(message: str) -> str:
     lowered = message.lower()
+
+    # Missing-key detection MUST run before the auth-marker check below. The
+    # missing-key phrases ("groq_api_key is required", "missing groq_api_key")
+    # both contain the substring "api_key", which is an auth marker — so an
+    # auth-first order swallowed them into the generic auth message and robbed
+    # the user of the actionable "set GROQ_API_KEY" hint (the branch was dead).
+    # Returning a fixed canned string also drops any content, so this ordering
+    # never weakens secret redaction.
+    missing_key_markers = ["groq_api_key is required", "missing groq_api_key"]
+    if any(marker in lowered for marker in missing_key_markers):
+        return "GROQ_API_KEY is missing. Set it in your environment or .env file."
+
     auth_markers = [
         "api_key",
         "gsk_",
@@ -87,10 +99,6 @@ def sanitize_runtime_error(message: str) -> str:
     ]
     if any(marker in lowered for marker in auth_markers):
         return "Model provider authentication failed. Verify GROQ_API_KEY and endpoint settings."
-
-    missing_key_markers = ["groq_api_key is required", "missing groq_api_key"]
-    if any(marker in lowered for marker in missing_key_markers):
-        return "GROQ_API_KEY is missing. Set it in your environment or .env file."
 
     model_markers = ["model_decommissioned", "decommissioned and is no longer supported"]
     if any(marker in lowered for marker in model_markers):
