@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 
 from wealthtax_agent.config.tax_tables import MissingTableError, load_tables
 from wealthtax_agent.engines.ca_engine import compute_ca_return
+from wealthtax_agent.engines.in_engine import compute_in_return
 from wealthtax_agent.engines.us_engine import compute_us_return
 from wealthtax_agent.state import FormExtract, GraphState
 
@@ -40,7 +41,21 @@ def project_future_years(
     base_year = state.filing_year or 2024
     province = (state.user_answers.get("province_of_residence") or "ON").upper()
     state_code = (state.user_answers.get("state_of_residence") or "CA").upper()
+    in_regime = (state.user_answers.get("in_regime") or "auto").lower()
+    in_residency = state.residency_status.get("IN", "ROR")
     out: Dict[str, List[Dict[str, Any]]] = {}
+
+    def _compute(juris, grown, yr):
+        # Route each jurisdiction to ITS OWN engine — mirror reason_tax's dispatch.
+        # (India was previously missing here, so an IN return fell into the `else`
+        # and ran Form-16 extracts through the US engine → $0 income/tax every
+        # projected year: a garbage projection for every Indian filer.)
+        if juris == "CA":
+            return compute_ca_return(grown, year=yr, province=province, user_answers=state.user_answers)
+        if juris == "IN":
+            return compute_in_return(grown, year=yr, regime=in_regime,
+                                     user_answers=state.user_answers, residency_status=in_residency)
+        return compute_us_return(grown, year=yr, state=state_code, user_answers=state.user_answers)
 
     for jurisdiction in state.draft_returns:
         rows: List[Dict[str, Any]] = []
@@ -49,17 +64,16 @@ def project_future_years(
             year = base_year + step
             grown = _grow_extracts(extracts, growth * step)
             try:
-                if jurisdiction == "CA":
-                    draft = compute_ca_return(grown, year=year, province=province, user_answers=state.user_answers)
-                else:
-                    draft = compute_us_return(grown, year=year, state=state_code, user_answers=state.user_answers)
+                draft = _compute(jurisdiction, grown, year)
+                # No table for that year yet — reuse the most recent year. CA/US
+                # signal a missing year by raising MissingTableError; the IN engine
+                # instead returns EMPTY totals (total_income=None) without raising,
+                # so guard on that too or IN would project $0 for every unmodelled
+                # future year.
+                if draft.totals.get("total_income") is None:
+                    draft = _compute(jurisdiction, grown, base_year)
             except MissingTableError:
-                # No table for that year yet — reuse the most recent year by
-                # falling back to current-year tables and noting it.
-                if jurisdiction == "CA":
-                    draft = compute_ca_return(grown, year=base_year, province=province, user_answers=state.user_answers)
-                else:
-                    draft = compute_us_return(grown, year=base_year, state=state_code, user_answers=state.user_answers)
+                draft = _compute(jurisdiction, grown, base_year)
             rows.append({
                 "year": year,
                 "growth_pct": round(growth * step * 100, 1),
