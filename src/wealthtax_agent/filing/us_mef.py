@@ -35,11 +35,14 @@ def serialize_1040(draft: DraftReturn, extracts: List[FormExtract], year: int, u
     # nets it into federal_tax (line 24), so adding it here would double-count it.
     line24_total_tax = round(line_items.get("federal_tax", 0.0) + line_items.get("self_employment_tax", 0.0), 2)
     # Total payments must include EVERY refundable item the engine credits in its
-    # balance (us_engine: balance = total_tax - withholding - excess_ss - addl_medicare
-    # - actc - eitc - education_refundable). Omitting the additional-Medicare
-    # over-withholding (Form 8959 Part IV, Sch 3 line 11) or the refundable AOTC
-    # (Form 8863, 1040 line 29) understates line34_overpayment / overstates
-    # line37_amount_you_owe, contradicting the engine's own refund/balance_owing.
+    # balance (us_engine: balance = total_tax - fed_withheld - state_withheld -
+    # excess_ss - addl_medicare - actc - eitc - education_refundable). Omitting the
+    # additional-Medicare over-withholding (Form 8959 Part IV, Sch 3 line 11) or the
+    # refundable AOTC (Form 8863, 1040 line 29) understates line34_overpayment /
+    # overstates line37_amount_you_owe. NOTE: the engine's balance is the COMBINED
+    # federal+state net; this 1040 artifact is federal-only, so line37/line34 equal
+    # the FEDERAL portion — the identity is (1040 federal net) + (CA-540 state net)
+    # == engine balance_owing/refund, NOT 1040 == engine balance.
     # Net PTC stays EXCLUDED (already netted into federal_tax / line 24).
     line33_total_payments = round(
         line_items.get("tax_withheld", 0.0)

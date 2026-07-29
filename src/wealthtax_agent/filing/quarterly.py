@@ -43,9 +43,11 @@ def quarterly_us_1040es(draft: DraftReturn, year: int) -> Dict[str, str]:
     total_tax = float(draft.totals.get("total_tax", 0.0))
     se_tax = float(draft.line_items.get("self_employment_tax", 0.0))
     withholding = float(draft.line_items.get("tax_withheld", 0.0))
-    # Size on the engine's net amount owed, which already nets withholding AND the
-    # refundable credits / extra payments (EITC, ACTC, excess SS, additional
-    # Medicare). total_tax − withholding ignored those and over-stated the voucher.
+    # Size on the engine's net amount owed, which already nets federal AND state
+    # withholding plus the refundable credits / extra payments (EITC, ACTC, excess
+    # SS, additional Medicare). This is a COMBINED federal+state planning figure
+    # (see the labels below), matching this voucher's stated intent — not a strict
+    # federal-only 1040-ES amount.
     annual_owed = float(draft.totals.get("balance_owing", 0.0))
 
     # If withholding already covers >= total tax, no voucher needed.
@@ -58,8 +60,8 @@ def quarterly_us_1040es(draft: DraftReturn, year: int) -> Dict[str, str]:
     for idx, due in enumerate(dates, start=1):
         vouchers[f"Q{idx}"] = (
             f"Form 1040-ES Voucher Q{idx} ({due})\n"
-            f"Estimated payment: ${quarter_amount:,.2f}\n"
-            f"Year-to-date federal tax estimate: ${total_tax:,.2f}\n"
+            f"Estimated payment (combined federal + state): ${quarter_amount:,.2f}\n"
+            f"Year-to-date federal + state tax estimate: ${total_tax:,.2f}\n"
             f"Self-employment tax (informational): ${se_tax:,.2f}\n"
             f"Prior withholding (W-2 + 1099 boxes): ${withholding:,.2f}\n"
             "Mail with check to the address in the 1040-ES instructions, or pay "

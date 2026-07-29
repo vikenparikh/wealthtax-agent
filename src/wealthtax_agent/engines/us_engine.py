@@ -1288,7 +1288,13 @@ def compute_us_return(
             f"a payment, based on {eitc_children} EITC-qualifying child(ren)."
         )
 
-    balance = round(total_tax - fed_withheld - excess_ss_tax - addl_medicare_withheld - actc - eitc - education_refundable, 2)
+    # total_tax includes state tax (line ~1250), so the balance must credit STATE
+    # withholding (W-2 box 17) as well as federal — otherwise a filer in a state
+    # with income tax has their refund understated / balance owing overstated by
+    # the entire state withholding amount. (The CA-540 artifact already credits it;
+    # this makes the engine's combined refund/owing reconcile with 1040-net + 540-net.)
+    balance = round(total_tax - fed_withheld - _w2_state_tax - excess_ss_tax
+                    - addl_medicare_withheld - actc - eitc - education_refundable, 2)
     refund = round(max(0.0, -balance), 2)
     owing = round(max(0.0, balance), 2)
 
