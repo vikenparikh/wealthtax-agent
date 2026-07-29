@@ -37,7 +37,7 @@ def test_us_voucher_sized_at_a_quarter_of_amount_owed():
                line_items={"tax_withheld": 2000.0})
     v = quarterly_us_1040es(d, 2025)
     assert set(v) == {"Q1", "Q2", "Q3", "Q4"}
-    assert "Estimated payment: $1,750.00" in v["Q1"]  # balance_owing 7000 / 4
+    assert "Estimated payment (combined federal + state): $1,750.00" in v["Q1"]  # balance_owing 7000 / 4
     assert "DRAFT — not transmitted" in v["Q1"]
 
 
@@ -52,7 +52,7 @@ def test_us_voucher_nets_refundable_credits_via_balance_owing():
     d = _draft("US", totals={"total_tax": 10000.0, "balance_owing": 4000.0},
                line_items={"tax_withheld": 2000.0, "self_employment_tax": 6000.0})
     v = quarterly_us_1040es(d, 2025)
-    assert "Estimated payment: $1,000.00" in v["Q1"]
+    assert "Estimated payment (combined federal + state): $1,000.00" in v["Q1"]
 
 
 def test_us_due_dates_roll_q4_into_next_january():
