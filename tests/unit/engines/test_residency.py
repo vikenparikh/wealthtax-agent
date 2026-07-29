@@ -33,6 +33,70 @@ def test_spt_irs_example_one_hundred_days_each_year():
     assert us_substantial_presence(100, 100, 100) is False
 
 
+# ---------- US SPT — oracle + boundary pins ----------
+#
+# The four example tests above all use EQUAL priors (120,120,120 / 100,100,100),
+# so they provably cannot catch a /3 <-> /6 divisor swap (120/3 + 120/6 ==
+# 120/6 + 120/3) nor exact-fraction-vs-truncation. SPT decides US resident vs
+# nonresident — i.e. WHICH tax engine runs for the filer — so a wrong divisor,
+# threshold, or rounding here mis-taxes a whole population. These pins close that
+# gap: an independent oracle across a grid with ASYMMETRIC priors, plus explicit
+# discriminating cases for each plausible bug (divisor assignment, integer
+# truncation, the 183 `>=` boundary, and the 31-day gate).
+
+def _spt_oracle(cur: int, p1: int, p2: int) -> bool:
+    # IRS Substantial Presence Test, stated independently: >=31 days current AND
+    # weighted (current + prior_1/3 + prior_2/6) >= 183, using EXACT fractions.
+    if cur < 31:
+        return False
+    return cur + p1 / 3.0 + p2 / 6.0 >= 183.0
+
+
+def test_spt_matches_oracle_across_asymmetric_grid():
+    currents = [0, 15, 30, 31, 60, 90, 120, 150, 180, 183, 200, 300, 366]
+    priors = [0, 30, 45, 60, 120, 180, 240, 300, 366]
+    checked = 0
+    for cur in currents:
+        for p1 in priors:
+            for p2 in priors:
+                got = us_substantial_presence(cur, p1, p2)
+                want = _spt_oracle(cur, p1, p2)
+                assert got is want, (
+                    f"SPT diverged from IRS oracle at "
+                    f"(current={cur}, prior_1={p1}, prior_2={p2}): got {got}, want {want}"
+                )
+                checked += 1
+    assert checked == len(currents) * len(priors) * len(priors)
+
+
+def test_spt_divisor_assignment_prior1_is_one_third():
+    # Discriminator the equal-prior examples miss: prior_1 weighted by 1/3
+    # (not 1/6). 170 + 39/3 + 0 = 170 + 13 = 183 -> True. If prior_1 wrongly used
+    # 1/6 (a /3<->/6 swap), it would be 170 + 6.5 = 176.5 -> False.
+    assert us_substantial_presence(170, 39, 0) is True
+
+
+def test_spt_uses_exact_fractions_not_integer_truncation():
+    # 180 + 8/3 + 2/6 = 180 + 2.6667 + 0.3333 = 183.0 EXACTLY -> True.
+    # Integer-truncating each term (180 + 2 + 0 = 182) would wrongly give False.
+    assert us_substantial_presence(180, 8, 2) is True
+    # And just below the line stays False: 180 + 8/3 + 1/6 = 182.833 -> False.
+    assert us_substantial_presence(180, 8, 1) is False
+
+
+def test_spt_183_threshold_is_inclusive():
+    # weighted == 183 exactly -> resident (`>=`, not `>`).
+    assert us_substantial_presence(123, 120, 120) is True   # 123 + 40 + 20 = 183
+    assert us_substantial_presence(122, 120, 120) is False  # 122 + 40 + 20 = 182
+
+
+def test_spt_31_day_gate_overrides_weighted_sum():
+    # The 31-day current-year gate is independent of the weighted sum: 30 days
+    # current fails even when history alone would clear 183; 31 days can pass.
+    assert us_substantial_presence(30, 459, 0) is False  # 30 + 153 = 183 but gate fails
+    assert us_substantial_presence(31, 456, 0) is True   # 31 + 152 = 183, gate ok
+
+
 def test_us_citizen_always_resident():
     assert us_residency(0, is_us_citizen=True) == "resident"
 
