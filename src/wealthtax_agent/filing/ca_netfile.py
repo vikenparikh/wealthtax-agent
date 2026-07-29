@@ -60,6 +60,12 @@ def serialize_t1(draft: DraftReturn, extracts: List[FormExtract], year: int) -> 
         f"    <RRIFIncome>{_fmt(line_items.get('rrif_income', 0.0))}</RRIFIncome>\n"
         f"    <LumpSumIncome>{_fmt(line_items.get('lump_sum_income', 0.0))}</LumpSumIncome>\n"
         f"    <TrustIncome>{_fmt(line_items.get('trust_other_income', 0.0))}</TrustIncome>\n"
+        # T3 box 25 foreign non-business income (via a trust) is folded into
+        # total_income by the engine but was omitted here, so the visible income
+        # lines fell short of <TotalIncome>. Distinct from ForeignPropertyIncome
+        # (foreign *property* income, e.g. T1135) and from TrustIncome (other trust
+        # income), so it gets its own element.
+        f"    <TrustForeignIncome>{_fmt(line_items.get('trust_foreign_non_business_income', 0.0))}</TrustForeignIncome>\n"
         f"    <ForeignPropertyIncome>{_fmt(line_items.get('foreign_property_income', 0.0))}</ForeignPropertyIncome>\n"
         f"    <TotalIncome>{_fmt(totals.get('total_income', 0.0))}</TotalIncome>\n"
         "  </Income>\n"

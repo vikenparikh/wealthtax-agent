@@ -171,9 +171,10 @@ def test_income_section_surfaces_dropped_income_components():
             "rrif_income": 15000.0,
             "lump_sum_income": 20000.0,
             "trust_other_income": 3000.0,
+            "trust_foreign_non_business_income": 2000.0,
             "foreign_property_income": 4000.0,
         },
-        totals={"total_income": 112000.0},
+        totals={"total_income": 114000.0},
     )
     inc = ET.fromstring(serialize_t1(draft, [], 2025)).find("Income")
     assert inc.find("SelfEmploymentIncome").text == "12000.00"
@@ -181,6 +182,7 @@ def test_income_section_surfaces_dropped_income_components():
     assert inc.find("RRIFIncome").text == "15000.00"
     assert inc.find("LumpSumIncome").text == "20000.00"
     assert inc.find("TrustIncome").text == "3000.00"
+    assert inc.find("TrustForeignIncome").text == "2000.00"
     assert inc.find("ForeignPropertyIncome").text == "4000.00"
 
 
@@ -191,16 +193,18 @@ def test_income_breakdown_reconciles_to_total_income():
         line_items={
             "employment_income": 50000.0,
             "rrif_income": 15000.0,
+            "trust_foreign_non_business_income": 2000.0,
             "foreign_property_income": 4000.0,
         },
-        totals={"total_income": 69000.0},
+        totals={"total_income": 71000.0},
     )
     inc = ET.fromstring(serialize_t1(draft, [], 2025)).find("Income")
     visible = sum(float(inc.find(tag).text) for tag in (
         "EmploymentIncome", "InterestIncome", "TaxableEligibleDividends",
         "TaxableNonEligibleDividends", "TaxableCapitalGains", "NetRentalIncome",
         "NetBusinessIncome", "PensionIncome", "SelfEmploymentIncome", "RRSPIncome",
-        "RRIFIncome", "LumpSumIncome", "TrustIncome", "ForeignPropertyIncome",
+        "RRIFIncome", "LumpSumIncome", "TrustIncome", "TrustForeignIncome",
+        "ForeignPropertyIncome",
     ))
     assert round(visible, 2) == float(inc.find("TotalIncome").text)
 
