@@ -1,0 +1,68 @@
+# Test tiers 2 (backend) and 3 (E2E) — companions to the existing gates:
+#   tier 1 (unit)       -> tests.yml            (tests/unit)
+#   tier 2 (backend)    -> this file, `backend` (tests/integration non-UI + top-level tests/)
+#   tier 3 (E2E)        -> this file, `e2e`     (the streamlit AppTest UI suites)
+#   tier 4 (playwright) -> playwright-e2e.yml   (real browser vs the deployed surface)
+#
+# All Python tiers run fully OFFLINE (conftest sets GROQ_API_KEY=gsk-test-key; the
+# LLM is mocked; SQLite in dev). No network, no live DB, no secrets. Install mirrors
+# tests.yml (requirements.txt + editable package, src/ layout).
+#
+# Locally (GitHub Actions is billing-blocked in this environment): `make test-backend`,
+# `make test-e2e` (or the exact pytest selectors below). See the Makefile.
+#
+# Not wired as required checks — the operator can require them via branch protection.
+
+name: test-tiers
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: tier 2 — backend (integration + engines/DB/pipeline, no browser)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Run backend tier
+        # Everything except the unit tier and the streamlit AppTest UI (E2E) suites.
+        run: |
+          python -m pytest tests \
+            --ignore=tests/unit \
+            --ignore=tests/integration/test_streamlit_smoke.py \
+            --ignore=tests/integration/test_streamlit_nav_smoke.py \
+            --ignore=tests/integration/test_e2e_wizard_flow.py \
+            --ignore=tests/integration/test_wizard_ui.py \
+            -p no:cacheprovider -q -o addopts=""
+
+  e2e:
+    name: tier 3 — E2E (streamlit AppTest UI suites)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Run E2E tier
+        run: |
+          python -m pytest \
+            tests/integration/test_streamlit_smoke.py \
+            tests/integration/test_streamlit_nav_smoke.py \
+            tests/integration/test_e2e_wizard_flow.py \
+            tests/integration/test_wizard_ui.py \
+            -p no:cacheprovider -q -o addopts=""

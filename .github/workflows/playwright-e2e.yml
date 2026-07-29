@@ -1,0 +1,48 @@
+# Playwright browser E2E smoke for the deployed wealthtax-agent surface.
+#
+# NOTE: GitHub Actions is billing-blocked in this environment; this workflow
+# won't auto-run here. Run locally / on vps-ci:
+#   cd e2e && npm install && npx playwright install chromium && npx playwright test
+# (the container image already bundles browsers, so `playwright install` is only
+# needed for a bare local machine).
+#
+# PAPER / READ-ONLY: navigates the access edge / app shell only. No secrets are
+# referenced anywhere in this workflow.
+name: playwright-e2e
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.48.0-jammy   # bundles node + browsers
+    defaults:
+      run:
+        working-directory: e2e
+    env:
+      BASE_URL: 'https://wealth.vikenparikh.com'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      # `npm install` (not `npm ci`): no package-lock.json is committed, so
+      # `npm ci` would fail on its lockfile requirement. `npm install` resolves
+      # against package.json directly.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Playwright tests
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7
